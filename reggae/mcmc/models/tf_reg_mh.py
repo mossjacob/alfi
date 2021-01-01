@@ -17,6 +17,12 @@ f64 = np.float64
 
 
 class TranscriptionLikelihood():
+    """
+    Implementation of [1]
+    [1]: Titsias, M. K., A. Honkela, N. D. Lawrence, and M. Rattray (2012).
+         Identifying targets of multiple co-regulating transcription factors from expression time-series by
+         bayesian model comparison. BMC systems biology 6(1), 53
+    """
     def __init__(self, data, options):
         self.options = options
         self.data = data
