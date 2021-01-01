@@ -2,10 +2,12 @@ from multiprocessing import Pool
 import reggae
 import tensorflow as tf
 
+
 class ChainResult(object):
     def __init__(self, acceptance_rates, samples):
         self.acceptance_rates = acceptance_rates
         self.samples = samples
+
 
 def create_chains(model, args, sample_kwargs, num_chains=4, current_state=None):
     '''
@@ -28,7 +30,6 @@ def create_chains(model, args, sample_kwargs, num_chains=4, current_state=None):
             results.append(p.apply_async(run_job, [args, sample_kwargs]))
 
         res = [result.get() for result in results]
-
 
     return res
 

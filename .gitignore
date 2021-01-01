@@ -5,3 +5,7 @@ dist
 build
 
 tf_reggae.egg-info/
+
+.idea/
+
+reggae/.DS_Store

@@ -23,12 +23,15 @@ import numpy as np
 f64 = np.float64
 
 
-class TranscriptionMixedSampler():
-    '''
-    Data is a tuple (m, f) of shapes (reps, num, time)
-    time is a tuple (t, τ, common_indices)
-    '''
+class TranscriptionMixedSampler:
+    """
+    An updated version of the Metropolis-Hastings model from Titsias et al. (2012) using a mixed sampler
+    """
     def __init__(self, data: DataHolder, options: Options):
+        """
+        @param data: a tuple (m, f) of shapes (reps, num, time), where time is a tuple (t, τ, common_indices)
+        @param options: configuration of model
+        """
         self.data = data
         self.samples = None
         self.N_p = data.τ.shape[0]
@@ -45,7 +48,6 @@ class TranscriptionMixedSampler():
         self.state_indices = {}
         step_sizes = self.options.initial_step_sizes
         logistic_step_size = step_sizes['nuts'] if 'nuts' in step_sizes else 0.00001
-
 
         # Latent function & GP hyperparameters
         kernel_initial = self.kernel_selector.initial_params()
@@ -107,7 +109,6 @@ class TranscriptionMixedSampler():
                         [LogisticNormal(*kernel_ranges[0]), LogisticNormal(*kernel_ranges[1])],
                         [logistic(k) for k in kernel_initial], 
                         step_size=0.1*logistic_step_size, hmc_log_prob=kernel_params_log_prob, requires_all_states=True)
-
         
         # Kinetic parameters & Interaction weights
         w_prior = LogisticNormal(f64(-2), f64(2))

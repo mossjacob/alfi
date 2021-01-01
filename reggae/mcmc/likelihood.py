@@ -9,7 +9,12 @@ import numpy as np
 PI = tf.constant(np.pi, dtype='float64')
 
 
-class TranscriptionLikelihood():
+class TranscriptionLikelihood:
+    """
+    Likelihood of the form:
+    N(m(t), s(t))
+    where m(t) = b/d + (a - b/d) exp(-dt) + s int^t_0 G(p(u); w) exp(-d(t-u)) du
+    """
     def __init__(self, data: DataHolder, options: Options):
         self.options = options
         self.data = data
@@ -131,20 +136,20 @@ class TranscriptionLikelihood():
               w_0bar=None,
               σ2_m=None, 
               Δ=None):
-        '''
+        """
         Computes likelihood of the genes.
-        If any of the optional args are None, they are replaced by their 
+        If any of the optional args are None, they are replaced by their
         current value in all_states.
-        '''
+        """
         params = self.get_parameters_from_state(
             all_states, state_indices, fbar, kbar, k_fbar, wbar, w_0bar, σ2_m, Δ)
         return self._genes(*params)
 
     @tf.function#(experimental_compile=True)
-    def tfs(self, σ2_f, fbar): 
-        '''
+    def tfs(self, σ2_f, fbar):
+        """
         Computes log-likelihood of the transcription factors.
-        '''
+        """
         # assert self.options.tf_mrna_present
         if not self.preprocessing_variance:
             variance = tf.reshape(σ2_f, (-1, 1))
