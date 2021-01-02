@@ -1,5 +1,12 @@
 # REGGaE: Regulation of Gene Expression
 
+[![Latest PyPI Version][pb]][pypi] [![PyPI Downloads][db]][pypi]
+
+[pb]: https://img.shields.io/pypi/v/tf-reggae.svg
+[pypi]: https://pypi.org/project/tf-reggae/
+
+[db]: https://img.shields.io/pypi/dm/tf-reggae?label=pypi%20downloads
+
 This library implements several Latent Force Models of transcriptional regulation. These are all implemented in building blocks simplifying the creation of novel models or combinations.
 
 Both analytical and MCMC-based methods are implemented.
