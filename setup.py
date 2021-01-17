@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="tf-reggae",
-    version="0.0.1",
+    version="0.0.3",
     author="Jacob Moss",
     author_email="cob.mossy@gmail.com",
     description="A Latent Force Model library for modelling regulation of genes.",

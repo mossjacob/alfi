@@ -2,7 +2,7 @@ import csv
 import pandas as pd
 import numpy as np
 from sklearn import preprocessing
-
+from os import path
 
 class DataHolder(object):
     def __init__(self, data, noise, time):
@@ -13,34 +13,18 @@ class DataHolder(object):
         self.τ = time[1]
         self.common_indices = time[2]
 
-def load_humanp53(target_genes):
-    with open('data/humanp53/t0to24.tsv', 'r', 1) as f:
+def load_humanp53(dir_path, target_genes):
+    with open(path.join(dir_path, 't0to24.tsv'), 'r', 1) as f:
         contents = f.buffer
         df = pd.read_table(contents, sep='\t', index_col=0)
 
-    columns = ['MCF7, t=0 h, rep1',
-    'MCF7, t=1 h, IR 10Gy, rep1',
-    'MCF7, t=2 h, IR 10Gy, rep1',
-    'MCF7, t=3 h, IR 10Gy, rep1',
-    'MCF7, t=4 h, IR 10Gy, rep1',
-    'MCF7, t=5 h, IR 10Gy, rep1',
-    'MCF7, t=6 h, IR 10Gy, rep1',
-    'MCF7, t=7 h, IR 10Gy, rep1',
-    'MCF7, t=8 h, IR 10Gy, rep1',
-    'MCF7, t=9 h, IR 10Gy, rep1',
-    'MCF7, t=10 h, IR 10Gy, rep1',
-    'MCF7, t=11 h, IR 10Gy, rep1',
-    'MCF7, t=12 h, IR 10Gy, rep1']
-
+    columns = ['MCF7, t=' + str(t) + ' h, IR 10Gy, rep1' for t in range(13)]
     tfs = ['TP53']
+
     genes_df = df[df.index.isin(target_genes)][columns]
     genes_df = genes_df.reindex(target_genes)
-
-    # genes_df = genes_df.reindex(['TNFRSF10B', 'SESN1', 'CDKN1A', 'DDB2', 'BIK'])
-
     tfs_df = df[df.index.isin(tfs)][columns]
 
-    # normalised = preprocessing.normalize(np.r_[genes_df.values,tfs_df.values])
     m = genes_df.values
     genes_norm = 1/m.shape[0] * np.linalg.norm(m, axis=1, ord=None) #l2 norm
     genes = m / np.sqrt(genes_norm.reshape(-1, 1))
@@ -52,7 +36,6 @@ def load_humanp53(target_genes):
     tfs = np.expand_dims(tfs, 0)
 
     t = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
-
     return (genes_df, np.float64(genes)), (tfs_df, np.float64(tfs)), t
     
 def load_covid():
@@ -110,16 +93,16 @@ def load_3day_dros():
     return (genes_df, np.float64(genes)), (tfs_df, np.float64(tfs)), np.array([2, 10, 20])
 
 
-def load_barenco_puma():
+def load_barenco_puma(dir_path):
     mmgmos_processed = True
     if mmgmos_processed:
-        with open('data/barencoPUMA_exprs.csv', 'r') as f:
+        with open(path.join(dir_path, 'barencoPUMA_exprs.csv'), 'r') as f:
             df = pd.read_csv(f, index_col=0)
-        with open('data/barencoPUMA_se.csv', 'r') as f:
+        with open(path.join(dir_path, 'barencoPUMA_se.csv'), 'r') as f:
             dfe = pd.read_csv(f, index_col=0)
         columns = [f'cARP{r}-{t}hrs.CEL' for r in range(1, 4) for t in np.arange(7)*2]
     else:
-        with open('data/barenco_processed.tsv', 'r') as f:
+        with open(path.join(dir_path, 'barenco_processed.tsv'), 'r') as f:
             df = pd.read_csv(f, delimiter='\t', index_col=0)
 
         columns = [f'H_ARP1-{t}h.3' for t in np.arange(7)*2]
