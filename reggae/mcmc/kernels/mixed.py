@@ -2,7 +2,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from reggae.mcmc.results import MixedKernelResults, GenericResults
-from reggae.utilities import prog
+from reggae.tf_utilities import prog
 
 from inspect import signature
 

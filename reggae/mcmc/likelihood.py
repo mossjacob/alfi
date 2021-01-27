@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow import math as tfm
 
 from reggae.data_loaders import DataHolder
-from reggae.utilities import rotate, jitter_cholesky, logit, logistic, LogisticNormal, inverse_positivity, save_object
+from reggae.tf_utilities import rotate, jitter_cholesky, logit, logistic, LogisticNormal, inverse_positivity, save_object
 from reggae.mcmc import Options
 
 import numpy as np

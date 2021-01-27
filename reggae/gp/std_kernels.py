@@ -1,4 +1,4 @@
-from reggae.utilities import get_time_square, FixedDistribution
+from reggae.tf_utilities import get_time_square, FixedDistribution
 
 import tensorflow as tf
 from tensorflow import math as tfm

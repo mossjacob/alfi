@@ -5,7 +5,7 @@ from scipy.interpolate import interp1d
 from tensorflow import math as tfm
 
 from reggae.data_loaders import DataHolder
-from reggae.utilities import discretise, logistic
+from reggae.tf_utilities import discretise, logistic
 from reggae.mcmc import Options
 
 f64 = np.float64

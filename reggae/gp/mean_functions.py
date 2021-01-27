@@ -3,7 +3,7 @@ from gpflow.utilities import positive
 
 import tensorflow as tf
 from tensorflow_probability import bijectors as tfb
-from reggae.utilities import broadcast_tile
+from reggae.tf_utilities import broadcast_tile
 
 
 class LinearResponseMeanFunction(gpflow.mean_functions.MeanFunction):

@@ -11,7 +11,7 @@ from tensorflow_probability import distributions as tfd
 from tensorflow_probability import mcmc
 import tensorflow_probability as tfp
 
-from reggae.utilities import broadcast_tile, PI
+from reggae.tf_utilities import broadcast_tile, PI
 
 
 class LinearResponseKernel(gpflow.kernels.Kernel):
