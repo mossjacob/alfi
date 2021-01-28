@@ -9,3 +9,5 @@ tf_reggae.egg-info/
 .idea/
 
 .DS_Store
+
+reggae/data/
