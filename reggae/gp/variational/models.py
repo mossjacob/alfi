@@ -15,25 +15,22 @@ class VariationalLFM(nn.Module):
     Description blah
     Parameters
     ----------
-    num_genes : int
-    Number of genes.
-    num_tfs : int
-    known_variance : bool = variance tensor if the preprocessing variance is known, otherwise learnt.
-    t_inducing : int
-    inducing timepoints.
+    num_genes : int : the number of genes.
+    num_tfs : int : the number of TFs/ latent functions
+    known_variance : tensor : variance tensor if the preprocessing variance is known, otherwise learnt.
+    t_inducing : tensor of shape (T) : the inducing timepoints.
     """
-    def __init__(self, num_genes, num_tfs, t_inducing, known_variance=None):
+    def __init__(self, num_genes, num_tfs, t_inducing, t_observed, known_variance=None):
         super(VariationalLFM, self).__init__()
         self.num_genes = num_genes
         self.num_tfs = num_tfs
         self.num_inducing = t_inducing.shape[0]
+        self.num_observed = t_observed.shape[0]
         self.inducing_inputs = torch.tensor(t_inducing, requires_grad=False)
 
         self.decay_rate = Parameter(1*torch.ones((self.num_genes, 1), dtype=torch.float64))
         self.basal_rate = Parameter(0.2*torch.ones((self.num_genes, 1), dtype=torch.float64))
         self.sensitivity = Parameter(2*torch.ones((self.num_genes, 1), dtype=torch.float64))
-        # self.w = Parameter(torch.ones((self.num_genes, self.num_tfs), dtype=torch.float64))
-        # self.w_0 = Parameter(torch.ones((self.num_tfs), dtype=torch.float64))
 
         self.nfe = 0
         self.raw_lengthscale = Parameter(0.5*torch.ones((num_tfs), dtype=torch.float64))
@@ -48,10 +45,9 @@ class VariationalLFM(nn.Module):
         self.q_cholS = Parameter(q_cholK)
 
         if known_variance is None:
-            self.likelihood_variance = Parameter(torch.ones())
+            self.likelihood_variance = Parameter(torch.ones((self.num_genes, self.num_observed), dtype=torch.float64))
         else:
             self.likelihood_variance = torch.tensor(known_variance, requires_grad=False)
-        # self.likelihood_variance = Parameter(torch.ones((self.num_genes, self.num_inducing), dtype=torch.float64))
 
 
     @property
@@ -83,7 +79,6 @@ class VariationalLFM(nn.Module):
             K += jitter
         return K
 
-
     def forward(self, t, h, rtol=1e-4, atol=1e-6, num_samples=5):
         """
         t : torch.Tensor
@@ -110,6 +105,8 @@ class VariationalLFM(nn.Module):
         h_avg = 0
         for _ in range(num_samples):
             h_avg += odeint(self.odefunc, h, t, method='dopri5', rtol=rtol, atol=atol) / num_samples # shape (num_genes, num_times, 1
+
+        # print(h.shape, t.shape, h_avg.shape)
 
         # 2: KL term:
         # above: make cholesky
@@ -144,7 +141,6 @@ class VariationalLFM(nn.Module):
         # print('kl2', KL2)
         ##
         return torch.transpose(h_avg, 0, 1), KL
-
 
     def odefunc(self, t, h):
         self.nfe += 1
@@ -203,31 +199,35 @@ class VariationalLFM(nn.Module):
         """
         pass
 
-    def train(self, mode=True):
-        # self.gp.train(mode)
-        # self.gp.likelihood.train(mode)
-        super().train(mode)
-
     def log_likelihood(self, y, h):
         # print(self.likelihood_variance)
         sq_diff = torch.square(y - h)
         variance = self.likelihood_variance # add PUMA variance, 0th replicate
         log_lik = -0.5*torch.log(2*3.1415926*variance) - 0.5*sq_diff/variance
         log_lik = torch.sum(log_lik)
-        return log_lik * self.num_tfs * self.num_inducing
+        return log_lik * self.num_tfs * self.num_observed # TODO: check if we need this multiplier
         # return MultivariateNormal(y, torch.exp(self.likelihood_variance)).log_prob(h)
 
 
 class SingleLinearLFM(VariationalLFM):
 
-    def G(self, pf):
+    def G(self, f):
         return torch.squeeze(f, dim=0)
 
 
-class MultiLFM(VariationalLFM):
+class NonLinearLFM(VariationalLFM):
 
     def G(self, f):
-        p_pos = softplus(p)
-        interactions = torch.matmul(self.w, torch.log(p_pos+1e-50)) + self.w_0 #(TODO)
+        return torch.squeeze(softplus(f), dim=0)
+
+
+class MultiLFM(VariationalLFM):
+    def __init__(self, num_genes, num_tfs, t_inducing, t_observed, known_variance=None):
+        super().__init__(num_genes, num_tfs, t_inducing, t_observed, known_variance=known_variance)
+        self.w = Parameter(torch.ones((self.num_genes, self.num_tfs), dtype=torch.float64))
+        self.w_0 = Parameter(torch.ones((self.num_tfs), dtype=torch.float64))
+
+    def G(self, f):
+        p_pos = softplus(f)
+        interactions = torch.matmul(self.w, torch.log(p_pos+1e-50)) + self.w_0
         return torch.sigmoid(interactions) # TF Activation Function (sigmoid)
-        return p

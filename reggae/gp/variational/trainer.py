@@ -1,8 +1,6 @@
 import torch
-from torchdiffeq import odeint
-from torch.nn.parameter import Parameter
-from torch.distributions.multivariate_normal import MultivariateNormal
-from torch.distributions.normal import Normal
+
+from reggae.utilities import inv_softplus
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -54,11 +52,10 @@ class Trainer:
             total_loss.backward()
             # print(model.q_cholS)
             if (epoch % report_interval) == 0:
-                print('Epoch %d/%d - Loss: %.2f (%.2f %.2f) [%.2f,%.2f,%.2f] b: %.2f d %.2f s %.2f λ: %.3f' % (
+                print('Epoch %d/%d - Loss: %.2f (%.2f %.2f) b: %.2f d %.2f s: %.2f λ: %.3f' % (
                     self.num_epochs + 1, end_epoch,
                     total_loss.item(),
                     loss.item(), kl.item(),
-                    self.model.q_m[0, 1], self.model.q_m[0,2], self.model.q_m[0, 3],
                     self.model.basal_rate[0].item(),
                     self.model.decay_rate[0].item(),
                     self.model.sensitivity[0].item(),
@@ -71,7 +68,7 @@ class Trainer:
             self.lengthscales.append(self.model.lengthscale.squeeze().item())
             losses.append((loss.item(), kl.item()))
             with torch.no_grad():
-                self.model.raw_lengthscale.clamp_(-2, 1) # TODO is this needed?
+                self.model.raw_lengthscale.clamp_(-2, inv_softplus(1)) # TODO is this needed?
                 # TODO can we replace these with parameter transforms like we did with lengthscale
                 self.model.sensitivity.clamp_(0.4, 8)
                 self.model.basal_rate.clamp_(0, 8)

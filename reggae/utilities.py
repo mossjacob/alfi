@@ -1,11 +1,23 @@
 import torch
 
 
+def save(model, name):
+    torch.save(model.state_dict(), f'{name}.pt')
+
+
+def load(model_class, *args):
+    model = model_class(*args)
+    model.load_state_dict(torch.load('model.pt'))
+    return model
+
+
 def softplus(value):
     return torch.log(1+torch.exp(value))
 
+
 def inv_softplus(value):
     return torch.log(torch.exp(value)-1)
+
 
 def cholesky_inverse(cholesky_factor, upper=False):
     """Courtesy of Alex Campbell"""
