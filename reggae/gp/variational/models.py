@@ -20,13 +20,14 @@ class VariationalLFM(nn.Module):
     known_variance : tensor : variance tensor if the preprocessing variance is known, otherwise learnt.
     t_inducing : tensor of shape (T) : the inducing timepoints.
     """
-    def __init__(self, num_genes, num_tfs, t_inducing, t_observed, known_variance=None):
+    def __init__(self, num_genes, num_tfs, t_inducing, t_observed, known_variance=None, extra_points=1):
         super(VariationalLFM, self).__init__()
         self.num_genes = num_genes
         self.num_tfs = num_tfs
         self.num_inducing = t_inducing.shape[0]
         self.num_observed = t_observed.shape[0]
         self.inducing_inputs = torch.tensor(t_inducing, requires_grad=False)
+        self.extra_points = extra_points
 
         self.decay_rate = Parameter(1*torch.ones((self.num_genes, 1), dtype=torch.float64))
         self.basal_rate = Parameter(0.2*torch.ones((self.num_genes, 1), dtype=torch.float64))
@@ -40,9 +41,9 @@ class VariationalLFM(nn.Module):
 
         # q_K = torch.eye(self.num_inducing, dtype=torch.float64).view(1, self.num_inducing, self.num_inducing)
         q_K = q_K.repeat(self.num_tfs, 1, 1)
-        q_cholK = torch.cholesky(q_K)
+        q_cholS = torch.cholesky(q_K)
         self.q_m = Parameter(q_m)
-        self.q_cholS = Parameter(q_cholK)
+        self.q_cholS = Parameter(q_cholS)
 
         if known_variance is None:
             self.likelihood_variance = Parameter(torch.ones((self.num_genes, self.num_observed), dtype=torch.float64))
@@ -152,8 +153,9 @@ class VariationalLFM(nn.Module):
         q_f = self.get_tfs(t.reshape(-1))
         # Reparameterisation trick
         f = q_f.rsample() # TODO: multiple samples?
-        midpoint = 1
-        Gp = self.G(f)[midpoint] #get the midpoint
+        Gp = self.G(f)
+        if self.extra_points > 0:
+            Gp = Gp[self.extra_points] # get the midpoint
 
         # print(Gp.shape)
         # print(self.basal_rate, Gp, decay)
@@ -169,8 +171,18 @@ class VariationalLFM(nn.Module):
         # q_cholS = torch.tril(self.q_cholS)
         # self.S = torch.matmul(q_cholS, torch.transpose(q_cholS, 1, 2))
         ##
-        if t.shape[0] == 1:
-            t = torch.tensor([t[0]-0.05, t, t[0]+0.05])
+        if t.shape[0] == 1 and self.extra_points > 0:
+            # t_new = torch.ones(3)
+            # t_new[0] = t[0]-0.05
+            # t_new[2] = t[0]+0.05
+            # t_new[1] = t[0]
+            t_l = list()
+            for i in range(self.extra_points, 0, -1):
+                t_l.append(t[0]-0.05*i)
+            for i in range(self.extra_points+1):
+                t_l.append(t[0]+0.05*i)
+            t = torch.tensor(t_l).reshape(-1)
+            # t = torch.tensor([t[0]-0.05, t[0], t[0]+0.05]).reshape(-1)
             # print(t)
         Ksm = self.rbf(t, self.inducing_inputs) # (I, T*, T)
         α = torch.matmul(Ksm, self.inv_Kmm) # (I, T*, T)

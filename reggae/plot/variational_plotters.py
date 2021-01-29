@@ -24,7 +24,7 @@ class Plotter:
     def plot_tfs(self, ylim=(-2, 2), num_samples=7, plot_barenco=False, plot_inducing=False):
         tf_i = 0
 
-        t_predict = torch.linspace(0, 1, 80)
+        t_predict = torch.linspace(-0.1, 1.1, 80)
         q_f = self.model.get_tfs(t_predict.reshape(-1))
         q_u = self.model.get_tfs(self.model.inducing_inputs)
         mean = self.model.G(q_f.mean).detach().numpy()  # (T)

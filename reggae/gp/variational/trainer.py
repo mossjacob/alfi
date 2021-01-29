@@ -14,7 +14,7 @@ class Trainer:
     ----------
     model: .
     optimizer:
-    dataset: (t_observed, m_observed) where t_observed (T), m_observed (J, T).
+    dataset: (t_observed, m_observed) where t_observed (T,), m_observed (J, T).
     inducing timepoints.
     """
     def __init__(self, model, optimizer: torch.optim.Optimizer, dataset: tuple):
@@ -29,16 +29,20 @@ class Trainer:
         self.basalrates = list()
         self.decayrates = list()
         self.lengthscales = list()
+        self.mus = list()
+        self.cholS = list()
 
-    def train(self, epochs=20, report_interval=1, plot_interval=20, rtol=1e-5, atol=1e-6):
+
+    def train(self, epochs=20, report_interval=1, plot_interval=20, rtol=1e-5, atol=1e-6, num_samples=5):
         losses = list()
         end_epoch = self.num_epochs+epochs
-
+        plt.figure(figsize=(4, 2.3))
         for epoch in range(epochs):
             self.optimizer.zero_grad()
-            # Output from model
+
+            # with ef.scan():
             initial_value = torch.zeros((self.num_genes, 1), dtype=torch.float64) #, dtype=torch.float64
-            output, kl = self.model(self.t_observed.view(-1), initial_value, rtol=rtol, atol=atol)
+            output, kl = self.model(self.t_observed, initial_value, rtol=rtol, atol=atol, num_samples=num_samples)
             output = torch.squeeze(output)
 
             # print(model.q_cholS)
@@ -50,7 +54,8 @@ class Trainer:
             kl *= mult
             total_loss = loss + kl
             total_loss.backward()
-            # print(model.q_cholS)
+            self.optimizer.step()
+
             if (epoch % report_interval) == 0:
                 print('Epoch %d/%d - Loss: %.2f (%.2f %.2f) b: %.2f d %.2f s: %.2f λ: %.3f' % (
                     self.num_epochs + 1, end_epoch,
@@ -61,14 +66,15 @@ class Trainer:
                     self.model.sensitivity[0].item(),
                     self.model.lengthscale.squeeze().item()
                 ))
-            self.optimizer.step()
 
             self.basalrates.append(self.model.basal_rate.detach().numpy())
             self.decayrates.append(self.model.decay_rate.detach().numpy())
             self.lengthscales.append(self.model.lengthscale.squeeze().item())
+            self.cholS.append(self.model.q_cholS.detach().clone())
+            self.mus.append(self.model.q_m.detach().clone())
             losses.append((loss.item(), kl.item()))
             with torch.no_grad():
-                self.model.raw_lengthscale.clamp_(-2, inv_softplus(1)) # TODO is this needed?
+                self.model.raw_lengthscale.clamp_(-2, inv_softplus(torch.tensor(1., dtype=torch.float64))) # TODO is this needed?
                 # TODO can we replace these with parameter transforms like we did with lengthscale
                 self.model.sensitivity.clamp_(0.4, 8)
                 self.model.basal_rate.clamp_(0, 8)
