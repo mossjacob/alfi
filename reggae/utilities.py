@@ -5,9 +5,9 @@ def save(model, name):
     torch.save(model.state_dict(), f'{name}.pt')
 
 
-def load(model_class, *args):
-    model = model_class(*args)
-    model.load_state_dict(torch.load('model.pt'))
+def load(name, model_class, *args, **kwargs):
+    model = model_class(*args, **kwargs)
+    model.load_state_dict(torch.load(f'{name}.pt'))
     return model
 
 

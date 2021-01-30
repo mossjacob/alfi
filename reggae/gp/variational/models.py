@@ -17,10 +17,10 @@ class VariationalLFM(nn.Module):
     ----------
     num_genes : int : the number of genes.
     num_tfs : int : the number of TFs/ latent functions
-    known_variance : tensor : variance tensor if the preprocessing variance is known, otherwise learnt.
+    fixed_variance : tensor : variance tensor if the preprocessing variance is known, otherwise learnt.
     t_inducing : tensor of shape (T) : the inducing timepoints.
     """
-    def __init__(self, num_genes, num_tfs, t_inducing, t_observed, known_variance=None, extra_points=1):
+    def __init__(self, num_genes, num_tfs, t_inducing, t_observed, fixed_variance=None, extra_points=1):
         super(VariationalLFM, self).__init__()
         self.num_genes = num_genes
         self.num_tfs = num_tfs
@@ -28,7 +28,6 @@ class VariationalLFM(nn.Module):
         self.num_observed = t_observed.shape[0]
         self.inducing_inputs = torch.tensor(t_inducing, requires_grad=False)
         self.extra_points = extra_points
-
         self.decay_rate = Parameter(1*torch.ones((self.num_genes, 1), dtype=torch.float64))
         self.basal_rate = Parameter(0.2*torch.ones((self.num_genes, 1), dtype=torch.float64))
         self.sensitivity = Parameter(2*torch.ones((self.num_genes, 1), dtype=torch.float64))
@@ -45,10 +44,10 @@ class VariationalLFM(nn.Module):
         self.q_m = Parameter(q_m)
         self.q_cholS = Parameter(q_cholS)
 
-        if known_variance is None:
-            self.likelihood_variance = Parameter(torch.ones((self.num_genes, self.num_observed), dtype=torch.float64))
+        if fixed_variance is not None:
+            self.likelihood_variance = torch.tensor(fixed_variance, requires_grad=False)
         else:
-            self.likelihood_variance = torch.tensor(known_variance, requires_grad=False)
+            self.raw_likelihood_variance = Parameter(torch.ones((self.num_genes, self.num_observed), dtype=torch.float64))
 
 
     @property
@@ -58,6 +57,14 @@ class VariationalLFM(nn.Module):
     @lengthscale.setter
     def lengthscale(self, value):
         self.raw_lengthscale = inv_softplus(value)
+
+    @property
+    def likelihood_variance(self):
+        return softplus(self.raw_likelihood_variance)
+
+    @likelihood_variance.setter
+    def likelihood_variance(self, value):
+        self.raw_likelihood_variance = inv_softplus(value)
 
     def rbf(self, x: torch.Tensor, x2: torch.Tensor=None):
         """
@@ -234,8 +241,8 @@ class NonLinearLFM(VariationalLFM):
 
 
 class MultiLFM(VariationalLFM):
-    def __init__(self, num_genes, num_tfs, t_inducing, t_observed, known_variance=None):
-        super().__init__(num_genes, num_tfs, t_inducing, t_observed, known_variance=known_variance)
+    def __init__(self, num_genes, num_tfs, t_inducing, t_observed, fixed_variance=None):
+        super().__init__(num_genes, num_tfs, t_inducing, t_observed, fixed_variance=fixed_variance)
         self.w = Parameter(torch.ones((self.num_genes, self.num_tfs), dtype=torch.float64))
         self.w_0 = Parameter(torch.ones((self.num_tfs), dtype=torch.float64))
 

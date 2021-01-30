@@ -63,6 +63,26 @@ def run_samples():
         print(f'For {samples} samples, the start and end loss are: {start_loss} and {end_loss} resp.')
 
 
+def run_inducing():
+    for inducing_points in range(0, 10):
+        start_loss = 0
+        end_loss = 0
+        num_averagings = 5
+        for _ in range(num_averagings):  # average over random initialisations
+            t_inducing = torch.linspace(f64(0), f64(1), inducing_points, dtype=torch.float64).reshape((-1, 1))
+            model = SingleLinearLFM(num_genes, num_tfs, t_inducing, t_observed, known_variance=σ2_m_pre[0])
+            optimizer = torch.optim.Adam(model.parameters(), lr=0.2)
+            trainer = Trainer(model, optimizer, (t_observed, m_observed))
+            tol = 1e-3
+            # trainer = Trainer(optimizer)
+            output = trainer.train(15, rtol=tol, atol=tol / 10, report_interval=16, plot_interval=16, num_samples=samples)
+
+            start_loss += trainer.losses[1] / num_averagings
+            end_loss += trainer.losses[-1] / num_averagings
+
+        print(f'For {inducing_points} samples, the start and end loss are: {start_loss} and {end_loss} resp.')
+
+
 if __name__ == '__main__':
     ## Firstly we go through how many extra timepoints the TF sampler should use
     run_timepoints()

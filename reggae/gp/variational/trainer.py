@@ -29,6 +29,7 @@ class Trainer:
         self.basalrates = list()
         self.decayrates = list()
         self.lengthscales = list()
+        self.sensitivities = list()
         self.mus = list()
         self.cholS = list()
 
@@ -67,8 +68,9 @@ class Trainer:
                     self.model.lengthscale.squeeze().item()
                 ))
 
-            self.basalrates.append(self.model.basal_rate.detach().numpy())
-            self.decayrates.append(self.model.decay_rate.detach().numpy())
+            self.basalrates.append(self.model.basal_rate.detach().clone().numpy())
+            self.decayrates.append(self.model.decay_rate.detach().clone().numpy())
+            self.sensitivities.append(self.model.sensitivity.detach().clone().numpy())
             self.lengthscales.append(self.model.lengthscale.squeeze().item())
             self.cholS.append(self.model.q_cholS.detach().clone())
             self.mus.append(self.model.q_m.detach().clone())
