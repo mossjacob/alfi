@@ -1,11 +1,9 @@
 from reggae.gp.std_kernels import GPKernelSelector
-from reggae.gp.sim_kernels import LinearResponseKernel
-from reggae.gp.mean_functions import LinearResponseMeanFunction
-from reggae.gp.models import LinearResponseModel
+from reggae.gp.variational.models import VariationalLFM
+from reggae.gp.exact.models import AnalyticalLFM
 
 __all__ = [
     'GPKernelSelector',
-    'LinearResponseKernel',
-    'LinearResponseMeanFunction',
-    'LinearResponseModel'
+    'AnalyticalLFM',
+    'VariationalLFM'
 ]

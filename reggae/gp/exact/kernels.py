@@ -35,7 +35,7 @@ class SIMMean(gpytorch.means.Mean):
         self.initialize(raw_basal=self.pos_contraint.inverse_transform(value))
 
     def forward(self, x):
-        block_size = int(x.shape[0]/self.num_genes)
+        block_size = int(x.shape[0] / self.num_genes)
         m = (self.basal / self.covar_module.decay).view(-1, 1)
         m = m.repeat(1, block_size).view(-1)
         return m
@@ -125,7 +125,6 @@ class SIMKernel(gpytorch.kernels.Kernel):
     def noise(self, value):
         self.initialize(raw_noise=self.pos_contraint.inverse_transform(value))
 
-
     def plot_cov(self, x1, x2):
         Kxx = self(x1, x2)
         plt.figure()
@@ -148,7 +147,8 @@ class SIMKernel(gpytorch.kernels.Kernel):
 
         for j in range(self.num_genes):
             for k in range(self.num_genes):
-                kxx = self.k_xx(j, k)
+                kxx = self.k_xx(j, k, x1[:self.block_size], x2[:self.block_size])
+                # print('kxx', kxx.shape)
                 K_xx[j * self.block_size:(j + 1) * self.block_size,
                 k * self.block_size:(k + 1) * self.block_size] = kxx
 
@@ -163,27 +163,30 @@ class SIMKernel(gpytorch.kernels.Kernel):
         # plt.figure()
         return K_xx + jitter + self.variance + noise
 
-    def k_xx(self, j, k):
-        """k_xx(t, tprime)"""
+    def k_xx(self, j, k, t1_block, t2_block):
+        """
+        k_xx(t, t')
+        t2 = t'
+        Parameters:
+            t1_block: tensor shape (T1,)
+            t2_block: tensor shape (T2,)
+        """
+        t1_block = t1_block.view(1, -1)
+        t2_block = t2_block.view(-1, 1)
         mult = self.sensitivity[j] * self.sensitivity[k] * self.lengthscale * 0.5 * torch.sqrt(PI)
-        return self.scale ** 2 * mult * (self.h(k, j) + self.h(j, k, transpose=True))
+        k_xx = self.scale ** 2 * mult * (
+                     self.h(k, j, t2_block, t1_block) + self.h(j, k, t1_block, t2_block))
+        return k_xx
 
-    def h(self, k, j, transpose=False):
+    def h(self, k, j, t2, t1):
         l = self.lengthscale
         #         print(l, self.D[k], self.D[j])
-        t = self.diff[0, :self.block_size]
-        t_prime = t.repeat(self.block_size, 1)
-        t = t.view(-1, 1).repeat(1, self.block_size)
-        t_dist = self.diff[:self.block_size, :self.block_size]
-        if transpose:
-            t, t_prime = t_prime, t
-            t_dist = torch.transpose(t_dist, 0, 1)
-
+        t_dist = t2 - t1
         multiplier = torch.exp(self.gamma(k) ** 2) / (self.decay[j] + self.decay[k])  # (1, 1)
-        first_erf_term = torch.erf(t_dist / l - self.gamma(k)) + torch.erf(t / l + self.gamma(k))  # (T,T)
-        second_erf_term = torch.erf(t_prime / l - self.gamma(k)) + torch.erf(self.gamma(k))
+        first_erf_term = torch.erf(t_dist / l - self.gamma(k)) + torch.erf(t1 / l + self.gamma(k))  # (T,T)
+        second_erf_term = torch.erf(t2 / l - self.gamma(k)) + torch.erf(self.gamma(k))
         return multiplier * (torch.multiply(torch.exp(-self.decay[k] * t_dist), first_erf_term) - \
-                             torch.multiply(torch.exp(-self.decay[k] * t_prime - self.decay[j] * t), second_erf_term))
+                             torch.multiply(torch.exp(-self.decay[k] * t2 - self.decay[j] * t1), second_erf_term))
 
     def gamma(self, k):
         return self.decay[k] * self.lengthscale / 2
@@ -194,16 +197,16 @@ class SIMKernel(gpytorch.kernels.Kernel):
           x1:  x the blocked observation vector
           x2: x* the non-blocked prediction timepoint vector
         """
-        self.block_size = x1.shape[0]
+        self.block_size = int(x1.shape[0] / self.num_genes)  # 7
         self.hori_block_size = int(x2.shape[0])
-        self.vert_block_size = int(x1.shape[0])
-        shape = [x1.shape[0] * self.num_genes, x2.shape[0] * self.num_genes]
+        shape = [x1.shape[0], self.hori_block_size * self.num_genes]
         K_xx = torch.zeros(shape, dtype=torch.float32)
+        t1_block, t2_block = x1[:self.block_size], x2
         for j in range(self.num_genes):
             for k in range(self.num_genes):
-                kxx = self.k_xx(j, k, t_y=x2)
-                K_xx[j * self.vert_block_size:(j + 1) * self.vert_block_size,
-                     k * self.hori_block_size:(k + 1) * self.hori_block_size] = kxx
+                kxx = self.k_xx(j, k, t2_block, t1_block)
+                K_xx[j * self.block_size:(j + 1) * self.block_size,
+                k * self.hori_block_size:(k + 1) * self.hori_block_size] = kxx
 
         return K_xx
 
@@ -212,28 +215,31 @@ class SIMKernel(gpytorch.kernels.Kernel):
         K_xf
         Cross-covariance. Not optimised (not in marginal likelihood).
         Parameters:
-            x: tensor (JT, JT)
-            f: tensor (T*)
+            x: tensor (JT, JT) the blocked observation vector
+            f: tensor (T*) the non-blocked f prediction timepoint vector
         """
         shape = [x.shape[0], f.shape[0]]
         K_xf = torch.zeros(shape, dtype=torch.float32)
         self.diff = self.covar_dist(x, f)[:self.block_size, :]
         print(self.block_size)
+        t1_block, t2_block = x[:self.block_size].view(-1, 1), f.view(1, -1)
         for j in range(self.num_genes):
-            kxf = self.k_xf(j, x, f.view(-1))
+            kxf = self.k_xf(j, t1_block, t2_block)
             print('kxf', kxf.shape)
             K_xf[j * self.block_size:(j + 1) * self.block_size] = kxf
 
         return K_xf
 
-    def k_xf(self, j, x, f):
+    def k_xf(self, j, x, t_f):
         l = self.lengthscale
-        t = self.diff[0, :] #get first row
-        t = t.repeat(self.block_size, 1) # may need to alter
+        t = self.diff[0, :]  # get first row
+        t = t.repeat(self.block_size, 1)  # may need to alter
         print(t.shape)
-        erf_term = torch.erf(self.diff / l - self.gamma(j)) + torch.erf(t / l + self.gamma(j))
+        t_dist = x - t_f
+        print('dist', t_dist.shape)
+        erf_term = torch.erf(t_dist / l - self.gamma(j)) + torch.erf(t_f / l + self.gamma(j))
         return self.sensitivity[j] * l * 0.5 * torch.sqrt(PI) * torch.exp(self.gamma(j) ** 2) * torch.exp(
-            -self.decay[j] * self.diff) * erf_term
+            -self.decay[j] * t_dist) * erf_term
 
     def K_ff(self, X):
         """Returns the RBF kernel between latent TF"""

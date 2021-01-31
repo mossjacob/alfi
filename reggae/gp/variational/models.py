@@ -1,7 +1,6 @@
 from abc import abstractmethod
 
 import torch
-from torch import nn
 from torchdiffeq import odeint
 from torch.nn.parameter import Parameter
 from torch.distributions.multivariate_normal import MultivariateNormal
@@ -9,8 +8,10 @@ from torch.distributions.normal import Normal
 
 from reggae.utilities import softplus, inv_softplus, cholesky_inverse
 
+from ..models import LFM
 
-class VariationalLFM(nn.Module):
+
+class VariationalLFM(LFM):
     """
     Description blah
     Parameters
