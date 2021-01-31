@@ -13,43 +13,42 @@ from ..models import LFM
 
 class VariationalLFM(LFM):
     """
-    Description blah
+    Variational inducing point approximation of Latent Force Models.
+    Must override the `odefunc` function which encodes the ODE. This odefunc may call
+    `get_latents` to get the values of the latent function at arbitrary time `t`.
+
     Parameters
     ----------
-    num_genes : int : the number of genes.
-    num_tfs : int : the number of TFs/ latent functions
-    fixed_variance : tensor : variance tensor if the preprocessing variance is known, otherwise learnt.
-    t_inducing : tensor of shape (T) : the inducing timepoints.
+    num_outputs : int : the number of GP outputs (for example, the number of genes)
+    num_latents : int : the number of latent functions (for example, the number of TFs)
+    fixed_variance : tensor : variance if the preprocessing variance is known, otherwise learnt.
+    t_inducing : tensor of shape (T_u) : the inducing timepoints.
+    t_observed: tensor of shape (T) : the observed timepoints, i.e., the timepoints that the ODE solver should output
     """
-    def __init__(self, num_genes, num_tfs, t_inducing, t_observed, fixed_variance=None, extra_points=1):
+    def __init__(self, num_outputs, num_latents, t_inducing, t_observed, fixed_variance=None, extra_points=1):
         super(VariationalLFM, self).__init__()
-        self.num_genes = num_genes
-        self.num_tfs = num_tfs
+        self.num_outputs = num_outputs
+        self.num_latents = num_latents
         self.num_inducing = t_inducing.shape[0]
         self.num_observed = t_observed.shape[0]
         self.inducing_inputs = torch.tensor(t_inducing, requires_grad=False)
         self.extra_points = extra_points
-        self.decay_rate = Parameter(1*torch.ones((self.num_genes, 1), dtype=torch.float64))
-        self.basal_rate = Parameter(0.2*torch.ones((self.num_genes, 1), dtype=torch.float64))
-        self.sensitivity = Parameter(2*torch.ones((self.num_genes, 1), dtype=torch.float64))
 
-        self.nfe = 0
-        self.raw_lengthscale = Parameter(0.5*torch.ones((num_tfs), dtype=torch.float64))
-        self.v = Parameter(torch.ones((num_tfs), dtype=torch.float64))
-        q_m = torch.rand((self.num_tfs, self.num_inducing, 1), dtype=torch.float64)
-        q_K = self.rbf(self.inducing_inputs)
+        self.raw_lengthscale = Parameter(0.5 * torch.ones((num_latents), dtype=torch.float64))
+        self.raw_scale = Parameter(torch.ones((num_latents), dtype=torch.float64))
 
-        # q_K = torch.eye(self.num_inducing, dtype=torch.float64).view(1, self.num_inducing, self.num_inducing)
-        q_K = q_K.repeat(self.num_tfs, 1, 1)
-        q_cholS = torch.cholesky(q_K)
+        q_m = torch.rand((self.num_latents, self.num_inducing, 1), dtype=torch.float64)
+        q_S = self.rbf(self.inducing_inputs)
+        q_S = q_S.repeat(self.num_latents, 1, 1)
+        q_cholS = torch.cholesky(q_S)
         self.q_m = Parameter(q_m)
         self.q_cholS = Parameter(q_cholS)
 
         if fixed_variance is not None:
             self.likelihood_variance = torch.tensor(fixed_variance, requires_grad=False)
         else:
-            self.raw_likelihood_variance = Parameter(torch.ones((self.num_genes, self.num_observed), dtype=torch.float64))
-
+            self.raw_likelihood_variance = Parameter(torch.ones((self.num_outputs, self.num_observed), dtype=torch.float64))
+        self.nfe = 0
 
     @property
     def lengthscale(self):
@@ -58,6 +57,14 @@ class VariationalLFM(LFM):
     @lengthscale.setter
     def lengthscale(self, value):
         self.raw_lengthscale = inv_softplus(value)
+
+    @property
+    def scale(self):
+        return softplus(self.raw_scale)
+
+    @scale.setter
+    def scale(self, value):
+        self.raw_scale = inv_softplus(value)
 
     @property
     def likelihood_variance(self):
@@ -69,10 +76,13 @@ class VariationalLFM(LFM):
 
     def rbf(self, x: torch.Tensor, x2: torch.Tensor=None):
         """
+        TODO: move this to another file
         Radial basis function kernel.
-        @param x:
-        @param x2: if None, then x2 becomes x
-        @return: K of shape (I, |x|, |x2|)
+        Parameters:
+            x: tensor
+            x2: if None, then x2 becomes x
+        Returns:
+             K of shape (I, |x|, |x2|)
         """
         add_jitter = x2 is None
         if x2 is None:
@@ -80,9 +90,9 @@ class VariationalLFM(LFM):
         x = x.view(-1)
         x2 = x2.view(-1)
         sq_dist = torch.square(x.view(-1, 1)-x2)
-        sq_dist = sq_dist.repeat(self.num_tfs, 1, 1)
+        sq_dist = sq_dist.repeat(self.num_latents, 1, 1)
         sq_dist = torch.div(sq_dist, 2*self.lengthscale.view((-1, 1, 1)))
-        K =  self.v.view(-1, 1, 1) * torch.exp(-sq_dist)
+        K = self.scale.view(-1, 1, 1) * torch.exp(-sq_dist)
         if add_jitter:
             jitter = 1e-5 * torch.eye(x.shape[0])
             K += jitter
@@ -115,11 +125,9 @@ class VariationalLFM(LFM):
         for _ in range(num_samples):
             h_avg += odeint(self.odefunc, h, t, method='dopri5', rtol=rtol, atol=atol) / num_samples # shape (num_genes, num_times, 1
 
-        # print(h.shape, t.shape, h_avg.shape)
-
         # 2: KL term:
         # above: make cholesky
-        KL = -0.5 * self.num_tfs * self.num_inducing # CHECK
+        KL = -0.5 * self.num_latents * self.num_inducing # CHECK
 
         # log(det(S)): (already checked, seems working)
         # Uses that sqrt(det(X)) = det(X^(1/2)) and that det of triangular matrix
@@ -151,27 +159,19 @@ class VariationalLFM(LFM):
         ##
         return torch.transpose(h_avg, 0, 1), KL
 
+    @abstractmethod
     def odefunc(self, t, h):
-        self.nfe += 1
-        # if (self.nfe % 100) == 0:
-        #     print(t)
-        # h is of shape (num_genes, 1)
-        decay = torch.multiply(self.decay_rate.view(-1), h.view(-1)).view(-1, 1)
+        """
+        Parameters:
 
-        q_f = self.get_tfs(t.reshape(-1))
-        # Reparameterisation trick
-        f = q_f.rsample() # TODO: multiple samples?
-        Gp = self.G(f)
-        if self.extra_points > 0:
-            Gp = Gp[self.extra_points] # get the midpoint
+        """
+        pass
 
-        # print(Gp.shape)
-        # print(self.basal_rate, Gp, decay)
-
-        return self.basal_rate + self.sensitivity * Gp - decay
-
-    def get_tfs(self, t):
-        """t: shape (T*,)"""
+    def get_latents(self, t):
+        """
+        Parameters:
+            t: shape (T*,)
+        """
         ## Uncomment this if calling get_tfs on a fresh model
         # self.Kmm = self.rbf(self.inducing_inputs)
         # L = torch.cholesky(self.Kmm)
@@ -211,6 +211,43 @@ class VariationalLFM(LFM):
 
         return q_f
 
+    def log_likelihood(self, y, h):
+        # print(self.likelihood_variance)
+        sq_diff = torch.square(y - h)
+        variance = self.likelihood_variance # add PUMA variance, 0th replicate
+        log_lik = -0.5*torch.log(2*3.1415926*variance) - 0.5*sq_diff/variance
+        log_lik = torch.sum(log_lik)
+        return log_lik #* self.num_tfs * self.num_observed # TODO: check if we need this multiplier
+        # return MultivariateNormal(y, torch.exp(self.likelihood_variance)).log_prob(h)
+
+
+class TranscriptionalRegulationLFM(VariationalLFM):
+    def __init__(self, num_outputs, num_latents, t_inducing, t_observed, fixed_variance=None):
+        super().__init__(num_outputs, num_latents, t_inducing, t_observed, fixed_variance=fixed_variance)
+        self.decay_rate = Parameter(1 * torch.ones((self.num_outputs, 1), dtype=torch.float64))
+        self.basal_rate = Parameter(0.2 * torch.ones((self.num_outputs, 1), dtype=torch.float64))
+        self.sensitivity = Parameter(2 * torch.ones((self.num_outputs, 1), dtype=torch.float64))
+
+    def odefunc(self, t, h):
+        self.nfe += 1
+        # if (self.nfe % 100) == 0:
+        #     print(t)
+        # h is of shape (num_genes, 1)
+        decay = torch.multiply(self.decay_rate.view(-1), h.view(-1)).view(-1, 1)
+
+        q_f = self.get_latents(t.reshape(-1))
+        # Reparameterisation trick
+        f = q_f.rsample() # TODO: multiple samples?
+        Gp = self.G(f)
+        if self.extra_points > 0:
+            Gp = Gp[self.extra_points] # get the midpoint
+
+        # print(Gp.shape)
+        # print(self.basal_rate, Gp, decay)
+
+        return self.basal_rate + self.sensitivity * Gp - decay
+
+
     @abstractmethod
     def G(self, f):
         """
@@ -219,33 +256,30 @@ class VariationalLFM(LFM):
         """
         pass
 
-    def log_likelihood(self, y, h):
-        # print(self.likelihood_variance)
-        sq_diff = torch.square(y - h)
-        variance = self.likelihood_variance # add PUMA variance, 0th replicate
-        log_lik = -0.5*torch.log(2*3.1415926*variance) - 0.5*sq_diff/variance
-        log_lik = torch.sum(log_lik)
-        return log_lik * self.num_tfs * self.num_observed # TODO: check if we need this multiplier
-        # return MultivariateNormal(y, torch.exp(self.likelihood_variance)).log_prob(h)
 
-
-class SingleLinearLFM(VariationalLFM):
+class SingleLinearLFM(TranscriptionalRegulationLFM):
 
     def G(self, f):
         return torch.squeeze(f, dim=0)
 
 
-class NonLinearLFM(VariationalLFM):
+class NonLinearLFM(TranscriptionalRegulationLFM):
 
     def G(self, f):
         return torch.squeeze(softplus(f), dim=0)
 
 
-class MultiLFM(VariationalLFM):
-    def __init__(self, num_genes, num_tfs, t_inducing, t_observed, fixed_variance=None):
-        super().__init__(num_genes, num_tfs, t_inducing, t_observed, fixed_variance=fixed_variance)
-        self.w = Parameter(torch.ones((self.num_genes, self.num_tfs), dtype=torch.float64))
-        self.w_0 = Parameter(torch.ones((self.num_tfs), dtype=torch.float64))
+class ExponentialLFM(TranscriptionalRegulationLFM):
+
+    def G(self, f):
+        return torch.squeeze(torch.exp(f), dim=0)
+
+
+class MultiLFM(TranscriptionalRegulationLFM):
+    def __init__(self, num_outputs, num_latents, t_inducing, t_observed, fixed_variance=None):
+        super().__init__(num_outputs, num_latents, t_inducing, t_observed, fixed_variance=fixed_variance)
+        self.w = Parameter(torch.ones((self.num_outputs, self.num_latents), dtype=torch.float64))
+        self.w_0 = Parameter(torch.ones((self.num_latents), dtype=torch.float64))
 
     def G(self, f):
         p_pos = softplus(f)

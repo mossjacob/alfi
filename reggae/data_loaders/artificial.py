@@ -173,3 +173,5 @@ def get_artificial_dataset(num_genes=20, num_tfs=3):
         pkl.dump(nodelay_dataset, f)
     with open('../data/articial_delay.pkl', 'wb') as f:
         pkl.dump(delay_dataset, f)
+
+    return nodelay_dataset, delay_dataset

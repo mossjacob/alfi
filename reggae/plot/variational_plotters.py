@@ -27,8 +27,8 @@ class Plotter:
         tf_i = 0
 
         t_predict = torch.linspace(-extrap, 1+extrap, 80)
-        q_f = self.model.get_tfs(t_predict.reshape(-1))
-        q_u = self.model.get_tfs(self.model.inducing_inputs)
+        q_f = self.model.get_latents(t_predict.reshape(-1))
+        q_u = self.model.get_latents(self.model.inducing_inputs)
         mean = self.model.G(q_f.mean).detach().numpy()  # (T)
         mean_u = self.model.G(q_u.mean).detach().numpy()
         std = torch.sqrt(q_f.variance)[tf_i].detach().numpy()
