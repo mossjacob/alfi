@@ -11,3 +11,5 @@ tf_reggae.egg-info/
 .DS_Store
 
 reggae/data/
+
+*.pt

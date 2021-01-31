@@ -9,22 +9,24 @@ plt.style.use('ggplot')
 
 class Plotter:
     """
-    This Plotter is designed for non-MCMC models.
+    This Plotter is designed for gp models.
     """
 
-    def __init__(self, model, gene_names, t_inducing):
+    def __init__(self, model, gene_names, t_inducing=None):
         self.model = model
         self.gene_names = gene_names
+        self.num_genes = self.gene_names.shape[0]
         self.t_inducing = t_inducing
+        self.variational = self.t_inducing is not None
 
     def _plot_barenco(self, mean):
         barenco_f, _ = scaled_barenco_data(mean)
         plt.scatter(np.linspace(0, 1, 7), barenco_f, marker='x', s=60, linewidth=2, label='Barenco et al.')
 
-    def plot_tfs(self, ylim=(-2, 2), num_samples=7, plot_barenco=False, plot_inducing=False):
+    def plot_tfs(self, ylim=(-2, 2), num_samples=7, plot_barenco=False, plot_inducing=False, extrap=0.5):
         tf_i = 0
 
-        t_predict = torch.linspace(-0.1, 1.1, 80)
+        t_predict = torch.linspace(-extrap, 1+extrap, 80)
         q_f = self.model.get_tfs(t_predict.reshape(-1))
         q_u = self.model.get_tfs(self.model.inducing_inputs)
         mean = self.model.G(q_f.mean).detach().numpy()  # (T)
@@ -35,21 +37,31 @@ class Plotter:
         if plot_barenco:
             self._plot_barenco(mean)
         plt.fill_between(t_predict, mean + std, mean - std, color='orangered', alpha=0.5)
-        plt.scatter(self.t_inducing, mean_u, marker='o', color='brown')
         for _ in range(num_samples):
             plt.plot(t_predict, self.model.G(q_f.sample()).detach(), alpha=0.3, color='gray')
         plt.plot(t_predict, mean, color='gray')
 
-        if plot_inducing:
-            S = torch.matmul(self.model.q_cholS, self.model.q_cholS.transpose(1, 2))
-            std_u = torch.sqrt(torch.diagonal(S[0])).detach()
-            u = torch.squeeze(self.model.q_m[tf_i].detach())
-            print(std_u, u.shape, self.model.q_m.shape)
-            plt.plot(self.t_inducing, u)
-            plt.fill_between(self.t_inducing.view(-1), u + std_u, u - std_u, color='green', alpha=0.5)
+        if self.variational:
+            plt.scatter(self.t_inducing, mean_u, marker='o', color='brown')
+
+            if plot_inducing:
+                S = torch.matmul(self.model.q_cholS, self.model.q_cholS.transpose(1, 2))
+                std_u = torch.sqrt(torch.diagonal(S[0])).detach()
+                u = torch.squeeze(self.model.q_m[tf_i].detach())
+                print(std_u, u.shape, self.model.q_m.shape)
+                plt.plot(self.t_inducing, u)
+                plt.fill_between(self.t_inducing.view(-1), u + std_u, u - std_u, color='green', alpha=0.5)
 
         plt.title('Latent')
         plt.ylim(ylim)
+
+    def plot_tf(self, pred_t):
+        """Imported from old plotter"""
+        mu_post = self.model.predict_f(pred_t, )
+        plt.plot(pred_t, mu_post)
+        barencof, _ = scaled_barenco_data(mu_post)
+        plt.scatter(self.data.t, barencof, marker='x')
+        return mu_post
 
     def plot_kinetics(self):
         plt.figure(figsize=(8, 4))
@@ -91,3 +103,42 @@ class Plotter:
         plt.subplot(222)
         plt.plot(trainer.losses[-last_x:, 1])
         plt.title('KL-divergence')
+
+    def plot_convergence(self, trainer):
+        titles = ['basal', 'decay', 'sensitivity', 'lengthscale']
+        datas = [np.array(trainer.basalrates)[:,:,0],
+                 np.array(trainer.decayrates)[:,:,0],
+                 np.array(trainer.sensitivities)[:,:,0],
+                 np.array(trainer.lengthscales)]
+
+        plt.figure(figsize=(5, 6))
+        for i, (title, data) in enumerate(zip(titles, datas)):
+            plt.subplot(411 + i)
+            plt.title(title)
+            # if data.ndim > 1:
+            #     for j in range(data.shape[1]):
+
+            plt.plot(data)
+
+    def plot_genes(self, t_predict, t_scatter=None, y_scatter=None):
+        """
+        Parameters:
+            t_predict: tensor (T*,)
+            t_scatter: tensor (T,)
+            y_scatter: tensor (J, T)
+        """
+        mu, var = self.model.predict_m(t_predict)
+        print(mu.shape)
+        var = 2 * torch.sqrt(var)
+        plt.figure()
+        for i in range(self.num_genes):
+            plt.subplot(self.num_genes, 3, i + 1)
+            plt.plot(t_predict, mu[i].detach())
+            plt.fill_between(t_predict, mu[i] + var[i], mu[i] - var[i], alpha=0.4)
+
+            if t_scatter is not None:
+                plt.scatter(t_scatter, y_scatter[i])
+
+            # plt.ylim(-0.2, max(mu[j]) * 1.2)
+        plt.tight_layout()
+        return mu, var
