@@ -2,12 +2,12 @@ import torch
 
 
 def save(model, name):
-    torch.save(model.state_dict(), f'{name}.pt')
+    torch.save(model.state_dict(), f'./saved_models/{name}.pt')
 
 
 def load(name, model_class, *args, **kwargs):
     model = model_class(*args, **kwargs)
-    model.load_state_dict(torch.load(f'{name}.pt'))
+    model.load_state_dict(torch.load(f'./saved_models/{name}.pt'))
     return model
 
 

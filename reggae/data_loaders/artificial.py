@@ -1,14 +1,23 @@
 import tensorflow as tf
-import numpy as np
+import torch
+import pickle as pkl
+
 from sklearn import preprocessing
 from scipy.interpolate import interp1d
 from tensorflow import math as tfm
 
 from reggae.data_loaders import DataHolder
-from reggae.tf_utilities import discretise, logistic
-from reggae.mcmc import Options
+from reggae.mcmc import Options, TranscriptionLikelihood
+
+from reggae.mcmc.models import TranscriptionMixedSampler
+from reggae.tf_utilities import discretise, logit, logistic, LogisticNormal, inverse_positivity
+from matplotlib import pyplot as plt
+
+import numpy as np
 
 f64 = np.float64
+
+#%%
 
 def artificial_dataset(opt, likelihood_class, t_end=12, num_genes=13, num_tfs=3, weights=None, delays=[1, 4, 10], true_kbar=None):
     t = np.arange(t_end)
@@ -73,3 +82,94 @@ def artificial_dataset(opt, likelihood_class, t_end=12, num_genes=13, num_tfs=3,
     data = DataHolder(data, None, time)
 
     return data, fbar, (true_kbar, true_k_fbar)
+
+
+def get_artificial_dataset(num_genes=20, num_tfs=3):
+    """
+    Returns:
+        nodelay, delay datasets
+    """
+    with open('../data/articial_nodelay.pkl', 'rb') as f:
+        nodelay_dataset = pkl.load(f)
+    with open('../data/articial_delay.pkl', 'rb') as f:
+        delay_dataset = pkl.load(f)
+    return nodelay_dataset, delay_dataset
+
+    tf.random.set_seed(1)
+    w = tf.random.normal([num_genes, num_tfs], mean=0.5, stddev=0.71, seed=42, dtype='float64')
+
+    Δ_delay = tf.constant([0, 4, 10], dtype='float64')
+
+    w_0 = tf.zeros(num_genes, dtype='float64')
+
+    true_kbar = logistic((np.array([
+        [1.319434062, 1.3962113525, 0.8245041865, 2.2684353378],
+        [1.3080045137, 3.3992868747, 2.0189033658, 3.7460822389],
+        [2.0189525448, 1.8480506624, 0.6805040228, 3.1039094120],
+        [1.7758426875, 0.1907625023, 0.1925539427, 1.8306885751],
+        [1.7207442227, 0.1252089546, 0.6297333943, 3.2567248923],
+        [1.4878806850, 3.8623843570, 2.4816128746, 4.3931294404],
+        [2.0853079514, 2.5115446790, 0.6560607356, 3.0945313562],
+        [1.6144843688, 1.8651409657, 0.7785363895, 2.6845058360],
+        [1.4858223122, 0.5396687493, 0.5842698019, 3.0026805243],
+        [1.6610647522, 2.0486340884, 0.9863876546, 1.4300094581],
+        [1.6027276189, 1.4320302060, 0.7175033248, 3.2151637970],
+        [2.4912882714, 2.7935526605, 1.2438786874, 4.3944794204],
+        [2.894114279, 1.4726280947, 0.7356719860, 2.2316019158],
+     [1.7927833839, 1.0405867396, 0.4055775218, 2.9888350247],
+     [1.0429721112, 0.1011544950, 0.7330443670, 3.1936843755],
+     [1.2519286771, 2.0617880701, 1.0759649567, 3.9406060364],
+     [1.4297185709, 1.3578824015, 0.6037986912, 2.6512418604],
+     [1.9344878813, 1.4235867760, 0.8226320338, 4.2847217252],
+     [1.4325562449, 1.1940752177, 1.0556928599, 4.1850449557],
+     [0.8911103971, 1.3560009300, 0.5643954823, 3.4300182328],
+     [1.0269654997, 1.0788097511, 0.5268448648, 4.4793299593],
+     [0.8378220502, 1.8148234459, 1.0167440138, 4.4903387696]]
+    )))
+    true_kbar = true_kbar[:num_genes]
+
+    opt = Options(preprocessing_variance=False,
+                  tf_mrna_present=True,
+                  kinetic_exponential=True,
+                  weights=True,
+                  initial_step_sizes={'logistic': 1e-8, 'latents': 10},
+                  delays=True)
+
+    data, fbar, kinetics = artificial_dataset(opt, TranscriptionLikelihood, num_genes=num_genes,
+                                              weights=(w, w_0), delays=Δ_delay.numpy(), t_end=10,
+                                              true_kbar=true_kbar[:num_genes])
+    true_kbar, true_k_fbar = kinetics
+    f_i = inverse_positivity(fbar)
+    t, τ, common_indices = data.t, data.τ, data.common_indices
+
+    common_indices = common_indices.numpy()
+
+    model = TranscriptionMixedSampler(data, opt)
+
+    # Transcription factor
+    plt.title('TFs')
+    for i in range(num_tfs):
+        plt.plot(τ, f_i[0, i], label=f'TF {i}')
+        plt.scatter(t, data.f_obs[0, i], marker='x')
+    plt.xticks(np.arange(0, 10))
+    plt.legend()
+    print(τ.shape)
+
+
+    lik = model.likelihood
+    Δ_nodelay = tf.constant([0, 0, 0], dtype='float64')
+    m_pred = lik.predict_m(true_kbar, true_k_fbar, (w), fbar, (w_0), Δ_delay)
+    m_pred_nodelay = lik.predict_m(true_kbar, true_k_fbar, (w), fbar, (w_0), Δ_nodelay)
+    m_observed_nodelay = tf.stack([m_pred_nodelay.numpy()[:,i,common_indices] for i in range(num_genes)], axis=1)
+    m_observed = tf.stack([m_pred.numpy()[:,i,common_indices] for i in range(num_genes)], axis=1)
+
+    p_nodelay = lik.calculate_protein(fbar, true_k_fbar, Δ_nodelay)
+    p = lik.calculate_protein(fbar, true_k_fbar, Δ_delay)
+
+    nodelay_dataset = (np.array(p_nodelay), np.array(m_observed_nodelay))
+    delay_dataset = (np.array(p), np.array(m_observed))
+
+    with open('../data/articial_nodelay.pkl', 'wb') as f:
+        pkl.dump(nodelay_dataset, f)
+    with open('../data/articial_delay.pkl', 'wb') as f:
+        pkl.dump(delay_dataset, f)
