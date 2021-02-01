@@ -1,4 +1,21 @@
 import torch
+from torch.utils.data import Dataset
+from torch.utils.data.dataset import T_co
+import abc
+
+
+class LFMDataset(Dataset):
+    @abc.abstractmethod
+    def __getitem__(self, index) -> T_co:
+        pass
+
+    @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self, value):
+        self._data = value
 
 
 def save(model, name):
@@ -12,11 +29,11 @@ def load(name, model_class, *args, **kwargs):
 
 
 def softplus(value):
-    return torch.log(1+torch.exp(value))
+    return torch.log(1 + torch.exp(value))
 
 
 def inv_softplus(value):
-    return torch.log(torch.exp(value)-1)
+    return torch.log(torch.exp(value) - 1)
 
 
 def cholesky_inverse(cholesky_factor, upper=False):
@@ -33,4 +50,3 @@ def cholesky_inverse(cholesky_factor, upper=False):
     else:
         matrix = torch.cholesky_inverse(cholesky_factor, upper=upper)
     return matrix
-

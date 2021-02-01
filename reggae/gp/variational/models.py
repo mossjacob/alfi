@@ -2,11 +2,12 @@ from abc import abstractmethod
 
 import torch
 from torchdiffeq import odeint
+from torch import nn
 from torch.nn.parameter import Parameter
 from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.normal import Normal
 
-from reggae.utilities import softplus, inv_softplus, cholesky_inverse
+from reggae.utilities import softplus, inv_softplus, cholesky_inverse, LFMDataset
 
 from ..models import LFM
 
@@ -25,12 +26,12 @@ class VariationalLFM(LFM):
     t_inducing : tensor of shape (T_u) : the inducing timepoints.
     t_observed: tensor of shape (T) : the observed timepoints, i.e., the timepoints that the ODE solver should output
     """
-    def __init__(self, num_outputs, num_latents, t_inducing, t_observed, fixed_variance=None, extra_points=1):
+    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, fixed_variance=None, extra_points=1):
         super(VariationalLFM, self).__init__()
         self.num_outputs = num_outputs
         self.num_latents = num_latents
         self.num_inducing = t_inducing.shape[0]
-        self.num_observed = t_observed.shape[0]
+        self.num_observed = dataset[0][0].shape[0]
         self.inducing_inputs = torch.tensor(t_inducing, requires_grad=False)
         self.extra_points = extra_points
 
@@ -227,16 +228,16 @@ class VariationalLFM(LFM):
 
 
 class ReactionDiffusionLFM(VariationalLFM):
-    def __init__(self, num_outputs, num_latents, t_inducing, t_observed, fixed_variance=None):
-        super().__init__(num_outputs, num_latents, t_inducing, t_observed, fixed_variance=fixed_variance)
+    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, fixed_variance=None):
+        super().__init__(num_outputs, num_latents, t_inducing, dataset, fixed_variance=fixed_variance)
         self.translation_rate = Parameter(1 * torch.ones((self.num_outputs, 1), dtype=torch.float64))
         self.decay_rate = Parameter(1 * torch.ones((self.num_outputs, 1), dtype=torch.float64))
         self.diffusion_rate = Parameter(1 * torch.ones((self.num_outputs, 1), dtype=torch.float64))
 
 
 class TranscriptionalRegulationLFM(VariationalLFM):
-    def __init__(self, num_outputs, num_latents, t_inducing, t_observed, fixed_variance=None, extra_points=2):
-        super().__init__(num_outputs, num_latents, t_inducing, t_observed, fixed_variance=fixed_variance, extra_points=extra_points)
+    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, fixed_variance=None, extra_points=2):
+        super().__init__(num_outputs, num_latents, t_inducing, dataset, fixed_variance=fixed_variance, extra_points=extra_points)
         self.decay_rate = Parameter(1 * torch.ones((self.num_outputs, 1), dtype=torch.float64))
         self.basal_rate = Parameter(0.2 * torch.ones((self.num_outputs, 1), dtype=torch.float64))
         self.sensitivity = Parameter(2 * torch.ones((self.num_outputs, 1), dtype=torch.float64))

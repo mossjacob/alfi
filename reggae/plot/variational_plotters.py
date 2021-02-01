@@ -12,10 +12,10 @@ class Plotter:
     This Plotter is designed for gp models.
     """
 
-    def __init__(self, model, gene_names, t_inducing=None):
+    def __init__(self, model, output_names, t_inducing=None):
         self.model = model
-        self.gene_names = gene_names
-        self.num_genes = self.gene_names.shape[0]
+        self.output_names = output_names
+        self.num_outputs = self.output_names.shape[0]
         self.t_inducing = t_inducing
         self.variational = self.t_inducing is not None
 
@@ -84,7 +84,7 @@ class Plotter:
         for A, B, var, label in zip(data, barenco_data, vars, labels):
             plt.subplot(plotnum)
             plotnum += 1
-            plt.bar(np.arange(5) - 0.2, A, width=0.4, tick_label=self.gene_names)
+            plt.bar(np.arange(5) - 0.2, A, width=0.4, tick_label=self.output_names)
             plt.bar(np.arange(5) + 0.2, B, width=0.4, color='blue', align='center')
 
             plt.title(label)
@@ -119,7 +119,7 @@ class Plotter:
 
             plt.plot(data)
 
-    def plot_genes(self, t_predict, t_scatter=None, y_scatter=None, model_kwargs={}):
+    def plot_outputs(self, t_predict, t_scatter=None, y_scatter=None, model_kwargs={}):
         """
         Parameters:
             t_predict: tensor (T*,)
@@ -130,9 +130,9 @@ class Plotter:
         mu, var = self.model.predict_m(t_predict, **model_kwargs)
         print(mu.shape)
         var = 2 * torch.sqrt(var)
-        plt.figure(figsize=(6, 4 * np.ceil(self.num_genes / 3)))
-        for i in range(self.num_genes):
-            plt.subplot(self.num_genes, 3, i + 1)
+        plt.figure(figsize=(6, 4 * np.ceil(self.num_outputs / 3)))
+        for i in range(self.num_outputs):
+            plt.subplot(self.num_outputs, 3, i + 1)
             plt.plot(t_predict, mu[i].detach())
             plt.fill_between(t_predict, mu[i] + var[i], mu[i] - var[i], alpha=0.4)
 
