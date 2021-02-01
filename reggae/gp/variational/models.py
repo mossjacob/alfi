@@ -235,6 +235,38 @@ class ReactionDiffusionLFM(VariationalLFM):
         self.diffusion_rate = Parameter(1 * torch.ones((self.num_outputs, 1), dtype=torch.float64))
 
 
+class MLPLFM(VariationalLFM):
+    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, extra_points=2):
+        super().__init__(num_outputs, num_latents, t_inducing, dataset, fixed_variance=None, extra_points=extra_points)
+        h_dim = 20  # number of hidden units
+        ode_layers = [nn.Linear(num_latents, h_dim),
+                      nn.Tanh(),
+                      nn.Linear(h_dim, h_dim),
+                      nn.Tanh(),
+                      nn.Linear(h_dim, num_outputs)]
+
+        self.mlp = nn.Sequential(*ode_layers)
+
+    def odefunc(self, t, h):
+        """
+        h shape (num_outputs, 1)
+        """
+        self.nfe += 1
+        # if (self.nfe % 100) == 0:
+        #     print(t)
+
+        q_f = self.get_latents(t.reshape(-1))
+
+        # Reparameterisation trick
+        f = q_f.rsample()
+        if self.extra_points > 0:
+            f = f[:, self.extra_points]  # get the midpoint
+
+        y = self.mlp(f)
+        y = torch.unsqueeze(y, 1)
+        return y
+
+
 class TranscriptionalRegulationLFM(VariationalLFM):
     def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, fixed_variance=None, extra_points=2):
         super().__init__(num_outputs, num_latents, t_inducing, dataset, fixed_variance=fixed_variance, extra_points=extra_points)
