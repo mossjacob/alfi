@@ -191,22 +191,22 @@ class SIMKernel(gpytorch.kernels.Kernel):
     def gamma(self, k):
         return self.decay[k] * self.lengthscale / 2
 
-    def K_xstarx(self, x1, x2):
-        """Computes Kx*,x
+    def K_xstarxstar(self, x1, x2):
+        """Computes Kx*,x*
         Args:
-          x1:  x the blocked observation vector
-          x2: x* the non-blocked prediction timepoint vector
+          x1:  x a single block of observation vector
+          x2: x* a non-blocked prediction timepoint vector
         """
-        self.block_size = int(x1.shape[0] / self.num_genes)  # 7
+        self.vert_block_size = int(x1.shape[0])
         self.hori_block_size = int(x2.shape[0])
-        shape = [x1.shape[0], self.hori_block_size * self.num_genes]
+        shape = [self.vert_block_size * self.num_genes, self.hori_block_size * self.num_genes]
         K_xx = torch.zeros(shape, dtype=torch.float32)
-        t1_block, t2_block = x1[:self.block_size], x2
+        t1_block, t2_block = x1, x2
         for j in range(self.num_genes):
             for k in range(self.num_genes):
                 kxx = self.k_xx(j, k, t2_block, t1_block)
-                K_xx[j * self.block_size:(j + 1) * self.block_size,
-                k * self.hori_block_size:(k + 1) * self.hori_block_size] = kxx
+                K_xx[j * self.vert_block_size:(j + 1) * self.vert_block_size,
+                     k * self.hori_block_size:(k + 1) * self.hori_block_size] = kxx
 
         return K_xx
 
@@ -220,8 +220,7 @@ class SIMKernel(gpytorch.kernels.Kernel):
         """
         shape = [x.shape[0], f.shape[0]]
         K_xf = torch.zeros(shape, dtype=torch.float32)
-        self.diff = self.covar_dist(x, f)[:self.block_size, :]
-        print(self.block_size)
+        self.block_size = int(x.shape[0] / self.num_genes)  # 7
         t1_block, t2_block = x[:self.block_size].view(-1, 1), f.view(1, -1)
         for j in range(self.num_genes):
             kxf = self.k_xf(j, t1_block, t2_block)
@@ -232,20 +231,21 @@ class SIMKernel(gpytorch.kernels.Kernel):
 
     def k_xf(self, j, x, t_f):
         l = self.lengthscale
-        t = self.diff[0, :]  # get first row
-        t = t.repeat(self.block_size, 1)  # may need to alter
-        print(t.shape)
         t_dist = x - t_f
         print('dist', t_dist.shape)
         erf_term = torch.erf(t_dist / l - self.gamma(j)) + torch.erf(t_f / l + self.gamma(j))
         return self.sensitivity[j] * l * 0.5 * torch.sqrt(PI) * torch.exp(self.gamma(j) ** 2) * torch.exp(
             -self.decay[j] * t_dist) * erf_term
 
-    def K_ff(self, X):
+    def K_ff(self, x1, x2):
         """Returns the RBF kernel between latent TF"""
-        _, _, t_dist = self.get_distance_matrix(t_x=tf.reshape(X, (-1,)))
-        K_ff = self.kervar ** 2 * tfm.exp(-(t_dist ** 2) / (self.lengthscale ** 2))
-        return (K_ff)
-
-    def K_diag(self, X):
-        return tf.linalg.diag_part(self.K(X))
+        add_jitter = x2 is None
+        x1 = x1.view(-1)
+        x2 = x2.view(-1)
+        sq_dist = torch.square(x1.view(-1, 1)-x2)
+        sq_dist = torch.div(sq_dist, 2*self.lengthscale.view((-1, 1)))
+        K = self.scale.view(-1, 1) * torch.exp(-sq_dist)
+        if add_jitter:
+            jitter = 1e-5 * torch.eye(x1.shape[0])
+            K += jitter
+        return K
