@@ -3,6 +3,7 @@ from torch.utils.data import Dataset
 from torch.utils.data.dataset import T_co
 import abc
 
+CUDA_AVAILABLE = False
 
 class LFMDataset(Dataset):
     @abc.abstractmethod
@@ -16,6 +17,11 @@ class LFMDataset(Dataset):
     @data.setter
     def data(self, value):
         self._data = value
+
+
+def is_cuda():
+    import torch
+    return CUDA_AVAILABLE and torch.cuda.is_available()
 
 
 def save(model, name):

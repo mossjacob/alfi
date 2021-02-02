@@ -32,7 +32,7 @@ class VariationalLFM(LFM):
         self.num_latents = num_latents
         self.num_inducing = t_inducing.shape[0]
         self.num_observed = dataset[0][0].shape[0]
-        self.inducing_inputs = torch.tensor(t_inducing, requires_grad=False)
+        self.inducing_inputs = Parameter(torch.tensor(t_inducing, requires_grad=False))
         self.extra_points = extra_points
 
         self.raw_lengthscale = Parameter(0.5 * torch.ones((num_latents), dtype=torch.float64))
@@ -45,7 +45,7 @@ class VariationalLFM(LFM):
         self.q_cholS = Parameter(q_cholS)
 
         if fixed_variance is not None:
-            self.likelihood_variance = torch.tensor(fixed_variance, requires_grad=False)
+            self.likelihood_variance = Parameter(torch.tensor(fixed_variance), requires_grad=False)
         else:
             self.raw_likelihood_variance = Parameter(torch.ones((self.num_outputs, self.num_observed), dtype=torch.float64))
         self.nfe = 0
@@ -94,7 +94,7 @@ class VariationalLFM(LFM):
         sq_dist = torch.div(sq_dist, 2*self.lengthscale.view((-1, 1, 1)))
         K = self.scale.view(-1, 1, 1) * torch.exp(-sq_dist)
         if add_jitter:
-            jitter = 1e-5 * torch.eye(x.shape[0])
+            jitter = 1e-5 * torch.eye(x.shape[0], device=K.device)
             K += jitter
         return K
 
@@ -165,7 +165,7 @@ class VariationalLFM(LFM):
                 t_l.append(t[0]-0.05*i)
             for i in range(self.extra_points+1):
                 t_l.append(t[0]+0.05*i)
-            t = torch.tensor(t_l).reshape(-1)
+            t = torch.tensor(t_l, device=t.device).reshape(-1)
             # t = torch.tensor([t[0]-0.05, t[0], t[0]+0.05]).reshape(-1)
             # print(t)
         Ksm = self.rbf(t, self.inducing_inputs)  # (I, T*, Tu)
@@ -329,9 +329,9 @@ class MultiLFM(TranscriptionalRegulationLFM):
     def __init__(self, num_outputs, num_latents, t_inducing, t_observed, fixed_variance=None):
         super().__init__(num_outputs, num_latents, t_inducing, t_observed, fixed_variance=fixed_variance)
         self.w = Parameter(torch.ones((self.num_outputs, self.num_latents), dtype=torch.float64))
-        self.w_0 = Parameter(torch.ones((self.num_outputs,1), dtype=torch.float64))
+        self.w_0 = Parameter(torch.ones((self.num_outputs, 1), dtype=torch.float64))
 
     def G(self, f):
         p_pos = softplus(f)  # (I, extras)
         interactions = torch.matmul(self.w, torch.log(p_pos+1e-50)) + self.w_0  # (J,I)(I,e)+(J,1)
-        return torch.sigmoid(interactions) # TF Activation Function (sigmoid)
+        return torch.sigmoid(interactions)  # TF Activation Function (sigmoid)

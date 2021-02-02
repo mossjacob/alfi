@@ -1,6 +1,6 @@
 import torch
 
-from reggae.utilities import inv_softplus, LFMDataset
+from reggae.utilities import inv_softplus, LFMDataset, is_cuda
 from torch.utils.data.dataloader import DataLoader
 
 import numpy as np
@@ -35,6 +35,8 @@ class Trainer:
         for epoch in range(epochs):
             for i, data in enumerate(self.data_loader):
                 t, y = data
+                t = t.cuda() if is_cuda() else t
+                y = y.cuda() if is_cuda() else y
                 # for now we don't batch
                 t, y = t[0].reshape(-1), y[0].transpose(0, 1)
 
@@ -42,6 +44,7 @@ class Trainer:
 
                 # with ef.scan():
                 initial_value = torch.zeros((self.num_outputs, 1), dtype=torch.float64)
+                initial_value = initial_value.cuda() if is_cuda() else initial_value
                 output = self.model(t, initial_value, rtol=rtol, atol=atol, num_samples=num_samples)
                 output = torch.squeeze(output)
 
@@ -67,14 +70,16 @@ class Trainer:
             self.after_epoch()
 
             if (epoch % plot_interval) == 0:
-                plt.plot(self.t_observed, output[0].detach().numpy(), label='epoch'+str(epoch))
+                plt.plot(self.t_observed, output[0].cpu().detach().numpy(), label='epoch'+str(epoch))
             self.num_epochs += 1
         plt.legend()
 
         losses = np.array(losses)
         self.losses = np.concatenate([self.losses, losses], axis=0)
 
+
         return output
+
     def print_extra(self):
         pass
     def after_epoch(self):
@@ -91,7 +96,7 @@ class TranscriptionalTrainer(Trainer):
         self.cholS = list()
 
     def print_extra(self):
-        print('b: %.2f d %.2f s: %.2f λ: %.3f' % (
+        print('\t b: %.2f d %.2f s: %.2f λ: %.3f' % (
             self.model.basal_rate[0].item(),
             self.model.decay_rate[0].item(),
             self.model.sensitivity[0].item(),
@@ -106,7 +111,7 @@ class TranscriptionalTrainer(Trainer):
         self.cholS.append(self.model.q_cholS.detach().clone())
         self.mus.append(self.model.q_m.detach().clone())
         with torch.no_grad():
-            self.model.raw_lengthscale.clamp_(-2.5, inv_softplus(torch.tensor(1., dtype=torch.float64))) # TODO is this needed?
+            # self.model.raw_lengthscale.clamp_(-2.5, inv_softplus(torch.tensor(1., dtype=torch.float64))) # TODO is this needed?
             # TODO can we replace these with parameter transforms like we did with lengthscale
             self.model.sensitivity.clamp_(0.4, 8)
             self.model.basal_rate.clamp_(0, 8)

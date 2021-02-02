@@ -23,9 +23,31 @@ class Plotter:
         barenco_f, _ = scaled_barenco_data(mean)
         plt.scatter(np.linspace(0, 1, 7), barenco_f, marker='x', s=60, linewidth=2, label='Barenco et al.')
 
-    def plot_tfs(self, ylim=(-2, 2), num_samples=7, plot_barenco=False, plot_inducing=False, extrap=0.5):
+    def plot_outputs(self, t_predict, t_scatter=None, y_scatter=None, model_kwargs={}, ylim=None):
+        """
+        Parameters:
+            t_predict: tensor (T*,)
+            t_scatter: tensor (T,)
+            y_scatter: tensor (J, T)
+            model_kwargs: dictionary of keyword arguments to send to the model predict_m function
+        """
+        mu, var = self.model.predict_m(t_predict, **model_kwargs)
+        mu = mu.detach()
+        var = 2 * torch.sqrt(var).detach()
+        plt.figure(figsize=(6, 4 * np.ceil(self.num_outputs / 3)))
+        for i in range(self.num_outputs):
+            plt.subplot(self.num_outputs, 3, i + 1)
+            plt.plot(t_predict, mu[i].detach())
+            plt.fill_between(t_predict, mu[i] + var[i], mu[i] - var[i], alpha=0.4)
 
-        t_predict = torch.linspace(-extrap, 1+extrap, 80)
+            if t_scatter is not None:
+                plt.scatter(t_scatter, y_scatter[i])
+
+            plt.ylim(-0.2, max(mu[i]) * 1.2)
+        plt.tight_layout()
+        return mu, var
+
+    def plot_latents(self, t_predict, ylim=(-2, 2), num_samples=7, plot_barenco=False, plot_inducing=False):
         q_f = self.model.get_latents(t_predict.reshape(-1))
         mean = q_f.mean.detach().numpy()  # (T)
         plt.figure(figsize=(5, 3*mean.shape[0]))
@@ -39,28 +61,20 @@ class Plotter:
                 plt.plot(t_predict, q_f.sample().detach()[i], alpha=0.3, color='gray')
             plt.plot(t_predict, mean[i], color='gray')
 
-        if self.variational and plot_inducing:
-            q_u = self.model.get_latents(self.model.inducing_inputs)
-            mean_u = self.model.G(q_u.mean).detach().numpy()
-            std_u = torch.sqrt(q_u.variance[0]).detach().numpy()
-            plt.scatter(self.t_inducing, mean_u, marker='o', color='brown')
-            S = torch.matmul(self.model.q_cholS, self.model.q_cholS.transpose(1, 2))
-            std_u = torch.sqrt(torch.diagonal(S[0])).detach()
-            u = torch.squeeze(self.model.q_m[tf_i].detach())
-            print(std_u, u.shape, self.model.q_m.shape)
-            plt.plot(self.t_inducing, u)
-            plt.fill_between(self.t_inducing.view(-1), u + std_u, u - std_u, color='green', alpha=0.5)
+            if self.variational and plot_inducing:
+                q_u = self.model.get_latents(self.model.inducing_inputs)
+                mean_u = self.model.G(q_u.mean).detach().numpy()
+                std_u = torch.sqrt(q_u.variance[0]).detach().numpy()
+                plt.scatter(self.t_inducing, mean_u, marker='o', color='brown')
+                S = torch.matmul(self.model.q_cholS, self.model.q_cholS.transpose(1, 2))
+                std_u = torch.sqrt(torch.diagonal(S[0])).detach()
+                u = torch.squeeze(self.model.q_m[i].detach())
+                print(std_u, u.shape, self.model.q_m.shape)
+                plt.plot(self.t_inducing, u)
+                plt.fill_between(self.t_inducing.view(-1), u + std_u, u - std_u, color='green', alpha=0.5)
 
         plt.title('Latent')
         plt.ylim(ylim)
-
-    def plot_tf(self, pred_t):
-        """Imported from old plotter"""
-        mu_post = self.model.predict_f(pred_t, )
-        plt.plot(pred_t, mu_post)
-        barencof, _ = scaled_barenco_data(mu_post)
-        plt.scatter(self.data.t, barencof, marker='x')
-        return mu_post
 
     def plot_kinetics(self):
         plt.figure(figsize=(8, 4))
@@ -90,7 +104,6 @@ class Plotter:
             plt.title(label)
             plt.xticks(rotation=45)
 
-
     def plot_losses(self, trainer, last_x=50):
         plt.figure(figsize=(5, 2))
         plt.plot(np.sum(trainer.losses, axis=1)[-last_x:])
@@ -118,27 +131,3 @@ class Plotter:
             #     for j in range(data.shape[1]):
 
             plt.plot(data)
-
-    def plot_outputs(self, t_predict, t_scatter=None, y_scatter=None, model_kwargs={}):
-        """
-        Parameters:
-            t_predict: tensor (T*,)
-            t_scatter: tensor (T,)
-            y_scatter: tensor (J, T)
-            model_kwargs: dictionary of keyword arguments to send to the model predict_m function
-        """
-        mu, var = self.model.predict_m(t_predict, **model_kwargs)
-        print(mu.shape)
-        var = 2 * torch.sqrt(var)
-        plt.figure(figsize=(6, 4 * np.ceil(self.num_outputs / 3)))
-        for i in range(self.num_outputs):
-            plt.subplot(self.num_outputs, 3, i + 1)
-            plt.plot(t_predict, mu[i].detach())
-            plt.fill_between(t_predict, mu[i] + var[i], mu[i] - var[i], alpha=0.4)
-
-            if t_scatter is not None:
-                plt.scatter(t_scatter, y_scatter[i])
-
-            # plt.ylim(-0.2, max(mu[j]) * 1.2)
-        plt.tight_layout()
-        return mu, var

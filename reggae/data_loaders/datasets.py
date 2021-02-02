@@ -1,9 +1,11 @@
 import torch
-from torchdiffeq import odeint
+
+from scipy.integrate import odeint
 import numpy as np
 import pandas as pd
 
 from reggae.data_loaders import load_barenco_puma
+from reggae.data_loaders.artificial import get_artificial_dataset
 from reggae.utilities import LFMDataset
 
 from tqdm import tqdm
@@ -88,6 +90,31 @@ class HafnerData(LFMDataset):
 
     def __len__(self):
         return self.genes.shape[0]
+
+
+class ArtificialData(LFMDataset):
+    def __init__(self, delay=False):
+        nodelay_dataset, delay_dataset = get_artificial_dataset()
+        p_nodelay, m_nodelay = nodelay_dataset
+        replicate = 0
+        m_nodelay = m_nodelay[replicate]
+        p_nodelay = p_nodelay[replicate]
+        self.num_genes = m_nodelay.shape[0]
+        self.num_tfs = p_nodelay.shape[0]
+        self.f_observed = p_nodelay
+        num_times = m_nodelay.shape[1]
+
+        self.gene_names = np.arange(self.num_genes)
+        m_observed = torch.tensor(m_nodelay).transpose(0, 1)
+
+        self.t = torch.linspace(f64(0), f64(1), num_times, dtype=torch.float64).reshape((-1, 1))
+        self.data = [(self.t, m_observed)]  # only one "datapoint" in this dataset
+
+    def __getitem__(self, index):
+        return self.data[index]
+
+    def __len__(self):
+        return 1
 
 
 class MarkovJumpProcess:
