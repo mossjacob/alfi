@@ -19,14 +19,14 @@ class Trainer:
     inducing timepoints.
     give_output: whether the trainer should give the first output (y_0) as initial value to the model `forward()`
     """
-    def __init__(self, model, optimizer: torch.optim.Optimizer, dataset: LFMDataset, give_output=False):
+    def __init__(self, model, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=1, give_output=False):
         self.num_epochs = 0
         self.kl_mult = 0
         self.optimizer = optimizer
         self.model = model
         self.t_observed = dataset.data[0][0].view(-1)
-        self.num_outputs = dataset.data[0][1].shape[1]
-        self.data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
+        self.batch_size = batch_size
+        self.data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
         self.losses = np.empty((0, 2))
         self.give_output = give_output
 
@@ -39,23 +39,17 @@ class Trainer:
                 t, y = data
                 t = t.cuda() if is_cuda() else t
                 y = y.cuda() if is_cuda() else y
-                # for now we don't batch
-                batch_index = 0 # This is just to remind you that we are using batches of size 1
-                t, y = t[batch_index].reshape(-1), y[batch_index]
-                if not self.give_output:
-                    y = y.transpose(0, 1)  # TODO: this transpose is ugly, fix the datasets.
-
+                # Assume that the batch of t s are the same
+                t, y = t[0].view(-1), y
                 self.optimizer.zero_grad()
 
                 # with ef.scan():
-                initial_value = torch.zeros((self.num_outputs, 1), dtype=torch.float64)
+                initial_value = torch.zeros((self.batch_size, 1), dtype=torch.float64)
                 initial_value = initial_value.cuda() if is_cuda() else initial_value
                 if self.give_output:
                     initial_value = y[0]
-                    print('shape', initial_value.shape)
                 output = self.model(t, initial_value, rtol=rtol, atol=atol, num_samples=num_samples)
                 output = torch.squeeze(output)
-
                 # Calc loss and backprop gradients
                 mult = 1
                 if self.num_epochs <= 10:
@@ -67,12 +61,12 @@ class Trainer:
                 self.optimizer.step()
 
                 if (epoch % report_interval) == 0:
-                    print('Epoch %d/%d - Loss: %.2f (%.2f %.2f) λ: %.2f' % (
+                    print('Epoch %d/%d - Loss: %.2f (%.2f %.2f) λ: %.3f' % (
                         self.num_epochs + 1, end_epoch,
                         total_loss.item(),
                         -ll.item(), kl.item(),
                         self.model.lengthscale[0].item(),
-                    ))
+                    ), end='')
                     self.print_extra()
 
             losses.append((ll.item(), kl.item()))
@@ -90,13 +84,19 @@ class Trainer:
         return output
 
     def print_extra(self):
-        pass
+        print('')
+
     def after_epoch(self):
         pass
 
 class TranscriptionalTrainer(Trainer):
-    def __init__(self, model, optimizer: torch.optim.Optimizer, dataset: LFMDataset):
-        super(TranscriptionalTrainer, self).__init__(model, optimizer, dataset)
+    """
+    TranscriptionalTrainer
+    Parameters:
+        batch_size: in the case of the transcriptional regulation model, we train the entire gene set as a batch
+    """
+    def __init__(self, model, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=5):
+        super(TranscriptionalTrainer, self).__init__(model, optimizer, dataset, batch_size=batch_size)
         self.basalrates = list()
         self.decayrates = list()
         self.lengthscales = list()
@@ -105,11 +105,10 @@ class TranscriptionalTrainer(Trainer):
         self.cholS = list()
 
     def print_extra(self):
-        print('\t b: %.2f d %.2f s: %.2f λ: %.3f' % (
+        print('  b: %.2f d %.2f s: %.2f' % (
             self.model.basal_rate[0].item(),
             self.model.decay_rate[0].item(),
-            self.model.sensitivity[0].item(),
-            self.model.lengthscale[0].item()
+            self.model.sensitivity[0].item()
         ))
 
     def after_epoch(self):
