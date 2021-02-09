@@ -14,7 +14,6 @@ class AnalyticalLFM(LFM, gpytorch.models.ExactGP):
         self.train_y = train_y.view(-1, 1)
         self.covar_module = SIMKernel(num_genes, variance)
         initial_basal = torch.mean(train_y.view(5, 7), dim=1) * self.covar_module.decay
-        print(initial_basal)
         self.mean_module = SIMMean(self.covar_module, num_genes, initial_basal)
 
     @property
@@ -44,7 +43,6 @@ class AnalyticalLFM(LFM, gpytorch.models.ExactGP):
         mu = KxstarxKinvY.view(self.num_genes, pred_t.shape[0])
         if compute_var:
             K_xstarxstar = self.covar_module.K_xstarxstar(pred_t, pred_t)  # (100, 500)
-            print(K_xstarxstar.shape)
             var = K_xstarxstar - torch.matmul(K_xstarxK_inv, torch.transpose(K_xstarx, 0, 1))
             var = torch.diagonal(var, dim1=0, dim2=1).view(self.num_genes, pred_t.shape[0])
             return mu, var
@@ -60,7 +58,6 @@ class AnalyticalLFM(LFM, gpytorch.models.ExactGP):
         if compute_var:
             #Kff-KfxKxxKxf
             Kff = self.covar_module.K_ff(pred_t, pred_t)  # (100, 500)
-            print(Kff.shape)
             var = Kff - torch.matmul(KfxKxx, Kxf)
             var = torch.diagonal(var, dim1=0, dim2=1).view(-1)
             return mu, var

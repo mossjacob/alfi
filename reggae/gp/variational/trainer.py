@@ -105,7 +105,7 @@ class TranscriptionalTrainer(Trainer):
         self.cholS = list()
 
     def print_extra(self):
-        print('  b: %.2f d %.2f s: %.2f' % (
+        print(' b: %.2f d %.2f s: %.2f' % (
             self.model.basal_rate[0].item(),
             self.model.decay_rate[0].item(),
             self.model.sensitivity[0].item()

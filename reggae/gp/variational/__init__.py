@@ -1,11 +1,12 @@
-from reggae.gp.variational.models import SingleLinearLFM, ExponentialLFM, MultiLFM, ConvLFM
+from reggae.gp.variational.models import SingleLinearLFM, ExponentialLFM, MultiLFM, ConvLFM, VariationalLFM
 from reggae.gp.variational.trainer import Trainer, TranscriptionalTrainer
 
 __all__ = [
+    'VariationalLFM',
     'SingleLinearLFM',
     'MultiLFM',
     'ExponentialLFM',
-    'Trainer',
     'ConvLFM',
     'TranscriptionalTrainer',
+    'Trainer',
 ]

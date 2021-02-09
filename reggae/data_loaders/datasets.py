@@ -24,19 +24,19 @@ class P53Data(LFMDataset):
         num_times = m_observed.shape[2]
         num_genes = m_observed.shape[1]
         # f_df, f_observed = f_observed
-        m_observed = torch.tensor(m_observed)[replicate].transpose(0, 1)
+        m_observed = torch.tensor(m_observed)[replicate]
 
         self.variance = f64(σ2_m_pre)[replicate]
         # σ2_f_pre = f64(σ2_f_pre) #not used
         self.t = torch.linspace(f64(0), f64(1), 7).view(-1)
 
-        self.data = [(self.t, m_observed)] # only one "datapoint" in this dataset
+        self.data = [(self.t, m_observed[i]) for i in range(num_genes)] # only one "datapoint" in this dataset
 
     def __getitem__(self, index):
         return self.data[index]
 
     def __len__(self):
-        return 1
+        return len(self.data)
 
 
 class HafnerData(LFMDataset):

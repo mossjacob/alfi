@@ -181,7 +181,6 @@ class SIMKernel(gpytorch.kernels.Kernel):
 
     def h(self, k, j, t2, t1):
         l = self.lengthscale
-        #         print(l, self.D[k], self.D[j])
         t_dist = t2 - t1
         multiplier = torch.exp(self.gamma(k) ** 2) / (self.decay[j] + self.decay[k])  # (1, 1)
         first_erf_term = torch.erf(t_dist / l - self.gamma(k)) + torch.erf(t1 / l + self.gamma(k))  # (T,T)
@@ -225,7 +224,6 @@ class SIMKernel(gpytorch.kernels.Kernel):
         t1_block, t2_block = x[:self.block_size].view(-1, 1), f.view(1, -1)
         for j in range(self.num_genes):
             kxf = self.k_xf(j, t1_block, t2_block)
-            print('kxf', kxf.shape)
             K_xf[j * self.block_size:(j + 1) * self.block_size] = kxf
 
         return K_xf
@@ -233,7 +231,6 @@ class SIMKernel(gpytorch.kernels.Kernel):
     def k_xf(self, j, x, t_f):
         l = self.lengthscale
         t_dist = x - t_f
-        print('dist', t_dist.shape)
         erf_term = torch.erf(t_dist / l - self.gamma(j)) + torch.erf(t_f / l + self.gamma(j))
         return self.sensitivity[j] * l * 0.5 * torch.sqrt(PI) * torch.exp(self.gamma(j) ** 2) * torch.exp(
             -self.decay[j] * t_dist) * erf_term

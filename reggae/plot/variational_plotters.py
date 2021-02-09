@@ -3,6 +3,7 @@ import numpy as np
 import torch
 
 from reggae.data_loaders import scaled_barenco_data
+from reggae.gp.variational import VariationalLFM
 
 plt.style.use('ggplot')
 
@@ -12,12 +13,11 @@ class Plotter:
     This Plotter is designed for gp models.
     """
 
-    def __init__(self, model, output_names, t_inducing=None):
+    def __init__(self, model, output_names):
         self.model = model
         self.output_names = output_names
         self.num_outputs = self.output_names.shape[0]
-        self.t_inducing = t_inducing
-        self.variational = self.t_inducing is not None
+        self.variational = isinstance(self.model, VariationalLFM)
 
     def _plot_barenco(self, mean):
         barenco_f, _ = scaled_barenco_data(mean)
@@ -43,7 +43,8 @@ class Plotter:
             if t_scatter is not None:
                 plt.scatter(t_scatter, y_scatter[i])
 
-            # plt.ylim(-0.2, max(mu[i]) * 1.2)
+            if ylim is None:
+                plt.ylim(-0.2, max(mu[i]) * 1.2)
         plt.tight_layout()
         return mu, var
 
@@ -61,6 +62,9 @@ class Plotter:
                 plt.plot(t_predict, q_f.sample().detach()[i], alpha=0.3, color='gray')
             plt.plot(t_predict, mean[i], color='gray')
 
+            if self.variational:
+                inducing_points = self.model.inducing_inputs.detach()
+                plt.scatter(inducing_points, np.zeros_like(inducing_points), marker='_', c='black', linewidths=4)
             if self.variational and plot_inducing:
                 q_u = self.model.get_latents(self.model.inducing_inputs)
                 mean_u = self.model.G(q_u.mean).detach().numpy()
