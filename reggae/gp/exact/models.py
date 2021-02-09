@@ -1,7 +1,7 @@
 import torch
 import gpytorch
 
-from .kernels import SIMKernel, SIMMean
+from reggae.gp.kernels import SIMKernel, SIMMean
 from ..models import LFM
 
 

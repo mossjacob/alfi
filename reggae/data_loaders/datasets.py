@@ -22,7 +22,6 @@ class P53Data(LFMDataset):
         num_times = m_observed.shape[2]
         num_genes = m_observed.shape[1]
         # f_df, f_observed = f_observed
-        print(m_observed.shape)
         m_observed = torch.tensor(m_observed)[replicate].transpose(0, 1)
 
         self.variance = f64(σ2_m_pre)[replicate]

@@ -45,6 +45,7 @@ class SIMKernel(gpytorch.kernels.Kernel):
     """
     This kernel is the multi-output cross-kernel for linear response to single transcription factor.
     In other words, it constructs a JTxJT matrix where J is num genes and T is num timepoints.
+    SIM: Single Input Module motif
     """
 
     is_stationary = True

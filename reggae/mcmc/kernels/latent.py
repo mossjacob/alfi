@@ -1,9 +1,9 @@
 import tensorflow as tf
 from tensorflow_probability import distributions as tfd
 
-from reggae.mcmc.kernels.mh import MetropolisKernel
 from reggae.mcmc.kernels.wrappers import ESSWrapper
-from reggae.gp.std_kernels import GPKernelSelector
+from .gp_kernels import GPKernelSelector
+from reggae.mcmc.kernels import MetropolisKernel
 from reggae.tf_utilities import jitter_cholesky, logit, add_diag
 from reggae.mcmc.results import GenericResults
 

@@ -2,8 +2,7 @@ import tensorflow as tf
 from tensorflow import math as tfm
 import tensorflow_probability as tfp
 
-from reggae.mcmc import MetropolisHastings
-from reggae.mcmc.results import GenericResults, MixedKernelResults
+from reggae.mcmc.results import GenericResults
 import numpy as np
 
 

@@ -4,18 +4,16 @@ import pickle
 import tensorflow as tf
 from tensorflow import math as tfm
 import tensorflow_probability as tfp
-from tensorflow_probability import bijectors as tfb
 from tensorflow_probability import distributions as tfd
 
-from reggae.mcmc import MetropolisHastings
-from reggae.mcmc.parameter import KernelParameter, Parameter, Params
-from reggae.mcmc.results import GenericResults, SampleResults
+from reggae.mcmc.parameter import KernelParameter, Params
+from reggae.mcmc.results import SampleResults
 from reggae.mcmc import Options
-from reggae.gp import GPKernelSelector
+from reggae.mcmc.kernels import GPKernelSelector
 from reggae.mcmc.kernels import LatentKernel, MixedKernel, DelayKernel, GibbsKernel
 from reggae.mcmc.kernels.wrappers import RWMWrapperKernel
 from reggae.data_loaders import DataHolder
-from reggae.tf_utilities import jitter_cholesky, logit, logistic, LogisticNormal, inverse_positivity, save_object
+from reggae.tf_utilities import logit, logistic, LogisticNormal, inverse_positivity, save_object
 from reggae.mcmc import TranscriptionLikelihood
 
 import numpy as np
