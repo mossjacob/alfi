@@ -2,7 +2,7 @@ import torch
 import gpytorch
 
 from reggae.gp.kernels import SIMKernel, SIMMean
-from ..models import LFM
+from reggae.gp import LFM
 
 
 class AnalyticalLFM(LFM, gpytorch.models.ExactGP):
