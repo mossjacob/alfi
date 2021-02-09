@@ -20,13 +20,13 @@ class VariationalLFM(LFM):
 
     Parameters
     ----------
-    num_outputs : int : the number of GP outputs (for example, the number of genes)
+    num_outputs : int : the number of outputs, size of h vector (for example, the number of genes)
     num_latents : int : the number of latent functions (for example, the number of TFs)
     fixed_variance : tensor : variance if the preprocessing variance is known, otherwise learnt.
     t_inducing : tensor of shape (T_u) : the inducing timepoints.
     t_observed: tensor of shape (T) : the observed timepoints, i.e., the timepoints that the ODE solver should output
     """
-    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, fixed_variance=None, extra_points=1):
+    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, fixed_variance=None, extra_points=1, dtype=torch.float64):
         super(VariationalLFM, self).__init__()
         self.num_outputs = num_outputs
         self.num_latents = num_latents
@@ -34,11 +34,11 @@ class VariationalLFM(LFM):
         self.num_observed = dataset[0][0].shape[0]
         self.inducing_inputs = Parameter(torch.tensor(t_inducing), requires_grad=False)
         self.extra_points = extra_points
+        self.dtype = dtype
+        self.raw_lengthscale = Parameter(inv_softplus(0.2 * torch.ones((num_latents), dtype=dtype)))
+        self.raw_scale = Parameter(torch.ones((num_latents), dtype=dtype))
 
-        self.raw_lengthscale = Parameter(inv_softplus(0.2 * torch.ones((num_latents), dtype=torch.float64)))
-        self.raw_scale = Parameter(torch.ones((num_latents), dtype=torch.float64))
-
-        q_m = torch.rand((self.num_latents, self.num_inducing, 1), dtype=torch.float64)
+        q_m = torch.rand((self.num_latents, self.num_inducing, 1), dtype=dtype)
         q_S = self.rbf(self.inducing_inputs)
         q_cholS = torch.cholesky(q_S)
         self.q_m = Parameter(q_m)
@@ -47,7 +47,7 @@ class VariationalLFM(LFM):
         if fixed_variance is not None:
             self.likelihood_variance = Parameter(torch.tensor(fixed_variance), requires_grad=False)
         else:
-            self.raw_likelihood_variance = Parameter(torch.ones((self.num_outputs, self.num_observed), dtype=torch.float64))
+            self.raw_likelihood_variance = Parameter(torch.ones((self.num_outputs, self.num_observed), dtype=dtype))
         self.nfe = 0
 
     @property
@@ -94,9 +94,13 @@ class VariationalLFM(LFM):
         sq_dist = torch.div(sq_dist, 2*self.lengthscale.view((-1, 1, 1)))
         K = self.scale.view(-1, 1, 1) * torch.exp(-sq_dist)
         if add_jitter:
-            jitter = 1e-5 * torch.eye(x.shape[0], device=K.device)
+            jitter = 1e-5 * torch.eye(x.shape[0], dtype=K.dtype, device=K.device)
             K += jitter
+
         return K
+
+    def initial_state(self, h):
+        return h
 
     def forward(self, t, h, rtol=1e-4, atol=1e-6, num_samples=5):
         """
@@ -119,18 +123,23 @@ class VariationalLFM(LFM):
         q_cholS = torch.tril(self.q_cholS)
         self.S = torch.matmul(q_cholS, torch.transpose(q_cholS, 1, 2))
 
+        h0 = self.initial_state(h)
         # Integrate forward from the initial positions h.
         h_avg = 0
         for _ in range(num_samples):
-            h_avg += odeint(self.odefunc, h, t, method='dopri5', rtol=rtol, atol=atol) / num_samples # shape (num_genes, num_times, 1
+            h_avg += odeint(self.odefunc, h0, t, method='dopri5', rtol=rtol, atol=atol) / num_samples # shape (num_genes, num_times, 1
 
-        return torch.transpose(h_avg, 0, 1)
+        h_out = torch.transpose(h_avg, 0, 1)
+        return self.decode(h_out)
+
+    def decode(self, h_out):
+        return h_out
 
     def predict_m(self, t_predict, **kwargs):
         """
         Calls self on input `t_predict`
         """
-        initial_value = torch.zeros((self.num_outputs, 1), dtype=torch.float64)
+        initial_value = torch.zeros((self.num_outputs, 1), dtype=self.dtype)
         outputs = self(t_predict.view(-1), initial_value, **kwargs)
         outputs = torch.squeeze(outputs).detach()
         return outputs, torch.zeros_like(outputs, requires_grad=False) #TODO: send back variance!
@@ -179,6 +188,9 @@ class VariationalLFM(LFM):
         # plt.imshow(self.S[0].detach())
         # plt.plot(torch.squeeze(m_s[0], 1).detach())
         if S_s.shape[2] > 1:
+            if True:
+                jitter = 1e-5 * torch.eye(S_s.shape[1], dtype=S_s.dtype)
+                S_s = S_s + jitter
             q_f = MultivariateNormal(torch.squeeze(m_s, 2), S_s)
         else:
             q_f = Normal(torch.squeeze(m_s), torch.squeeze(S_s))
@@ -227,17 +239,9 @@ class VariationalLFM(LFM):
         return self.log_likelihood(y, h), kl_mult * self.kl_divergence()
 
 
-class ReactionDiffusionLFM(VariationalLFM):
-    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, fixed_variance=None):
-        super().__init__(num_outputs, num_latents, t_inducing, dataset, fixed_variance=fixed_variance)
-        self.translation_rate = Parameter(1 * torch.ones((self.num_outputs, 1), dtype=torch.float64))
-        self.decay_rate = Parameter(1 * torch.ones((self.num_outputs, 1), dtype=torch.float64))
-        self.diffusion_rate = Parameter(1 * torch.ones((self.num_outputs, 1), dtype=torch.float64))
-
-
 class MLPLFM(VariationalLFM):
-    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, extra_points=2):
-        super().__init__(num_outputs, num_latents, t_inducing, dataset, fixed_variance=None, extra_points=extra_points)
+    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, **kwargs):
+        super().__init__(num_outputs, num_latents, t_inducing, dataset, **kwargs)
         h_dim = 20  # number of hidden units
         ode_layers = [nn.Linear(num_latents, h_dim),
                       nn.Tanh(),
@@ -267,6 +271,111 @@ class MLPLFM(VariationalLFM):
         return y
 
 
+class ConvLFM(VariationalLFM):
+    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, **kwargs):
+        super().__init__(num_outputs, num_latents, t_inducing, dataset, dtype=torch.float32, **kwargs)
+        self.loss = nn.BCEWithLogitsLoss(reduction='none')
+
+        n_filt = 16
+        img_width = 28
+        self.img_width_flat = 28 * 28
+        num_hidden = 30
+        encoder_layers = [nn.Conv2d(1, n_filt, kernel_size=5, stride=2, padding=(2, 2)),
+                          nn.BatchNorm2d(16),
+                          nn.ReLU(),
+                          nn.Conv2d(n_filt, n_filt * 2, kernel_size=5, stride=2, padding=(2, 2)),
+                          nn.BatchNorm2d(32),
+                          nn.ReLU(),
+                          nn.Conv2d(n_filt * 2, n_filt * 4, kernel_size=5, stride=2, padding=(2, 2)),
+                          nn.BatchNorm2d(64),
+                          nn.ReLU(),
+                          nn.Conv2d(n_filt * 4, n_filt * 8, kernel_size=5, stride=2, padding=(2, 2)),
+                          nn.Flatten(),
+                          nn.Linear(512, num_hidden)
+                          ]
+
+        feat = 3 if img_width == 28 else 4
+        print(img_width)
+        padding1 = (0, 0) if img_width == 28 else (2, 2)
+        padding2 = (0, 0) if img_width == 28 else (1, 1)
+        stride = 1 if img_width == 28 else 2
+        k_size = 3 if img_width == 28 else 5
+        decoder_layers = [nn.ConvTranspose2d(32, 128, kernel_size=k_size, stride=stride, padding=padding1),
+                          nn.BatchNorm2d(128),
+                          nn.ReLU(),
+                          nn.ConvTranspose2d(128, 64, kernel_size=5, stride=2, padding=padding2),
+                          nn.BatchNorm2d(64),
+                          nn.ReLU(),
+                          nn.ConvTranspose2d(64, 32, kernel_size=5, stride=2, padding=(1, 1), output_padding=(1, 1)),
+                          nn.BatchNorm2d(32),
+                          nn.ReLU(),
+                          nn.ConvTranspose2d(32, 1, kernel_size=5, stride=1, padding=(2, 2))
+                          ]
+        self.decoder_fc = nn.Linear(num_hidden, feat * feat * 32)
+        self.encoder = nn.Sequential(*encoder_layers).float()
+        self.decoder = nn.Sequential(*decoder_layers).float()
+
+        h_dim = 50
+        ode_layers = [nn.Linear(num_hidden + num_latents, h_dim),
+                      nn.Tanh(),
+                      nn.Linear(h_dim, h_dim),
+                      nn.Tanh(),
+                      nn.Linear(h_dim, num_hidden)]
+
+        self.mlp = nn.Sequential(*ode_layers)
+
+
+    def initial_state(self, y):
+        """
+        Called before the ODE is solved in order to get the initial state
+        """
+        # print('y0', y.shape)
+        h0 = self.encoder(y.view(1, 1, 28, 28))  # (B, C, W, W)
+        # print('h0', h0.shape)
+        return h0
+
+    def decode(self, h_out):
+        """h_out shape (B, T, num_hidden)"""
+        # print('hout', h_out.shape)
+        # TODO: we temporarily make the T the batch dimension here...
+        h_out = torch.squeeze(h_out, 0)
+        # TODO: end
+        h_out = self.decoder_fc(h_out)
+        h_out = h_out.view(h_out.shape[0], 32, 3, 3)
+        y = self.decoder(h_out)
+        y = y.view(y.shape[0], y.shape[1], self.img_width_flat)
+        # print('yout', y.shape)
+        return y
+
+    def odefunc(self, t, h):
+        """
+        h shape (num_outputs, 1)
+        """
+        self.nfe += 1
+        # if (self.nfe % 100) == 0:
+        #     print(t)
+
+        q_f = self.get_latents(t.reshape(-1))
+
+        # Reparameterisation trick
+        f = q_f.rsample()
+        if self.extra_points > 0:
+            f = f[:, self.extra_points]  # get the midpoint
+
+        f = torch.unsqueeze(f, 0)
+
+        input = torch.cat([h, f], dim=1)
+        h_evolved = self.mlp(input)
+        return h_evolved
+
+    def log_likelihood(self, y, h):
+        log_lik = self.loss(h, y)
+        log_lik = - torch.sum(log_lik)  # minus since it's already a loss
+        return log_lik
+
+
+    # nll = bce(p_y_pred, y_target).mean(dim=0).sum()
+
 class TranscriptionalRegulationLFM(VariationalLFM):
     def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, fixed_variance=None, extra_points=2):
         super().__init__(num_outputs, num_latents, t_inducing, dataset, fixed_variance=fixed_variance, extra_points=extra_points)
@@ -285,14 +394,14 @@ class TranscriptionalRegulationLFM(VariationalLFM):
         q_f = self.get_latents(t.reshape(-1))
         # Reparameterisation trick
         f = q_f.rsample() # TODO: multiple samples?
-        Gp = self.G(f)
+        f = self.G(f)
         if self.extra_points > 0:
-            Gp = Gp[:, self.extra_points] # get the midpoint
-            Gp = torch.unsqueeze(Gp, 1)
-        # print(Gp.shape)
-        # print(self.basal_rate.shape, Gp.shape, decay.shape)
-        # print((self.basal_rate + self.sensitivity * Gp - decay).shape)
-        return self.basal_rate + self.sensitivity * Gp - decay
+            f = f[:, self.extra_points] # get the midpoint
+            f = torch.unsqueeze(f, 1)
+        # print(f.shape)
+        # print(self.basal_rate.shape, f.shape, decay.shape)
+        # print((self.basal_rate + self.sensitivity * f - decay).shape)
+        return self.basal_rate + self.sensitivity * f - decay
 
 
     @abstractmethod

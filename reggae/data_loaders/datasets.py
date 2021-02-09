@@ -3,12 +3,14 @@ import torch
 from scipy.integrate import odeint
 import numpy as np
 import pandas as pd
+from scipy.io import loadmat
 
 from reggae.data_loaders import load_barenco_puma
 from reggae.data_loaders.artificial import get_artificial_dataset
 from reggae.utilities import LFMDataset
 
 from tqdm import tqdm
+from os import path
 
 f64 = np.float64
 
@@ -381,3 +383,23 @@ class DeterministicLotkaVolteraData(LFMDataset):
 
     def __len__(self):
         return self.num_samples
+
+
+class RotNISTDataset(LFMDataset):
+    """
+    Loads the rotated 3s from ODE2VAE paper
+    https://www.dropbox.com/s/aw0rgwb3iwdd1zm/rot-mnist-3s.mat?dl=0
+    """
+    def __init__(self, data_dir='../data'):
+        mat = loadmat(path.join(data_dir, 'rot-mnist-3s.mat'))
+        dataset = mat['X'][0]
+        dataset = dataset.reshape(dataset.shape[0], dataset.shape[1], -1)
+        self.data = torch.tensor(dataset, dtype=torch.float32)
+        self.t = torch.linspace(0, 1, dataset.shape[1], dtype=torch.float32).view(-1, 1).repeat([dataset.shape[0], 1, 1])
+        self.data = list(zip(self.t, self.data))
+
+    def __getitem__(self, index):
+        return self.data[index]
+
+    def __len__(self):
+        return len(self.data)
