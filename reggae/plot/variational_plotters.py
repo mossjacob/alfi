@@ -43,7 +43,7 @@ class Plotter:
             if t_scatter is not None:
                 plt.scatter(t_scatter, y_scatter[i])
 
-            plt.ylim(-0.2, max(mu[i]) * 1.2)
+            # plt.ylim(-0.2, max(mu[i]) * 1.2)
         plt.tight_layout()
         return mu, var
 

@@ -32,10 +32,10 @@ class VariationalLFM(LFM):
         self.num_latents = num_latents
         self.num_inducing = t_inducing.shape[0]
         self.num_observed = dataset[0][0].shape[0]
-        self.inducing_inputs = Parameter(torch.tensor(t_inducing, requires_grad=False))
+        self.inducing_inputs = Parameter(torch.tensor(t_inducing), requires_grad=False)
         self.extra_points = extra_points
 
-        self.raw_lengthscale = Parameter(0.5 * torch.ones((num_latents), dtype=torch.float64))
+        self.raw_lengthscale = Parameter(inv_softplus(0.2 * torch.ones((num_latents), dtype=torch.float64)))
         self.raw_scale = Parameter(torch.ones((num_latents), dtype=torch.float64))
 
         q_m = torch.rand((self.num_latents, self.num_inducing, 1), dtype=torch.float64)
