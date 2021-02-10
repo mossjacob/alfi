@@ -9,8 +9,8 @@ from reggae.utilities import softplus, LFMDataset
 
 
 class TranscriptionalRegulationLFM(VariationalLFM):
-    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, fixed_variance=None, extra_points=2):
-        super().__init__(num_outputs, num_latents, t_inducing, dataset, fixed_variance=fixed_variance, extra_points=extra_points)
+    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, extra_points=2, **kwargs):
+        super().__init__(num_outputs, num_latents, t_inducing, dataset, extra_points=extra_points, **kwargs)
         self.decay_rate = Parameter(1 * torch.ones((self.num_outputs, 1), dtype=torch.float64))
         self.basal_rate = Parameter(0.2 * torch.ones((self.num_outputs, 1), dtype=torch.float64))
         self.sensitivity = Parameter(2 * torch.ones((self.num_outputs, 1), dtype=torch.float64))

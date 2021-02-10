@@ -6,8 +6,8 @@ from reggae.gp import LFM
 
 
 class AnalyticalLFM(LFM, gpytorch.models.ExactGP):
-    def __init__(self, train_t, train_y, num_genes, likelihood, variance):
-        super().__init__(train_t, train_y, likelihood)
+    def __init__(self, train_t, train_y, num_genes, variance):
+        super().__init__(train_t, train_y, likelihood=gpytorch.likelihoods.GaussianLikelihood())
         self.num_genes = num_genes
         self.block_size = int(train_t.shape[0] / self.num_genes)
         self.train_t = train_t.view(-1, 1)
@@ -24,9 +24,17 @@ class AnalyticalLFM(LFM, gpytorch.models.ExactGP):
     def sensitivity(self):
         return self.covar_module.sensitivity
 
+    @sensitivity.setter
+    def sensitivity(self, val):
+        self.covar_module.sensitivity = val
+
     @property
     def decay_rate(self):
         return self.covar_module.decay
+
+    @decay_rate.setter
+    def decay_rate(self, val):
+        self.covar_module.decay = val
 
     def forward(self, x):
         mean_x = self.mean_module(x)

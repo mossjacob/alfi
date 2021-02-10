@@ -69,7 +69,7 @@ class Trainer:
                     ), end='')
                     self.print_extra()
 
-            losses.append((ll.item(), kl.item()))
+            losses.append((-ll.item(), kl.item()))
             self.after_epoch()
 
             if (epoch % plot_interval) == 0:
@@ -126,5 +126,6 @@ class TranscriptionalTrainer(Trainer):
             self.model.decay_rate.clamp_(0, 8)
             self.model.sensitivity[3] = np.float64(1.)
             self.model.decay_rate[3] = np.float64(0.8)
+            self.model.inducing_inputs.clamp_(0, 1)
             self.model.q_m[0, 0] = 0.
 

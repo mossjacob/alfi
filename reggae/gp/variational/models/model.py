@@ -25,13 +25,13 @@ class VariationalLFM(LFM):
     t_inducing : tensor of shape (T_u) : the inducing timepoints.
     t_observed: tensor of shape (T) : the observed timepoints, i.e., the timepoints that the ODE solver should output
     """
-    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, fixed_variance=None, extra_points=1, dtype=torch.float64):
+    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, fixed_variance=None, extra_points=1, dtype=torch.float64, learn_inducing=False):
         super(VariationalLFM, self).__init__()
         self.num_outputs = num_outputs
         self.num_latents = num_latents
         self.num_inducing = t_inducing.shape[0]
         self.num_observed = dataset[0][0].shape[0]
-        self.inducing_inputs = Parameter(torch.tensor(t_inducing), requires_grad=False)
+        self.inducing_inputs = Parameter(torch.tensor(t_inducing), requires_grad=learn_inducing)
         self.extra_points = extra_points
         self.dtype = dtype
         self.raw_lengthscale = Parameter(inv_softplus(0.2 * torch.ones((num_latents), dtype=dtype)))
