@@ -1,6 +1,7 @@
 import torch
 
 from reggae.utilities import inv_softplus, LFMDataset, is_cuda
+from reggae.gp.variational import VariationalLFM
 from torch.utils.data.dataloader import DataLoader
 
 import numpy as np
@@ -95,8 +96,8 @@ class TranscriptionalTrainer(Trainer):
     Parameters:
         batch_size: in the case of the transcriptional regulation model, we train the entire gene set as a batch
     """
-    def __init__(self, model, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=5):
-        super(TranscriptionalTrainer, self).__init__(model, optimizer, dataset, batch_size=batch_size)
+    def __init__(self, model: VariationalLFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset):
+        super(TranscriptionalTrainer, self).__init__(model, optimizer, dataset, batch_size=model.num_outputs)
         self.basalrates = list()
         self.decayrates = list()
         self.lengthscales = list()

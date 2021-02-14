@@ -114,9 +114,8 @@ class VariationalLFM(LFM):
         """
         self.nfe = 0
 
-        # 1: Likelihood step: Sample from variational distribution
+        # Precompute variables
         self.Kmm = self.rbf(self.inducing_inputs)
-
         self.L = torch.cholesky(self.Kmm)
         # self.inv_Kmm = cholesky_inverse(self.L)
         q_cholS = torch.tril(self.q_cholS)
@@ -184,9 +183,7 @@ class VariationalLFM(LFM):
         S_Kmm = self.S - self.Kmm # (I, Tu, Tu)
         AS_KA = torch.matmul(torch.matmul(α, S_Kmm), torch.transpose(α, 1, 2)) # (I, T*, T*)
         S_s = (Kss + AS_KA) # (I, T*, T*)
-        # plt.figure()
-        # plt.imshow(self.S[0].detach())
-        # plt.plot(torch.squeeze(m_s[0], 1).detach())
+
         if S_s.shape[2] > 1:
             if True:
                 jitter = 1e-5 * torch.eye(S_s.shape[1], dtype=S_s.dtype)
@@ -238,9 +235,3 @@ class VariationalLFM(LFM):
 
     def elbo(self, y, h, kl_mult=1):
         return self.log_likelihood(y, h), kl_mult * self.kl_divergence()
-
-
-
-
-
-
