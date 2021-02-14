@@ -11,15 +11,15 @@ from reggae.utilities import softplus, LFMDataset
 class TranscriptionalRegulationLFM(VariationalLFM):
     def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, extra_points=2, **kwargs):
         super().__init__(num_outputs, num_latents, t_inducing, dataset, extra_points=extra_points, **kwargs)
-        self.decay_rate = Parameter(1 * torch.ones((self.num_outputs, 1), dtype=torch.float64))
-        self.basal_rate = Parameter(0.2 * torch.ones((self.num_outputs, 1), dtype=torch.float64))
-        self.sensitivity = Parameter(2 * torch.ones((self.num_outputs, 1), dtype=torch.float64))
+        self.decay_rate = Parameter(1 + torch.rand((self.num_outputs, 1), dtype=torch.float64))
+        self.basal_rate = Parameter(torch.rand((self.num_outputs, 1), dtype=torch.float64))
+        self.sensitivity = Parameter(1.5 + torch.rand((self.num_outputs, 1), dtype=torch.float64))
 
     def odefunc(self, t, h):
+        """h is of shape (num_genes, 1)"""
         self.nfe += 1
         # if (self.nfe % 100) == 0:
         #     print(t)
-        # h is of shape (num_genes, 1)
 
         decay = torch.multiply(self.decay_rate.view(-1), h.view(-1)).view(-1, 1)
 
@@ -30,9 +30,7 @@ class TranscriptionalRegulationLFM(VariationalLFM):
         if self.extra_points > 0:
             f = f[:, self.extra_points] # get the midpoint
             f = torch.unsqueeze(f, 1)
-        # print(f.shape)
-        # print(self.basal_rate.shape, f.shape, decay.shape)
-        # print((self.basal_rate + self.sensitivity * f - decay).shape)
+
         return self.basal_rate + self.sensitivity * f - decay
 
 

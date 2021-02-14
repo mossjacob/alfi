@@ -13,31 +13,7 @@ class DataHolder(object):
         self.τ = time[1]
         self.common_indices = time[2]
 
-def load_humanp53(dir_path, target_genes):
-    with open(path.join(dir_path, 't0to24.tsv'), 'r', 1) as f:
-        contents = f.buffer
-        df = pd.read_table(contents, sep='\t', index_col=0)
 
-    columns = ['MCF7, t=' + str(t) + ' h, IR 10Gy, rep1' for t in range(13)]
-    tfs = ['TP53']
-
-    genes_df = df[df.index.isin(target_genes)][columns]
-    genes_df = genes_df.reindex(target_genes)
-    tfs_df = df[df.index.isin(tfs)][columns]
-
-    m = genes_df.values
-    genes_norm = 1/m.shape[0] * np.linalg.norm(m, axis=1, ord=None) #l2 norm
-    genes = m / np.sqrt(genes_norm.reshape(-1, 1))
-    genes = np.expand_dims(genes, 0)
-
-    f = tfs_df.values
-    tfs_norm = 1/f.shape[0] * np.linalg.norm(f, axis=1, ord=None) #l2 norm
-    tfs = f / np.sqrt(tfs_norm.reshape(-1, 1))
-    tfs = np.expand_dims(tfs, 0)
-
-    t = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
-    return (genes_df, np.float64(genes)), (tfs_df, np.float64(tfs)), t
-    
 def load_covid():
     with open('data/covidrld.csv', 'r', 1) as f:
         contents = f.buffer
