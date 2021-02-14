@@ -103,7 +103,7 @@ class VariationalLFM(LFM):
     def initial_state(self, h):
         return h
 
-    def forward(self, t, h, rtol=1e-4, atol=1e-6):
+    def forward(self, t, h, rtol=1e-4, atol=1e-6, compute_var=False):
         """
         t : torch.Tensor
             Shape (num_times)
@@ -128,9 +128,12 @@ class VariationalLFM(LFM):
         h_samples = odeint(self.odefunc, h0, t, method='dopri5', rtol=rtol, atol=atol)  # (T, S, num_outputs, 1)
 
         h_avg = torch.mean(h_samples, dim=1)
-                #/ num_samples # shape (num_genes, num_times, 1
+        h_std = torch.std(h_samples, dim=1)
 
         h_out = torch.transpose(h_avg, 0, 1)
+        h_std = torch.transpose(h_std, 0, 1)
+        if compute_var:
+            return self.decode(h_out), h_std
         return self.decode(h_out)
 
     def decode(self, h_out):
@@ -141,9 +144,10 @@ class VariationalLFM(LFM):
         Calls self on input `t_predict`
         """
         initial_value = torch.zeros((self.num_samples, self.num_outputs, 1), dtype=self.dtype)
-        outputs = self(t_predict.view(-1), initial_value, **kwargs)
+        outputs, var = self(t_predict.view(-1), initial_value, compute_var=True, **kwargs)
+        var = torch.squeeze(var).detach()
         outputs = torch.squeeze(outputs).detach()
-        return outputs, torch.zeros_like(outputs, requires_grad=False) #TODO: send back variance!
+        return outputs, var
 
     @abstractmethod
     def odefunc(self, t, h):
