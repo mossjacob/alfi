@@ -1,22 +1,25 @@
-# REGGaE: Regulation of Gene Expression
+# LaFoMo: Latent Force Models
+
 
 [![Latest PyPI Version][pb]][pypi] [![PyPI Downloads][db]][pypi]
 
-[pb]: https://img.shields.io/pypi/v/tf-reggae.svg
-[pypi]: https://pypi.org/project/tf-reggae/
+[pb]: https://img.shields.io/pypi/v/lafomo.svg
+[pypi]: https://pypi.org/project/lafomo/
 
-[db]: https://img.shields.io/pypi/dm/tf-reggae?label=pypi%20downloads
+[db]: https://img.shields.io/pypi/dm/lafomo?label=pypi%20downloads
 
-This library implements several Latent Force Models of transcriptional regulation. These are all implemented in building blocks simplifying the creation of novel models or combinations.
+### Previously REGGaE: Regulation of Gene Expression
 
-Both analytical and MCMC-based methods are implemented.
+This library implements several Latent Force Models. These are all implemented in building blocks simplifying the creation of novel models or combinations.
+
+Both analytical, variation,and MCMC-based methods are implemented.
 
 ## Installation
 
-`pip install tf-reggae`
+`pip install lafomo`
 
 
-## Examples
+## Examples: transcriptional regulation
 
 ### Analytical - Linear, Single TF
 
@@ -24,6 +27,12 @@ Open `examples/analytical.ipynb` as a Jupyter notebook and run the cells. This i
 
 The dataset required is small and is available preprocessed here:
 - https://drive.google.com/drive/folders/1Tg_3SlKbdv0pDog6k2ys0J79e1-vgRyd?usp=sharing
+
+### Variational - Non-linear Multi TF
+
+Open `examples/variational.ipynb` as a Jupyter notebook and run the cells.
+
+The dataset required is the same as the above.
 
 ### MCMC - Non-linear, Multi TF
 
