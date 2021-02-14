@@ -44,7 +44,6 @@ class HafnerData(LFMDataset):
     Dataset of GSE100099
     MCF7 cells gamma-irradiated over 24 hours
     p53 is typically the protein of interest
-    t=0,1,2,3,4,5,6,7,8,9,10,11,12,24
     """
     def __init__(self, data_dir, extra_targets=True):
         target_genes = [
@@ -82,7 +81,7 @@ class HafnerData(LFMDataset):
         tfs_norm = 1/f.shape[0] * np.linalg.norm(f, axis=1, ord=None) # l2 norm
         self.tfs = f / np.sqrt(tfs_norm.reshape(-1, 1))
 
-        self.t = torch.tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], dtype=torch.float32).view(-1, 1)
+        self.t = torch.linspace(0, 1, 13, dtype=torch.float32).view(-1, 1)
         self.t = self.t.repeat([self.genes.shape[0], 1, 1])
         self.data = list(zip(self.t, self.genes))
         self.gene_names = target_genes
