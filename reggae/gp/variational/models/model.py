@@ -25,7 +25,8 @@ class VariationalLFM(LFM):
     t_inducing : tensor of shape (T_u) : the inducing timepoints.
     t_observed: tensor of shape (T) : the observed timepoints, i.e., the timepoints that the ODE solver should output
     """
-    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, fixed_variance=None, extra_points=1, dtype=torch.float64, learn_inducing=False):
+    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, fixed_variance=None, extra_points=1,
+                 dtype=torch.float64, learn_inducing=False, num_samples=10):
         super(VariationalLFM, self).__init__()
         self.num_outputs = num_outputs
         self.num_latents = num_latents
@@ -33,6 +34,7 @@ class VariationalLFM(LFM):
         self.num_observed = dataset[0][0].shape[0]
         self.inducing_inputs = Parameter(torch.tensor(t_inducing), requires_grad=learn_inducing)
         self.extra_points = extra_points
+        self.num_samples = num_samples
         self.dtype = dtype
         self.raw_lengthscale = Parameter(inv_softplus(0.2 * torch.ones((num_latents), dtype=dtype)))
         self.raw_scale = Parameter(torch.ones((num_latents), dtype=dtype))
@@ -101,7 +103,7 @@ class VariationalLFM(LFM):
     def initial_state(self, h):
         return h
 
-    def forward(self, t, h, rtol=1e-4, atol=1e-6, num_samples=5):
+    def forward(self, t, h, rtol=1e-4, atol=1e-6):
         """
         t : torch.Tensor
             Shape (num_times)
@@ -123,9 +125,10 @@ class VariationalLFM(LFM):
 
         h0 = self.initial_state(h)
         # Integrate forward from the initial positions h.
-        h_avg = 0
-        for _ in range(num_samples):
-            h_avg += odeint(self.odefunc, h0, t, method='dopri5', rtol=rtol, atol=atol) / num_samples # shape (num_genes, num_times, 1
+        h_samples = odeint(self.odefunc, h0, t, method='dopri5', rtol=rtol, atol=atol)  # (T, S, num_outputs, 1)
+
+        h_avg = torch.mean(h_samples, dim=1)
+                #/ num_samples # shape (num_genes, num_times, 1
 
         h_out = torch.transpose(h_avg, 0, 1)
         return self.decode(h_out)
@@ -137,7 +140,7 @@ class VariationalLFM(LFM):
         """
         Calls self on input `t_predict`
         """
-        initial_value = torch.zeros((self.num_outputs, 1), dtype=self.dtype)
+        initial_value = torch.zeros((self.num_samples, self.num_outputs, 1), dtype=self.dtype)
         outputs = self(t_predict.view(-1), initial_value, **kwargs)
         outputs = torch.squeeze(outputs).detach()
         return outputs, torch.zeros_like(outputs, requires_grad=False) #TODO: send back variance!
@@ -146,7 +149,7 @@ class VariationalLFM(LFM):
     def odefunc(self, t, h):
         """
         Parameters:
-
+            h: shape (num_samples, num_outputs, 1)
         """
         pass
 

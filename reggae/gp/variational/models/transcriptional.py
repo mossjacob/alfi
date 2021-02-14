@@ -16,20 +16,22 @@ class TranscriptionalRegulationLFM(VariationalLFM):
         self.sensitivity = Parameter(1.5 + torch.rand((self.num_outputs, 1), dtype=torch.float64))
 
     def odefunc(self, t, h):
-        """h is of shape (num_genes, 1)"""
+        """h is of shape (num_samples, num_outputs, 1)"""
         self.nfe += 1
         # if (self.nfe % 100) == 0:
         #     print(t)
 
-        decay = torch.multiply(self.decay_rate.view(-1), h.view(-1)).view(-1, 1)
+        decay = torch.multiply(self.decay_rate.squeeze(), h.squeeze(-1)).view(self.num_samples, -1, 1)
 
         q_f = self.get_latents(t.reshape(-1))
+
         # Reparameterisation trick
-        f = q_f.rsample() # TODO: multiple samples?
+        f = q_f.rsample([self.num_samples])  # (S, I, t)
+
         f = self.G(f)
         if self.extra_points > 0:
-            f = f[:, self.extra_points] # get the midpoint
-            f = torch.unsqueeze(f, 1)
+            f = f[:, :, self.extra_points]  # get the midpoint
+            f = torch.unsqueeze(f, 2)
 
         return self.basal_rate + self.sensitivity * f - decay
 
@@ -47,21 +49,21 @@ class SingleLinearLFM(TranscriptionalRegulationLFM):
 
     def G(self, f):
         # I = 1 so just repeat for num_outputs
-        return f.repeat(self.num_outputs, 1)
+        return f.repeat(1, self.num_outputs, 1)
 
 
 class NonLinearLFM(TranscriptionalRegulationLFM):
 
     def G(self, f):
         # I = 1 so just repeat for num_outputs
-        return softplus(f).repeat(self.num_outputs, 1)
+        return softplus(f).repeat(1, self.num_outputs, 1)
 
 
 class ExponentialLFM(TranscriptionalRegulationLFM):
 
     def G(self, f):
         # I = 1 so just repeat for num_outputs
-        return torch.exp(f).repeat(self.num_outputs, 1)
+        return torch.exp(f).repeat(1, self.num_outputs, 1)
 
 
 class MultiLFM(TranscriptionalRegulationLFM):
@@ -71,7 +73,7 @@ class MultiLFM(TranscriptionalRegulationLFM):
         self.w_0 = Parameter(torch.ones((self.num_outputs, 1), dtype=torch.float64))
 
     def G(self, f):
-        p_pos = softplus(f)  # (I, extras)
+        p_pos = softplus(f)  # (S, I, extras)
         interactions = torch.matmul(self.w, torch.log(p_pos+1e-50)) + self.w_0  # (J,I)(I,e)+(J,1)
         return torch.sigmoid(interactions)  # TF Activation Function (sigmoid)
 

@@ -49,7 +49,8 @@ class Trainer:
                 initial_value = initial_value.cuda() if is_cuda() else initial_value
                 if self.give_output:
                     initial_value = y[0]
-                output = self.model(t, initial_value, rtol=rtol, atol=atol, num_samples=num_samples)
+                initial_value = initial_value.repeat(self.model.num_samples, 1, 1)  # Add batch dimension for sampling
+                output = self.model(t, initial_value, rtol=rtol, atol=atol)
                 output = torch.squeeze(output)
                 # Calc loss and backprop gradients
                 mult = 1
