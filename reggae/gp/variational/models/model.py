@@ -117,7 +117,7 @@ class VariationalLFM(LFM):
         # Precompute variables
         self.Kmm = self.rbf(self.inducing_inputs)
         self.L = torch.cholesky(self.Kmm)
-        self.inv_Kmm = cholesky_inverse(self.L)
+        # self.inv_Kmm = cholesky_inverse(self.L)
         q_cholS = torch.tril(self.q_cholS)
         self.S = torch.matmul(q_cholS, torch.transpose(q_cholS, 1, 2))
 
@@ -176,7 +176,8 @@ class VariationalLFM(LFM):
             # t = torch.tensor([t[0]-0.05, t[0], t[0]+0.05]).reshape(-1)
             # print(t)
         Ksm = self.rbf(t, self.inducing_inputs)  # (I, T*, Tu)
-        α = torch.matmul(Ksm, self.inv_Kmm)  # (I, T*, Tu)
+        # α_1 = torch.matmul(Ksm, self.inv_Kmm)  # (I, T*, Tu)
+        α = torch.cholesky_solve(Ksm.permute([0, 2, 1]), self.L, upper=False).permute([0, 2, 1])    # (I, T*, Tu)
         m_s = torch.matmul(α, self.q_m)  # (I, T*, Tu)
         Kss = self.rbf(t)  # (I, T*, T*)
         S_Kmm = self.S - self.Kmm # (I, Tu, Tu)
@@ -212,7 +213,8 @@ class VariationalLFM(LFM):
         # log(det(Kmm)): (already checked, seems working)
         logdetK = torch.sum(torch.log(torch.diagonal(self.L, dim1=1, dim2=2)**2))
         # tr(inv_Kmm * S):
-        trKS = torch.matmul(self.inv_Kmm, self.S)
+        # trKS_1 = torch.matmul(self.inv_Kmm, self.S)
+        trKS = torch.cholesky_solve(self.S, self.L, upper=False)
         trKS = torch.sum(torch.diagonal(trKS, dim1=1, dim2=2))
 
         # m^T Kuu^(-1) m: cholesky_solve(b, chol)
