@@ -91,14 +91,17 @@ class Trainer:
     def after_epoch(self):
         pass
 
+
 class TranscriptionalTrainer(Trainer):
     """
     TranscriptionalTrainer
     Parameters:
         batch_size: in the case of the transcriptional regulation model, we train the entire gene set as a batch
     """
-    def __init__(self, model: VariationalLFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset):
-        super(TranscriptionalTrainer, self).__init__(model, optimizer, dataset, batch_size=model.num_outputs)
+    def __init__(self, model: VariationalLFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=None):
+        if batch_size is None:
+            batch_size = model.num_outputs
+        super(TranscriptionalTrainer, self).__init__(model, optimizer, dataset, batch_size=batch_size)
         self.basalrates = list()
         self.decayrates = list()
         self.lengthscales = list()

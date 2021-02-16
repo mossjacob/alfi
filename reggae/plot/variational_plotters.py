@@ -17,13 +17,14 @@ class Plotter:
         self.model = model
         self.output_names = output_names
         self.num_outputs = self.output_names.shape[0]
+        self.num_replicates = self.model.num_outputs // self.num_outputs
         self.variational = isinstance(self.model, VariationalLFM)
 
     def _plot_barenco(self, mean):
         barenco_f, _ = scaled_barenco_data(mean)
         plt.scatter(np.linspace(0, 1, 7), barenco_f, marker='x', s=60, linewidth=2, label='Barenco et al.')
 
-    def plot_outputs(self, t_predict, t_scatter=None, y_scatter=None, model_kwargs={}, ylim=None):
+    def plot_outputs(self, t_predict, replicate=0, t_scatter=None, y_scatter=None, model_kwargs={}, ylim=None):
         """
         Parameters:
             t_predict: tensor (T*,)
@@ -34,17 +35,19 @@ class Plotter:
         mu, var = self.model.predict_m(t_predict, **model_kwargs)
         mu = mu.detach()
         var = 2 * torch.sqrt(var).detach()
+        mu = mu.view(self.num_outputs, self.num_replicates, -1).transpose(0, 1)
+        var = var.view(self.num_outputs, self.num_replicates, -1).transpose(0, 1)
         plt.figure(figsize=(6, 4 * np.ceil(self.num_outputs / 3)))
         for i in range(self.num_outputs):
             plt.subplot(self.num_outputs, 3, i + 1)
-            plt.plot(t_predict, mu[i].detach())
-            plt.fill_between(t_predict, mu[i] + var[i], mu[i] - var[i], alpha=0.4)
+            plt.plot(t_predict, mu[replicate, i].detach())
+            plt.fill_between(t_predict, mu[replicate, i] + var[replicate, i], mu[replicate, i] - var[replicate, i], alpha=0.4)
 
             if t_scatter is not None:
-                plt.scatter(t_scatter, y_scatter[i])
+                plt.scatter(t_scatter, y_scatter[replicate, i])
 
             if ylim is None:
-                plt.ylim(-0.2, max(mu[i]) * 1.2)
+                plt.ylim(-0.2, max(mu[replicate, i]) * 1.2)
         plt.tight_layout()
         return mu, var
 
@@ -101,6 +104,7 @@ class Plotter:
         plotnum = 331
         for A, B, var, label in zip(data, barenco_data, vars, labels):
             plt.subplot(plotnum)
+            A = np.mean(A.reshape(self.num_outputs, self.num_replicates), axis=1)
             plotnum += 1
             plt.bar(np.arange(5) - 0.2, A, width=0.4, tick_label=self.output_names)
             plt.bar(np.arange(5) + 0.2, B, width=0.4, color='blue', align='center')

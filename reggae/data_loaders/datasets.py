@@ -16,21 +16,22 @@ f64 = np.float64
 
 
 class P53Data(LFMDataset):
-    def __init__(self, replicate = 0):  # TODO: for now we are just considering one replicate
+    def __init__(self):  # TODO: for now we are just considering one replicate
         m_observed, f_observed, σ2_m_pre, σ2_f_pre, t = load_barenco_puma('../data/')
 
         m_df, m_observed = m_observed  # (replicates, genes, times)
         self.gene_names = m_df.index
         num_times = m_observed.shape[2]
         num_genes = m_observed.shape[1]
+        num_replicates = m_observed.shape[0]
         # f_df, f_observed = f_observed
-        m_observed = torch.tensor(m_observed)[replicate]
+        m_observed = torch.tensor(m_observed)
 
-        self.variance = f64(σ2_m_pre)[replicate]
+        self.variance = np.array([f64(σ2_m_pre)[r, i] for i in range(num_genes) for r in range(num_replicates)])
         # σ2_f_pre = f64(σ2_f_pre) #not used
         self.t = torch.linspace(f64(0), f64(1), 7).view(-1)
 
-        self.data = [(self.t, m_observed[i]) for i in range(num_genes)] # only one "datapoint" in this dataset
+        self.data = [(self.t, m_observed[r, i]) for i in range(num_genes) for r in range(num_replicates)]
 
     def __getitem__(self, index):
         return self.data[index]

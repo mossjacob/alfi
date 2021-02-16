@@ -8,8 +8,8 @@ from reggae.gp import LFM
 class AnalyticalLFM(LFM, gpytorch.models.ExactGP):
     def __init__(self, train_t, train_y, num_genes, variance):
         super().__init__(train_t, train_y, likelihood=gpytorch.likelihoods.GaussianLikelihood())
-        self.num_genes = num_genes
-        self.block_size = int(train_t.shape[0] / self.num_genes)
+        self.num_outputs = num_genes
+        self.block_size = int(train_t.shape[0] / self.num_outputs)
         self.train_t = train_t.view(-1, 1)
         self.train_y = train_y.view(-1, 1)
         self.covar_module = SIMKernel(num_genes, variance)
@@ -48,11 +48,11 @@ class AnalyticalLFM(LFM, gpytorch.models.ExactGP):
         K_xstarx = torch.transpose(K_xxstar, 0, 1).type(torch.float64)
         K_xstarxK_inv = torch.matmul(K_xstarx, K_inv)
         KxstarxKinvY = torch.matmul(K_xstarxK_inv, self.train_y)
-        mu = KxstarxKinvY.view(self.num_genes, pred_t.shape[0])
+        mu = KxstarxKinvY.view(self.num_outputs, pred_t.shape[0])
         if compute_var:
             K_xstarxstar = self.covar_module.K_xstarxstar(pred_t, pred_t)  # (100, 500)
             var = K_xstarxstar - torch.matmul(K_xstarxK_inv, torch.transpose(K_xstarx, 0, 1))
-            var = torch.diagonal(var, dim1=0, dim2=1).view(self.num_genes, pred_t.shape[0])
+            var = torch.diagonal(var, dim1=0, dim2=1).view(self.num_outputs, pred_t.shape[0])
             return mu, var
         return mu
 
