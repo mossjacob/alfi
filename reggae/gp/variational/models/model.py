@@ -179,9 +179,15 @@ class VariationalLFM(LFM):
 
         return q_f
 
-    def log_likelihood(self, y, h):
+    def log_likelihood(self, y, h, data_index=None):
+        """
+        Parameters:
+            y: target
+            h: predicted
+            data_index: in case the likelihood terms rely on the data index, e.g. variance
+        """
         sq_diff = torch.square(y - h)
-        variance = self.likelihood_variance # add PUMA variance, 0th replicate
+        variance = self.likelihood_variance  # add PUMA variance
         log_lik = -0.5*torch.log(2*3.1415926*variance) - 0.5*sq_diff/variance
         log_lik = torch.sum(log_lik)
         return log_lik #* self.num_tfs * self.num_observed # TODO: check if we need this multiplier
@@ -218,5 +224,5 @@ class VariationalLFM(LFM):
         ##
         return KL
 
-    def elbo(self, y, h, kl_mult=1):
-        return self.log_likelihood(y, h), kl_mult * self.kl_divergence()
+    def elbo(self, y, h, kl_mult=1, data_index=None):
+        return self.log_likelihood(y, h, data_index=data_index), kl_mult * self.kl_divergence()

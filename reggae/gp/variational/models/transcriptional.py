@@ -44,6 +44,13 @@ class TranscriptionalRegulationLFM(VariationalLFM):
         """
         pass
 
+    def log_likelihood(self, y, h, data_index=0):
+        sq_diff = torch.square(y - h)
+        variance = self.likelihood_variance[data_index]  # add PUMA variance
+        log_lik = -0.5*torch.log(2*3.1415926*variance) - 0.5*sq_diff/variance
+        log_lik = torch.sum(log_lik)
+        return log_lik
+
 
 class SingleLinearLFM(TranscriptionalRegulationLFM):
 

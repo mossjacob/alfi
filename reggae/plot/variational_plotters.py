@@ -104,7 +104,6 @@ class Plotter:
         plotnum = 331
         for A, B, var, label in zip(data, barenco_data, vars, labels):
             plt.subplot(plotnum)
-            A = np.mean(A.reshape(self.num_outputs, self.num_replicates), axis=1)
             plotnum += 1
             plt.bar(np.arange(5) - 0.2, A, width=0.4, tick_label=self.output_names)
             plt.bar(np.arange(5) + 0.2, B, width=0.4, color='blue', align='center')

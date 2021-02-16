@@ -27,7 +27,7 @@ class Trainer:
         self.model = model
         self.t_observed = dataset.data[0][0].view(-1)
         self.batch_size = batch_size
-        self.data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+        self.data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
         self.losses = np.empty((0, 2))
         self.give_output = give_output
 
@@ -57,7 +57,7 @@ class Trainer:
                 if self.num_epochs <= 10:
                     mult = self.num_epochs/10
 
-                ll, kl = self.model.elbo(y, output, mult)
+                ll, kl = self.model.elbo(y, output, mult, data_index=i)
                 total_loss = -ll + kl
                 total_loss.backward()
                 self.optimizer.step()

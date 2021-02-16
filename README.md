@@ -38,4 +38,7 @@ The dataset required is the same as the above.
 
 Open `examples/nonlinear_multitf.ipynb` as a Jupyter notebook.
 
-- https://drive.google.com/drive/folders/12onIIO1_nt2pHb-HAMB7gEFjOYdrfR2c?usp=sharing
+- https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE100099
+  
+  - Download the file `GSE100099_RNASeqGEO.tsv.gz` 
+

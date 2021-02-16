@@ -27,11 +27,11 @@ class P53Data(LFMDataset):
         # f_df, f_observed = f_observed
         m_observed = torch.tensor(m_observed)
 
-        self.variance = np.array([f64(σ2_m_pre)[r, i] for i in range(num_genes) for r in range(num_replicates)])
+        self.variance = np.array([f64(σ2_m_pre)[r, i] for r in range(num_replicates) for i in range(num_genes)])
         # σ2_f_pre = f64(σ2_f_pre) #not used
         self.t = torch.linspace(f64(0), f64(1), 7).view(-1)
 
-        self.data = [(self.t, m_observed[r, i]) for i in range(num_genes) for r in range(num_replicates)]
+        self.data = [(self.t, m_observed[r, i]) for r in range(num_replicates) for i in range(num_genes)]
 
     def __getitem__(self, index):
         return self.data[index]
@@ -63,35 +63,40 @@ class HafnerData(LFMDataset):
                 'GLS2','TMEM229B','IKBIP','ERCC5','KIAA1217','DDIT4','DDB2','TP53INP1'
             ])
         np.random.shuffle(target_genes)
+        num_genes = len(target_genes)
         tfs = ['TP53']
-        with open(path.join(data_dir, 't0to24.tsv'), 'r', 1) as f:
+        with open(path.join(data_dir, 'GSE100099_RNASeqGEO.tsv'), 'r', 1) as f:
             contents = f.buffer
             df = pd.read_table(contents, sep='\t', index_col=0)
 
-        columns = ['MCF7, t='+str(t)+' h, IR 10Gy, rep1' for t in range(13)]
+        columns = ['MCF7, t=0 h, rep1']
+        columns.extend(['MCF7, t='+str(t)+' h, IR 10Gy, rep1' for t in range(1, 13)])
+        columns.append('MCF7, t=0 h, rep1')
+        columns.extend(['MCF7, t=' + str(t) + ' h, IR 10Gy, rep2' for t in range(1, 13)])
+        # This dataset only has two complete replicates
 
         self.genes_df = df[df.index.isin(target_genes)][columns]
         self.genes_df = self.genes_df.reindex(target_genes)
         self.tfs_df = df[df.index.isin(tfs)][columns]
 
         m = self.genes_df.values
-        genes_norm = 1/m.shape[0] * np.linalg.norm(m, axis=1, ord=None) # l2 norm
+        genes_norm = 1/m.shape[0] * np.linalg.norm(m, axis=1, ord=None)  # l2 norm
         self.genes = torch.tensor(m / np.sqrt(genes_norm.reshape(-1, 1)), dtype=torch.float32)
 
         f = self.tfs_df.values
-        tfs_norm = 1/f.shape[0] * np.linalg.norm(f, axis=1, ord=None) # l2 norm
+        tfs_norm = 1/f.shape[0] * np.linalg.norm(f, axis=1, ord=None)  # l2 norm
         self.tfs = f / np.sqrt(tfs_norm.reshape(-1, 1))
 
-        self.t = torch.linspace(0, 1, 13, dtype=torch.float32).view(-1, 1)
-        self.t = self.t.repeat([self.genes.shape[0], 1, 1])
-        self.data = list(zip(self.t, self.genes))
+        self.t = torch.linspace(0, 1, 13, dtype=torch.float32)
+        self.genes = self.genes.reshape(num_genes, 2, 13).transpose(0, 1)
+        self.data = [(self.t, self.genes[r, i]) for r in range(2) for i in range(num_genes)]
         self.gene_names = target_genes
 
     def __getitem__(self, index):
         return self.data[index]
 
     def __len__(self):
-        return self.genes.shape[0]
+        return len(self.data)
 
 
 class ArtificialData(LFMDataset):
