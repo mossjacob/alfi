@@ -9,8 +9,8 @@ from reggae.utilities import softplus, LFMDataset
 
 
 class TranscriptionalRegulationLFM(VariationalLFM):
-    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, extra_points=2, **kwargs):
-        super().__init__(num_outputs, num_latents, t_inducing, dataset, extra_points=extra_points, **kwargs)
+    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, **kwargs):
+        super().__init__(num_outputs, num_latents, t_inducing, dataset, **kwargs)
         self.decay_rate = Parameter(1 + torch.rand((self.num_outputs, 1), dtype=torch.float64))
         self.basal_rate = Parameter(torch.rand((self.num_outputs, 1), dtype=torch.float64))
         self.sensitivity = Parameter(1.5 + torch.rand((self.num_outputs, 1), dtype=torch.float64))
@@ -28,10 +28,7 @@ class TranscriptionalRegulationLFM(VariationalLFM):
         # Reparameterisation trick
         f = q_f.rsample([self.num_samples])  # (S, I, t)
 
-        f = self.G(f)
-        if self.extra_points > 0:
-            f = f[:, :, self.extra_points]  # get the midpoint
-            f = torch.unsqueeze(f, 2)
+        f = self.G(f)  # (S, num_outputs, t)
 
         return self.basal_rate + self.sensitivity * f - decay
 
@@ -87,7 +84,7 @@ class MultiLFM(TranscriptionalRegulationLFM):
 
 class PoissonLFM(TranscriptionalRegulationLFM):
     def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, fixed_variance=None):
-        super().__init__(num_outputs, num_latents, t_inducing, dataset, fixed_variance=fixed_variance, extra_points=0)
+        super().__init__(num_outputs, num_latents, t_inducing, dataset, fixed_variance=fixed_variance)
 
     """Adds poison to the latent forces"""
     def G(self, λ):
