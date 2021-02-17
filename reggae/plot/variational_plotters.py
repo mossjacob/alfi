@@ -22,7 +22,7 @@ class Plotter:
 
     def _plot_barenco(self, mean):
         barenco_f, _ = scaled_barenco_data(mean)
-        plt.scatter(np.linspace(0, 1, 7), barenco_f, marker='x', s=60, linewidth=2, label='Barenco et al.')
+        plt.scatter(np.linspace(0, 12, 7), barenco_f, marker='x', s=60, linewidth=2, label='Barenco et al.')
 
     def plot_outputs(self, t_predict, replicate=0, t_scatter=None, y_scatter=None, model_kwargs={}, ylim=None):
         """
@@ -40,6 +40,7 @@ class Plotter:
         plt.figure(figsize=(6, 4 * np.ceil(self.num_outputs / 3)))
         for i in range(self.num_outputs):
             plt.subplot(self.num_outputs, 3, i + 1)
+            plt.title(self.output_names[i])
             plt.plot(t_predict, mu[replicate, i].detach())
             plt.fill_between(t_predict, mu[replicate, i] + var[replicate, i], mu[replicate, i] - var[replicate, i], alpha=0.4)
 
@@ -89,15 +90,12 @@ class Plotter:
         B = np.squeeze(self.model.basal_rate.detach().numpy())
         S = np.squeeze(self.model.sensitivity.detach().numpy())
         D = np.squeeze(self.model.decay_rate.detach().numpy())
-        B_barenco = np.array([2.6, 1.5, 0.5, 0.2, 1.35])
-        B_barenco = (B_barenco / np.mean(B_barenco) * np.mean(B))[[0, 4, 2, 3, 1]]
-        S_barenco = (np.array([3, 0.8, 0.7, 1.8, 0.7]) / 1.8)[[0, 4, 2, 3, 1]]
-        S_barenco = (S_barenco / np.mean(S_barenco) * np.mean(S))[[0, 4, 2, 3, 1]]
-        D_barenco = (np.array([1.2, 1.6, 1.75, 3.2, 2.3]) * 0.8 / 3.2)[[0, 4, 2, 3, 1]]
-        D_barenco = (D_barenco / np.mean(D_barenco) * np.mean(D))[[0, 4, 2, 3, 1]]
 
+        B_exact = [0.736, 0.0089, 0.00379, 2.1e-7, 1.26]
+        D_exact = [0.333, 0.441, 0.392, 0.8, 0.416]
+        S_exact = [1.825, 0.329, 0.338, 1, 0.484]
         data = [B, S, D]
-        barenco_data = [B_barenco, S_barenco, D_barenco]
+        barenco_data = [B_exact, S_exact, D_exact]
         vars = [0, 0, 0]  # [ S_mcmc, D_mcmc]
         labels = ['Basal rates', 'Sensitivities', 'Decay rates']
 

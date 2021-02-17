@@ -36,13 +36,14 @@ class Trainer:
         end_epoch = self.num_epochs+epochs
         plt.figure(figsize=(4, 2.3))
         for epoch in range(epochs):
+            epoch_loss = 0
             for i, data in enumerate(self.data_loader):
+                self.optimizer.zero_grad()
                 t, y = data
                 t = t.cuda() if is_cuda() else t
                 y = y.cuda() if is_cuda() else y
                 # Assume that the batch of t s are the same
                 t, y = t[0].view(-1), y
-                self.optimizer.zero_grad()
 
                 # with ef.scan():
                 initial_value = torch.zeros((self.batch_size, 1), dtype=torch.float64)
@@ -59,17 +60,19 @@ class Trainer:
 
                 ll, kl = self.model.elbo(y, output, mult, data_index=i)
                 total_loss = -ll + kl
+
                 total_loss.backward()
                 self.optimizer.step()
+                epoch_loss += total_loss.item()
 
-                if (epoch % report_interval) == 0:
-                    print('Epoch %d/%d - Loss: %.2f (%.2f %.2f) λ: %.3f' % (
-                        self.num_epochs + 1, end_epoch,
-                        total_loss.item(),
-                        -ll.item(), kl.item(),
-                        self.model.lengthscale[0].item(),
-                    ), end='')
-                    self.print_extra()
+            if (epoch % report_interval) == 0:
+                print('Epoch %d/%d - Loss: %.2f (%.2f %.2f) λ: %.3f' % (
+                    self.num_epochs + 1, end_epoch,
+                    epoch_loss,
+                    -ll.item(), kl.item(),
+                    self.model.lengthscale[0].item(),
+                ), end='')
+                self.print_extra()
 
             losses.append((-ll.item(), kl.item()))
             self.after_epoch()
@@ -81,7 +84,6 @@ class Trainer:
 
         losses = np.array(losses)
         self.losses = np.concatenate([self.losses, losses], axis=0)
-
 
         return output
 
@@ -124,13 +126,14 @@ class TranscriptionalTrainer(Trainer):
         self.cholS.append(self.model.q_cholS.detach().clone())
         self.mus.append(self.model.q_m.detach().clone())
         with torch.no_grad():
-            # self.model.raw_lengthscale.clamp_(-2.5, inv_softplus(torch.tensor(1., dtype=torch.float64))) # TODO is this needed?
+            # self.model.raw_lengthscale.clamp_(inv_softplus(torch.tensor(0., dtype=torch.float64)),
+            #                                   inv_softplus(torch.tensor(2.1, dtype=torch.float64))) # TODO is this needed?
             # TODO can we replace these with parameter transforms like we did with lengthscale
-            self.model.sensitivity.clamp_(0.4, 8)
-            self.model.basal_rate.clamp_(0, 8)
-            self.model.decay_rate.clamp_(0, 8)
+            self.model.sensitivity.clamp_(0.2, 2)
+            self.model.basal_rate.clamp_(0, 1.3)
+            self.model.decay_rate.clamp_(0, 1)
             self.model.sensitivity[3] = np.float64(1.)
             self.model.decay_rate[3] = np.float64(0.8)
-            self.model.inducing_inputs.clamp_(0, 1)
+            # self.model.inducing_inputs.clamp_(0, 1)
             self.model.q_m[0, 0] = 0.
 

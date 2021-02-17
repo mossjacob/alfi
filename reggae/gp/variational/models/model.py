@@ -35,7 +35,7 @@ class VariationalLFM(LFM):
         self.inducing_inputs = Parameter(torch.tensor(t_inducing), requires_grad=learn_inducing)
         self.num_samples = num_samples
         self.dtype = dtype
-        self.raw_lengthscale = Parameter(inv_softplus(0.2 * torch.ones((num_latents), dtype=dtype)))
+        self.raw_lengthscale = Parameter(inv_softplus(1.5 * torch.ones((num_latents), dtype=dtype)))
         self.raw_scale = Parameter(inv_softplus(torch.ones((num_latents), dtype=dtype)), requires_grad=kernel_scale)
 
         q_m = torch.rand((self.num_latents, self.num_inducing, 1), dtype=dtype)
@@ -162,7 +162,7 @@ class VariationalLFM(LFM):
         α = torch.cholesky_solve(Ksm.permute([0, 2, 1]), self.L, upper=False).permute([0, 2, 1])  # (I, T*, Tu)
         m_s = torch.matmul(α, self.q_m)  # (I, T*, 1)
         m_s = torch.squeeze(m_s, 2)
-        Kss = self.rbf(t)  # (I, T*, T*)
+        Kss = self.rbf(t)  # (I, T*, T*) this is always scale=1
         S_Kmm = self.S - self.Kmm  # (I, Tu, Tu)
         AS_KA = torch.matmul(torch.matmul(α, S_Kmm), torch.transpose(α, 1, 2))  # (I, T*, T*)
         S_s = (Kss + AS_KA)  # (I, T*, T*)
