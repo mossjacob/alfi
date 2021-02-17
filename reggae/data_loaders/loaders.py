@@ -110,8 +110,7 @@ def load_barenco_puma(dir_path):
     tfs = tfs_df.values
 
     tf_var = genes_se.iloc[-1:].values**2
-    gene_var = genes_se.iloc[:-1].values
-    gene_var = gene_var*gene_var
+    gene_var = genes_se.iloc[:-1].values**2
 
     tfs_full = np.exp(tfs + tf_var/2)
     genes_full = np.exp(genes+gene_var/2)

@@ -11,9 +11,9 @@ from reggae.utilities import softplus, LFMDataset
 class TranscriptionalRegulationLFM(VariationalLFM):
     def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, **kwargs):
         super().__init__(num_outputs, num_latents, t_inducing, dataset, **kwargs)
-        self.decay_rate = Parameter(1 + torch.rand((self.num_outputs, 1), dtype=torch.float64))
+        self.decay_rate = Parameter(0.1 + torch.rand((self.num_outputs, 1), dtype=torch.float64))
         self.basal_rate = Parameter(torch.rand((self.num_outputs, 1), dtype=torch.float64))
-        self.sensitivity = Parameter(1.5 + torch.rand((self.num_outputs, 1), dtype=torch.float64))
+        self.sensitivity = Parameter(0.2 + torch.rand((self.num_outputs, 1), dtype=torch.float64))
 
     def odefunc(self, t, h):
         """h is of shape (num_samples, num_outputs, 1)"""
