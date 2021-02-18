@@ -4,6 +4,7 @@ from .neural import ConvLFM
 
 
 __all__ = [
+    'VariationalLFM',
     'SingleLinearLFM',
     'ExponentialLFM',
     'MultiLFM',

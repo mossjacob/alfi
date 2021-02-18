@@ -1,4 +1,5 @@
 from torch.nn import Module
+from .options import Options
 
 
 class LFM(Module):
@@ -6,5 +7,6 @@ class LFM(Module):
 
 
 __all__ = [
-    'LFM'
+    'LFM',
+    'Options',
 ]

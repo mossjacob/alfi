@@ -2,7 +2,7 @@ import torch
 
 from reggae.utilities import is_cuda
 from reggae.data_loaders import LFMDataset
-from reggae.gp.variational import VariationalLFM
+import reggae.gp.variational.models as models
 from torch.utils.data.dataloader import DataLoader
 
 import numpy as np
@@ -32,7 +32,7 @@ class Trainer:
         self.losses = np.empty((0, 2))
         self.give_output = give_output
 
-    def train(self, epochs=20, report_interval=1, plot_interval=20, rtol=1e-5, atol=1e-6, num_samples=5):
+    def train(self, epochs=20, report_interval=1, plot_interval=20, rtol=1e-5, atol=1e-6):
         losses = list()
         end_epoch = self.num_epochs+epochs
         plt.figure(figsize=(4, 2.3))
@@ -101,7 +101,7 @@ class TranscriptionalTrainer(Trainer):
     Parameters:
         batch_size: in the case of the transcriptional regulation model, we train the entire gene set as a batch
     """
-    def __init__(self, model: VariationalLFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=None):
+    def __init__(self, model: models.VariationalLFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=None):
         if batch_size is None:
             batch_size = model.num_outputs
         super(TranscriptionalTrainer, self).__init__(model, optimizer, dataset, batch_size=batch_size)

@@ -3,7 +3,7 @@ import numpy as np
 import torch
 
 from reggae.data_loaders import scaled_barenco_data
-from reggae.gp.variational import VariationalLFM
+from reggae.gp.variational.models import VariationalLFM
 
 plt.style.use('ggplot')
 

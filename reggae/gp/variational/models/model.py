@@ -8,7 +8,7 @@ from torch.distributions.normal import Normal
 
 from reggae.utilities import softplus, inv_softplus
 from reggae.data_loaders import LFMDataset
-
+from reggae.gp.variational.options import VariationalOptions
 from reggae.gp import LFM
 
 
@@ -24,20 +24,18 @@ class VariationalLFM(LFM):
     num_latents : int : the number of latent functions (for example, the number of TFs)
     fixed_variance : tensor : variance if the preprocessing variance is known, otherwise learnt.
     t_inducing : tensor of shape (T_u) : the inducing timepoints.
-    t_observed: tensor of shape (T) : the observed timepoints, i.e., the timepoints that the ODE solver should output
     """
-    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, fixed_variance=None,
-                 dtype=torch.float64, learn_inducing=False, num_samples=10, kernel_scale=False):
+    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, options: VariationalOptions, dtype=torch.float64):
         super(VariationalLFM, self).__init__()
         self.num_outputs = num_outputs
         self.num_latents = num_latents
         self.num_inducing = t_inducing.shape[0]
         self.num_observed = dataset[0][0].shape[0]
-        self.inducing_inputs = Parameter(torch.tensor(t_inducing), requires_grad=learn_inducing)
-        self.num_samples = num_samples
+        self.inducing_inputs = Parameter(torch.tensor(t_inducing), requires_grad=options.learn_inducing)
+        self.num_samples = options.num_samples
         self.dtype = dtype
         self.raw_lengthscale = Parameter(inv_softplus(1.5 * torch.ones((num_latents), dtype=dtype)))
-        self.raw_scale = Parameter(inv_softplus(torch.ones((num_latents), dtype=dtype)), requires_grad=kernel_scale)
+        self.raw_scale = Parameter(inv_softplus(torch.ones((num_latents), dtype=dtype)), requires_grad=options.kernel_scale)
 
         q_m = torch.rand((self.num_latents, self.num_inducing, 1), dtype=dtype)
         q_S = self.rbf(self.inducing_inputs)
@@ -45,8 +43,8 @@ class VariationalLFM(LFM):
         self.q_m = Parameter(q_m)
         self.q_cholS = Parameter(q_cholS)
 
-        if fixed_variance is not None:
-            self.likelihood_variance = Parameter(torch.tensor(fixed_variance), requires_grad=False)
+        if options.preprocessing_variance is not None:
+            self.likelihood_variance = Parameter(torch.tensor(options.preprocessing_variance), requires_grad=False)
         else:
             self.raw_likelihood_variance = Parameter(torch.ones((self.num_outputs, self.num_observed), dtype=dtype))
         self.nfe = 0

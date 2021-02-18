@@ -4,14 +4,14 @@ import torch
 from torch.nn.parameter import Parameter
 from torch.distributions.normal import Normal
 
-from .model import VariationalLFM
+from .model import VariationalLFM, VariationalOptions
 from reggae.utilities import softplus
 from reggae.data_loaders import LFMDataset
 
 
 class TranscriptionalRegulationLFM(VariationalLFM):
-    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, **kwargs):
-        super().__init__(num_outputs, num_latents, t_inducing, dataset, **kwargs)
+    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, options: VariationalOptions, **kwargs):
+        super().__init__(num_outputs, num_latents, t_inducing, dataset, options, **kwargs)
         self.decay_rate = Parameter(0.1 + torch.rand((self.num_outputs, 1), dtype=torch.float64))
         self.basal_rate = Parameter(torch.rand((self.num_outputs, 1), dtype=torch.float64))
         self.sensitivity = Parameter(0.2 + torch.rand((self.num_outputs, 1), dtype=torch.float64))

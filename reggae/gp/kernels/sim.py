@@ -73,8 +73,6 @@ class SIMKernel(gpytorch.kernels.Kernel):
         )
 
         # register the constraints
-        # self.decay_constraint = Interval(0.1, 1.5)
-        # self.sensitivity_constraint = Interval(0.1, 4)
         self.register_constraint("raw_lengthscale", self.lengthscale_constraint)
         self.register_constraint("raw_decay", self.pos_contraint)
         self.register_constraint("raw_sensitivity", self.pos_contraint)
@@ -141,15 +139,10 @@ class SIMKernel(gpytorch.kernels.Kernel):
                 K_xx[j * self.block_size:(j + 1) * self.block_size,
                 k * self.block_size:(k + 1) * self.block_size] = kxx
 
-        # white = tf.linalg.diag(broadcast_tile(tf.reshape(self.noise_term, (1, -1)), 1, self.block_size)[0])
         noise = self.noise.view(-1, 1).repeat(1, self.block_size).view(-1)
         noise = torch.diag(noise)
 
-        # jitter = 1e-1 * torch.eye(self.block_size).repeat(self.num_genes, self.num_genes)
         jitter = 1e-1 * torch.eye(K_xx.shape[0])
-        # plt.figure()
-        # plt.imshow((self.variance+noise+jitter).detach())
-        # plt.figure()
         return K_xx + jitter + self.variance + noise
 
     def k_xx(self, j, k, t1_block, t2_block):
