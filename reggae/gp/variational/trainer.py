@@ -1,6 +1,7 @@
 import torch
 
-from reggae.utilities import inv_softplus, LFMDataset, is_cuda
+from reggae.utilities import is_cuda
+from reggae.data_loaders import LFMDataset
 from reggae.gp.variational import VariationalLFM
 from torch.utils.data.dataloader import DataLoader
 

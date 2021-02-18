@@ -5,7 +5,8 @@ from torch.nn.parameter import Parameter
 from torch.distributions.normal import Normal
 
 from .model import VariationalLFM
-from reggae.utilities import softplus, LFMDataset
+from reggae.utilities import softplus
+from reggae.data_loaders import LFMDataset
 
 
 class TranscriptionalRegulationLFM(VariationalLFM):

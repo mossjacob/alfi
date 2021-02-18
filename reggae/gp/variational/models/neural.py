@@ -2,7 +2,7 @@ import torch
 from torch import nn
 
 from .model import VariationalLFM
-from reggae.utilities import LFMDataset
+from reggae.data_loaders import LFMDataset
 
 
 class MLPLFM(VariationalLFM):

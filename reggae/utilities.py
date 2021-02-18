@@ -1,22 +1,6 @@
 import torch
-from torch.utils.data import Dataset
-from torch.utils.data.dataset import T_co
-import abc
 
 CUDA_AVAILABLE = False
-
-class LFMDataset(Dataset):
-    @abc.abstractmethod
-    def __getitem__(self, index) -> T_co:
-        pass
-
-    @property
-    def data(self):
-        return self._data
-
-    @data.setter
-    def data(self, value):
-        self._data = value
 
 
 def is_cuda():

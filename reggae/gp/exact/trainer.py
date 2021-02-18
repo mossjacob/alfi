@@ -11,7 +11,7 @@ class Trainer:
         self.optimizer = optimizer
         self.mll = gpytorch.mlls.ExactMarginalLogLikelihood(self.model.likelihood, self.model)
 
-    def train(self, t, y, epochs=100, report_interval=10):
+    def train(self, epochs=100, report_interval=10):
         self.model.train()
         self.model.likelihood.train()
 
@@ -19,12 +19,12 @@ class Trainer:
             # Zero gradients from previous iteration
             self.optimizer.zero_grad()
             # Output from model
-            output = self.model(t)
+            output = self.model(self.model.train_t)
             # print(output.mean.shape)
             # plt.imshow(output.covariance_matrix.detach())
             # plt.colorbar()
             # Calc loss and backprop gradients
-            loss = -self.mll(output, y)
+            loss = -self.mll(output, self.model.train_y.squeeze())
             loss.backward()
             if (epoch % report_interval) == 0:
                 print('Iter %d/%d - Loss: %.3f   lengthscale: %.3f   noise: %.3f' % (
@@ -40,7 +40,6 @@ class Trainer:
                 deca[3] = np.float64(0.8)
                 self.model.sensitivity = sens
                 self.model.decay_rate = deca
-                # print(sens, self.model.sensitivity[3], deca, self.model.decay_rate[3])
 
         # Get into evaluation (predictive posterior) mode and predict
         self.model.eval()

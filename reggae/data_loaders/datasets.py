@@ -7,7 +7,7 @@ from scipy.io import loadmat
 
 from reggae.data_loaders import load_barenco_puma
 from reggae.data_loaders.artificial import get_artificial_dataset
-from reggae.utilities import LFMDataset
+from reggae.data_loaders import LFMDataset
 
 from tqdm import tqdm
 from os import path
@@ -26,7 +26,7 @@ class P53Data(LFMDataset):
         num_replicates = m_observed.shape[0]
         # f_df, f_observed = f_observed
         m_observed = torch.tensor(m_observed)
-        self.t = torch.linspace(f64(0), f64(12), 7).view(-1)
+        self.t = torch.linspace(f64(0), f64(12), 7)
 
         if replicate is None:
             self.variance = np.array([f64(σ2_m_pre)[r, i] for r in range(num_replicates) for i in range(num_genes)])
@@ -48,7 +48,7 @@ class HafnerData(LFMDataset):
     MCF7 cells gamma-irradiated over 24 hours
     p53 is typically the protein of interest
     """
-    def __init__(self, data_dir, extra_targets=True):
+    def __init__(self, replicate=None, data_dir='../data/', extra_targets=True):
         target_genes = [
             'KAZN','PMAIP1','PRKAB1','CSNK1G1','E2F7','SLC30A1',
             'PTP4A1','RAP2B','SUSD6','UBR5-AS1','RNF19B','AEN','ZNF79','XPC',
@@ -89,9 +89,13 @@ class HafnerData(LFMDataset):
         tfs_norm = 1/f.shape[0] * np.linalg.norm(f, axis=1, ord=None)  # l2 norm
         self.tfs = f / np.sqrt(tfs_norm.reshape(-1, 1))
 
-        self.t = torch.linspace(0, 1, 13, dtype=torch.float32)
+        self.t = torch.linspace(0, 12, 13, dtype=torch.float32)
         self.genes = self.genes.reshape(num_genes, 2, 13).transpose(0, 1)
-        self.data = [(self.t, self.genes[r, i]) for r in range(2) for i in range(num_genes)]
+        if replicate is None:
+            self.data = [(self.t, self.genes[r, i]) for r in range(2) for i in range(num_genes)]
+        else:
+            self.data = [(self.t, self.genes[replicate, i]) for i in range(num_genes)]
+
         self.gene_names = target_genes
 
     def __getitem__(self, index):

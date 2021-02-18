@@ -3,16 +3,18 @@ import gpytorch
 
 from reggae.gp.kernels import SIMKernel, SIMMean
 from reggae.gp import LFM
+from reggae.data_loaders.utilities import flatten_dataset
 
 
 class AnalyticalLFM(LFM, gpytorch.models.ExactGP):
-    def __init__(self, train_t, train_y, num_genes, variance):
+    def __init__(self, num_genes, dataset, variance):
+        train_t, train_y = flatten_dataset(dataset, num_genes)
         super().__init__(train_t, train_y, likelihood=gpytorch.likelihoods.GaussianLikelihood())
         self.num_outputs = num_genes
         self.block_size = int(train_t.shape[0] / self.num_outputs)
         self.train_t = train_t.view(-1, 1)
         self.train_y = train_y.view(-1, 1)
-        self.covar_module = SIMKernel(num_genes, variance)
+        self.covar_module = SIMKernel(num_genes, torch.tensor(variance, requires_grad=False))
         initial_basal = torch.mean(train_y.view(5, 7), dim=1) * self.covar_module.decay
         self.mean_module = SIMMean(self.covar_module, num_genes, initial_basal)
 

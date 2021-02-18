@@ -6,7 +6,8 @@ from torch.nn.parameter import Parameter
 from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.normal import Normal
 
-from reggae.utilities import softplus, inv_softplus, cholesky_inverse, LFMDataset
+from reggae.utilities import softplus, inv_softplus
+from reggae.data_loaders import LFMDataset
 
 from reggae.gp import LFM
 

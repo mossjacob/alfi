@@ -69,10 +69,7 @@ class SIMKernel(gpytorch.kernels.Kernel):
                 self.pos_contraint.inverse_transform(1 * torch.ones(self.num_genes)))
         )
         self.register_parameter(
-            name='raw_scale', parameter=torch.nn.Parameter(0.5 * torch.ones(1, 1))
-        )
-        self.register_parameter(
-            name='raw_noise', parameter=torch.nn.Parameter(8 * torch.ones(self.num_genes))
+            name='raw_noise', parameter=torch.nn.Parameter(4 * torch.ones(self.num_genes))
         )
 
         # register the constraints
@@ -81,7 +78,6 @@ class SIMKernel(gpytorch.kernels.Kernel):
         self.register_constraint("raw_lengthscale", self.lengthscale_constraint)
         self.register_constraint("raw_decay", self.pos_contraint)
         self.register_constraint("raw_sensitivity", self.pos_contraint)
-        self.register_constraint("raw_scale", self.pos_contraint)
         self.register_constraint("raw_noise", self.pos_contraint)
 
         self.variance = torch.diag(variance)
@@ -93,14 +89,6 @@ class SIMKernel(gpytorch.kernels.Kernel):
     @lengthscale.setter
     def lengthscale(self, value):
         self.initialize(raw_lengthscale=self.lengthscale_constraint.inverse_transform(value))
-
-    @property
-    def scale(self):
-        return self.pos_contraint.transform(self.raw_scale)
-
-    @scale.setter
-    def scale(self, value):
-        self.initialize(raw_scale=self.pos_contraint.inverse_transform(value))
 
     @property
     def decay(self):
@@ -175,8 +163,7 @@ class SIMKernel(gpytorch.kernels.Kernel):
         t1_block = t1_block.view(1, -1)
         t2_block = t2_block.view(-1, 1)
         mult = self.sensitivity[j] * self.sensitivity[k] * self.lengthscale * 0.5 * torch.sqrt(PI)
-        k_xx = self.scale ** 2 * mult * (
-                     self.h(k, j, t2_block, t1_block) + self.h(j, k, t1_block, t2_block))
+        k_xx = mult * (self.h(k, j, t2_block, t1_block) + self.h(j, k, t1_block, t2_block))
         return k_xx
 
     def h(self, k, j, t2, t1):
@@ -242,7 +229,7 @@ class SIMKernel(gpytorch.kernels.Kernel):
         x2 = x2.view(-1)
         sq_dist = torch.square(x1.view(-1, 1)-x2)
         sq_dist = torch.div(sq_dist, 2*self.lengthscale.view((-1, 1)))
-        K = self.scale.view(-1, 1) * torch.exp(-sq_dist)
+        K = torch.exp(-sq_dist)
         if add_jitter:
             jitter = 1e-5 * torch.eye(x1.shape[0])
             K += jitter
