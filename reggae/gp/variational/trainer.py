@@ -1,12 +1,11 @@
 import torch
+import numpy as np
+from matplotlib import pyplot as plt
 
 from reggae.utilities import is_cuda
 from reggae.data_loaders import LFMDataset
 import reggae.gp.variational.models as models
 from torch.utils.data.dataloader import DataLoader
-
-import numpy as np
-from matplotlib import pyplot as plt
 
 
 class Trainer:
@@ -21,7 +20,7 @@ class Trainer:
     inducing timepoints.
     give_output: whether the trainer should give the first output (y_0) as initial value to the model `forward()`
     """
-    def __init__(self, model, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=1, give_output=False):
+    def __init__(self, model: models.VariationalLFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=1, give_output=False):
         self.num_epochs = 0
         self.kl_mult = 0
         self.optimizer = optimizer
@@ -71,7 +70,7 @@ class Trainer:
                     self.num_epochs + 1, end_epoch,
                     epoch_loss,
                     -ll.item(), kl.item(),
-                    self.model.lengthscale[0].item(),
+                    self.model.kernel.lengthscale[0].item(),
                 ), end='')
                 self.print_extra()
 
@@ -123,18 +122,23 @@ class TranscriptionalTrainer(Trainer):
         self.basalrates.append(self.model.basal_rate.detach().clone().numpy())
         self.decayrates.append(self.model.decay_rate.detach().clone().numpy())
         self.sensitivities.append(self.model.sensitivity.detach().clone().numpy())
-        self.lengthscales.append(self.model.lengthscale.detach().clone().numpy())
+        self.lengthscales.append(self.model.kernel.lengthscale.detach().clone().numpy())
         self.cholS.append(self.model.q_cholS.detach().clone())
         self.mus.append(self.model.q_m.detach().clone())
         with torch.no_grad():
-            # self.model.raw_lengthscale.clamp_(inv_softplus(torch.tensor(0., dtype=torch.float64)),
-            #                                   inv_softplus(torch.tensor(2.1, dtype=torch.float64))) # TODO is this needed?
             # TODO can we replace these with parameter transforms like we did with lengthscale
-            self.model.sensitivity.clamp_(0.2, 2)
-            self.model.basal_rate.clamp_(0, 1.3)
-            self.model.decay_rate.clamp_(0, 1)
-            self.model.sensitivity[3] = np.float64(1.)
-            self.model.decay_rate[3] = np.float64(0.8)
+            self.model.sensitivity.clamp_(0, 20)
+            self.model.basal_rate.clamp_(0, 20)
+            self.model.decay_rate.clamp_(0, 20)
+            self.extra_constraints()
             # self.model.inducing_inputs.clamp_(0, 1)
             self.model.q_m[0, 0] = 0.
 
+    def extra_constraints(self):
+        pass
+
+
+class P53ConstrainedTrainer(TranscriptionalTrainer):
+    def extra_constraints(self):
+        self.model.sensitivity[3] = np.float64(1.)
+        self.model.decay_rate[3] = np.float64(0.8)

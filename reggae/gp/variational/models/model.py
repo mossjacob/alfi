@@ -10,6 +10,7 @@ from reggae.utilities import softplus, inv_softplus
 from reggae.data_loaders import LFMDataset
 from reggae.gp.variational.options import VariationalOptions
 from reggae.gp import LFM
+from reggae.gp.kernels import RBF
 
 
 class VariationalLFM(LFM):
@@ -35,11 +36,10 @@ class VariationalLFM(LFM):
         self.inducing_inputs = Parameter(torch.tensor(t_inducing), requires_grad=options.learn_inducing)
         self.num_samples = options.num_samples
         self.dtype = dtype
-        self.raw_lengthscale = Parameter(inv_softplus(1.5 * torch.ones((num_latents), dtype=dtype)))
-        self.raw_scale = Parameter(inv_softplus(torch.ones((num_latents), dtype=dtype)), requires_grad=options.kernel_scale)
+        self.kernel = RBF(num_outputs=num_latents, scale=options.kernel_scale, dtype=dtype)
 
         q_m = torch.rand((self.num_latents, self.num_inducing, 1), dtype=dtype)
-        q_S = self.rbf(self.inducing_inputs)
+        q_S = self.kernel(self.inducing_inputs)
         q_cholS = torch.cholesky(q_S)
         self.q_m = Parameter(q_m)
         self.q_cholS = Parameter(q_cholS)
@@ -54,53 +54,12 @@ class VariationalLFM(LFM):
         self.nfe = 0
 
     @property
-    def lengthscale(self):
-        return softplus(self.raw_lengthscale)
-
-    @lengthscale.setter
-    def lengthscale(self, value):
-        self.raw_lengthscale = inv_softplus(value)
-
-    @property
-    def scale(self):
-        return softplus(self.raw_scale)
-
-    @scale.setter
-    def scale(self, value):
-        self.raw_scale = inv_softplus(value)
-
-    @property
     def likelihood_variance(self):
         return softplus(self.raw_likelihood_variance)
 
     @likelihood_variance.setter
     def likelihood_variance(self, value):
         self.raw_likelihood_variance = inv_softplus(value)
-
-    def rbf(self, x: torch.Tensor, x2: torch.Tensor=None):
-        """
-        TODO: move this to another file
-        Radial basis function kernel.
-        Parameters:
-            x: tensor
-            x2: if None, then x2 becomes x
-        Returns:
-             K of shape (I, |x|, |x2|)
-        """
-        add_jitter = x2 is None
-        if x2 is None:
-            x2 = x
-        x = x.view(-1)
-        x2 = x2.view(-1)
-        sq_dist = torch.square(x.view(-1, 1)-x2)
-        sq_dist = sq_dist.repeat(self.num_latents, 1, 1)
-        sq_dist = torch.div(sq_dist, 2*self.lengthscale.view((-1, 1, 1)))
-        K = self.scale.view(-1, 1, 1) * torch.exp(-sq_dist)
-        if add_jitter:
-            jitter = 1e-4 * torch.eye(x.shape[0], dtype=K.dtype, device=K.device)
-            K += jitter
-
-        return K
 
     def initial_state(self, h):
         if self.options.initial_conditions:
@@ -121,7 +80,7 @@ class VariationalLFM(LFM):
         self.nfe = 0
 
         # Precompute variables
-        self.Kmm = self.rbf(self.inducing_inputs)
+        self.Kmm = self.kernel(self.inducing_inputs)
         self.L = torch.cholesky(self.Kmm)
         q_cholS = torch.tril(self.q_cholS)
         self.S = torch.matmul(q_cholS, torch.transpose(q_cholS, 1, 2))
@@ -163,11 +122,11 @@ class VariationalLFM(LFM):
         Parameters:
             t: shape (T*,)
         """
-        Ksm = self.rbf(t, self.inducing_inputs)  # (I, T*, Tu)
+        Ksm = self.kernel(t, self.inducing_inputs)  # (I, T*, Tu)
         α = torch.cholesky_solve(Ksm.permute([0, 2, 1]), self.L, upper=False).permute([0, 2, 1])  # (I, T*, Tu)
         m_s = torch.matmul(α, self.q_m)  # (I, T*, 1)
         m_s = torch.squeeze(m_s, 2)
-        Kss = self.rbf(t)  # (I, T*, T*) this is always scale=1
+        Kss = self.kernel(t)  # (I, T*, T*) this is always scale=1
         S_Kmm = self.S - self.Kmm  # (I, Tu, Tu)
         AS_KA = torch.matmul(torch.matmul(α, S_Kmm), torch.transpose(α, 1, 2))  # (I, T*, T*)
         S_s = (Kss + AS_KA)  # (I, T*, T*)
