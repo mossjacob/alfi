@@ -72,8 +72,8 @@ class ExponentialLFM(TranscriptionalRegulationLFM):
 
 
 class MultiLFM(TranscriptionalRegulationLFM):
-    def __init__(self, num_outputs, num_latents, t_inducing, t_observed, fixed_variance=None):
-        super().__init__(num_outputs, num_latents, t_inducing, t_observed, fixed_variance=fixed_variance)
+    def __init__(self, num_outputs, num_latents, t_inducing, options):
+        super().__init__(num_outputs, num_latents, t_inducing, options)
         self.w = Parameter(torch.ones((self.num_outputs, self.num_latents), dtype=torch.float64))
         self.w_0 = Parameter(torch.ones((self.num_outputs, 1), dtype=torch.float64))
 

@@ -29,6 +29,7 @@ class VariationalLFM(LFM):
         super(VariationalLFM, self).__init__()
         self.num_outputs = num_outputs
         self.num_latents = num_latents
+        self.options = options
         self.num_inducing = t_inducing.shape[0]
         self.num_observed = dataset[0][0].shape[0]
         self.inducing_inputs = Parameter(torch.tensor(t_inducing), requires_grad=options.learn_inducing)
@@ -47,6 +48,9 @@ class VariationalLFM(LFM):
             self.likelihood_variance = Parameter(torch.tensor(options.preprocessing_variance), requires_grad=False)
         else:
             self.raw_likelihood_variance = Parameter(torch.ones((self.num_outputs, self.num_observed), dtype=dtype))
+
+        if options.initial_conditions:
+            self.initial_conditions = Parameter(torch.tensor(torch.zeros(self.num_outputs, 1)), requires_grad=True)
         self.nfe = 0
 
     @property
@@ -99,6 +103,8 @@ class VariationalLFM(LFM):
         return K
 
     def initial_state(self, h):
+        if self.options.initial_conditions:
+            h = self.initial_conditions.repeat(h.shape[0], 1, 1)
         return h
 
     def forward(self, t, h, rtol=1e-4, atol=1e-6, compute_var=False):
