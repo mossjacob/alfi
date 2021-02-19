@@ -15,7 +15,7 @@ from reggae.mcmc.results import SampleResults
 class PlotOptions:
     num_plot_genes: int = 20
     num_plot_tfs:   int = 20
-    gene_names:     list = None
+    gene_names:     np.array = None
     tf_names:       list = None
     num_kinetic_avg:int = 50
     num_hpd:        int = 100
@@ -55,7 +55,7 @@ class Plotter():
         if k_latest.shape[1] < 4:
             plot_labels = plot_labels[1:]
 
-        hpds = self.plot_bar_hpd(k, k_latest, self.opt.gene_names, true_var=true_k, width=0.2, 
+        hpds = self.plot_bar_hpd(k, k_latest, self.opt.gene_names, true_var=true_k, width=0.2,
                                  rotation=60, true_hpds=true_hpds)
         plt.tight_layout(h_pad=2.0)
 
@@ -71,7 +71,7 @@ class Plotter():
         num = var.shape[0]
         plotnum = var.shape[1]*100 + 21
         for i in range(num):
-            hpds.append(arviz.hpd(var_samples[-self.opt.num_hpd:, i,:], credible_interval=0.95))
+            hpds.append(arviz.hdi(var_samples[-self.opt.num_hpd:, i,:], 0.95))
         hpds = np.array(hpds)
         hpds = abs(hpds - np.expand_dims(var, 2))
         for k in range(var_samples.shape[2]):
@@ -139,8 +139,10 @@ class Plotter():
                 plt.plot(self.τ, samples[-s,j,:], color=color, alpha=0.5, **kwargs)
             if j % subplot_shape[1] == 0:
                 plt.ylabel(self.opt.ylabel)
+
+
             # HPD:
-            bounds = arviz.hpd(samples[-self.opt.num_hpd:,j,:], credible_interval=0.95)
+            bounds = arviz.hdi(samples[-self.opt.num_hpd:,j,:], 0.95)
             plt.fill_between(self.τ, bounds[:, 0], bounds[:, 1], color='grey', alpha=0.3, label='95% credibility interval')
 
             plt.xticks(self.t)
@@ -165,7 +167,7 @@ class Plotter():
         plt.figure(figsize=(width*width_mul, height*height_mul))
         if not self.opt.for_report:
             plt.suptitle('Genes')
-        names = self.opt.gene_names[[indices]] if indices is not None else self.opt.gene_names
+        names = self.opt.gene_names[indices] if indices is not None else self.opt.gene_names
         self.plot_samples(m_preds, names, self.opt.num_plot_genes, 
                           scatters=scatters, legend=not self.opt.for_report)
 

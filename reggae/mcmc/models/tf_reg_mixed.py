@@ -64,7 +64,7 @@ class TranscriptionMixedSampler:
         # White noise for genes
         if not options.preprocessing_variance:
             def m_sq_diff_fn(all_states):
-                fbar, k_fbar, kbar, wbar, w_0bar, σ2_m, Δ = self.likelihood.get_parameters_from_state(all_states, self.state_indices)
+                fbar, kbar, k_fbar, wbar, w_0bar, σ2_m, Δ = self.likelihood.get_parameters_from_state(all_states, self.state_indices)
                 m_pred = self.likelihood.predict_m(kbar, k_fbar, wbar, fbar, w_0bar, Δ)
                 sq_diff = tfm.square(self.data.m_obs - tf.transpose(tf.gather(tf.transpose(m_pred),self.data.common_indices)))
                 return tf.reduce_sum(sq_diff, axis=0)

@@ -87,7 +87,8 @@ class HafnerData(LFMDataset):
 
         f = self.tfs_df.values
         tfs_norm = 1/f.shape[0] * np.linalg.norm(f, axis=1, ord=None)  # l2 norm
-        self.tfs = f / np.sqrt(tfs_norm.reshape(-1, 1))
+        self.tfs = (f / np.sqrt(tfs_norm.reshape(-1, 1)))
+        self.tfs = self.tfs.reshape((1, 2, 13)).swapaxes(0,1)
 
         self.t = torch.linspace(0, 12, 13, dtype=torch.float32)
         self.genes = self.genes.reshape(num_genes, 2, 13).transpose(0, 1)
