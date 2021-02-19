@@ -11,12 +11,28 @@ from reggae.data_loaders import LFMDataset
 
 from tqdm import tqdm
 from os import path
+from abc import ABC
 
 f64 = np.float64
 
 
-class P53Data(LFMDataset):
+class TranscriptomicDataset(LFMDataset, ABC):
+    def __init__(self):
+        self._m_observed = None
+
+    @property
+    def m_observed(self):
+        """m_observed has shape (replicates, genes, times)"""
+        return self._m_observed
+
+    @m_observed.setter
+    def m_observed(self, value):
+        self._m_observed = value
+
+
+class P53Data(TranscriptomicDataset):
     def __init__(self, replicate=None, data_dir='../data/'):
+        super().__init__()
         m_observed, f_observed, σ2_m_pre, σ2_f_pre, t = load_barenco_puma(data_dir)
 
         m_df, m_observed = m_observed  # (replicates, genes, times)
@@ -27,7 +43,7 @@ class P53Data(LFMDataset):
         # f_df, f_observed = f_observed
         m_observed = torch.tensor(m_observed)
         self.t = torch.linspace(f64(0), f64(12), 7)
-
+        self.m_observed = m_observed
         if replicate is None:
             self.variance = np.array([f64(σ2_m_pre)[r, i] for r in range(num_replicates) for i in range(num_genes)])
             self.data = [(self.t, m_observed[r, i]) for r in range(num_replicates) for i in range(num_genes)]
@@ -42,13 +58,14 @@ class P53Data(LFMDataset):
         return len(self.data)
 
 
-class HafnerData(LFMDataset):
+class HafnerData(TranscriptomicDataset):
     """
     Dataset of GSE100099
     MCF7 cells gamma-irradiated over 24 hours
     p53 is typically the protein of interest
     """
     def __init__(self, replicate=None, data_dir='../data/', extra_targets=True):
+        super().__init__()
         target_genes = [
             'KAZN','PMAIP1','PRKAB1','CSNK1G1','E2F7','SLC30A1',
             'PTP4A1','RAP2B','SUSD6','UBR5-AS1','RNF19B','AEN','ZNF79','XPC',
@@ -83,7 +100,7 @@ class HafnerData(LFMDataset):
 
         m = self.genes_df.values
         genes_norm = 1/m.shape[0] * np.linalg.norm(m, axis=1, ord=None)  # l2 norm
-        self.genes = torch.tensor(m / np.sqrt(genes_norm.reshape(-1, 1)), dtype=torch.float32)
+        self.m_observed = torch.tensor(m / np.sqrt(genes_norm.reshape(-1, 1)), dtype=torch.float32)
 
         f = self.tfs_df.values
         tfs_norm = 1/f.shape[0] * np.linalg.norm(f, axis=1, ord=None)  # l2 norm
@@ -91,11 +108,12 @@ class HafnerData(LFMDataset):
         self.tfs = self.tfs.reshape((1, 2, 13)).swapaxes(0,1)
 
         self.t = torch.linspace(0, 12, 13, dtype=torch.float32)
-        self.genes = self.genes.reshape(num_genes, 2, 13).transpose(0, 1)
+        self.m_observed = self.m_observed.reshape(num_genes, 2, 13).transpose(0, 1)
+
         if replicate is None:
-            self.data = [(self.t, self.genes[r, i]) for r in range(2) for i in range(num_genes)]
+            self.data = [(self.t, self.m_observed[r, i]) for r in range(2) for i in range(num_genes)]
         else:
-            self.data = [(self.t, self.genes[replicate, i]) for i in range(num_genes)]
+            self.data = [(self.t, self.m_observed[replicate, i]) for i in range(num_genes)]
 
         self.gene_names = target_genes
 
@@ -106,8 +124,9 @@ class HafnerData(LFMDataset):
         return len(self.data)
 
 
-class ArtificialData(LFMDataset):
+class ArtificialData(TranscriptomicDataset):
     def __init__(self, delay=False):
+        super().__init__()
         nodelay_dataset, delay_dataset = get_artificial_dataset()
         p_nodelay, m_nodelay = nodelay_dataset
         replicate = 0
@@ -119,10 +138,9 @@ class ArtificialData(LFMDataset):
         num_times = m_nodelay.shape[1]
 
         self.gene_names = np.arange(self.num_genes)
-        m_observed = torch.tensor(m_nodelay).transpose(0, 1)
-
+        self.m_observed = torch.tensor(m_nodelay).unsqueeze(0)
         self.t = torch.linspace(f64(0), f64(1), num_times, dtype=torch.float64).reshape((-1, 1))
-        self.data = [(self.t, m_observed)]  # only one "datapoint" in this dataset
+        self.data = [(self.t, self.m_observed[0, i]) for i in range(self.num_genes)]
 
     def __getitem__(self, index):
         return self.data[index]
