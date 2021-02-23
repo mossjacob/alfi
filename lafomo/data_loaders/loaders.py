@@ -4,6 +4,7 @@ import numpy as np
 from sklearn import preprocessing
 from os import path
 
+
 class DataHolder(object):
     def __init__(self, data, noise, time):
         self.m_obs, self.f_obs = data

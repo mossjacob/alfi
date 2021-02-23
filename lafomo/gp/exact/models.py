@@ -3,20 +3,20 @@ import gpytorch
 
 from lafomo.gp.kernels import SIMKernel, SIMMean
 from lafomo.gp import LFM
-from lafomo.data_loaders.utilities import flatten_dataset
+from lafomo.data_loaders.utilities import flatten_dataset, LFMDataset
 
 
 class AnalyticalLFM(LFM, gpytorch.models.ExactGP):
-    def __init__(self, num_genes, dataset, variance):
-        train_t, train_y = flatten_dataset(dataset, num_genes)
+    def __init__(self, dataset: LFMDataset, variance):
+        train_t, train_y = flatten_dataset(dataset)
         super().__init__(train_t, train_y, likelihood=gpytorch.likelihoods.GaussianLikelihood())
-        self.num_outputs = num_genes
+        self.num_outputs = dataset.num_outputs
         self.block_size = int(train_t.shape[0] / self.num_outputs)
         self.train_t = train_t.view(-1, 1)
         self.train_y = train_y.view(-1, 1)
-        self.covar_module = SIMKernel(num_genes, torch.tensor(variance, requires_grad=False))
+        self.covar_module = SIMKernel(self.num_outputs, torch.tensor(variance, requires_grad=False))
         initial_basal = torch.mean(train_y.view(5, 7), dim=1) * self.covar_module.decay
-        self.mean_module = SIMMean(self.covar_module, num_genes, initial_basal)
+        self.mean_module = SIMMean(self.covar_module, self.num_outputs, initial_basal)
 
     @property
     def basal_rate(self):
@@ -70,6 +70,6 @@ class AnalyticalLFM(LFM, gpytorch.models.ExactGP):
             Kff = self.covar_module.K_ff(pred_t, pred_t)  # (100, 500)
             var = Kff - torch.matmul(KfxKxx, Kxf)
             var = torch.diagonal(var, dim1=0, dim2=1).view(-1)
-            return mu, var
+            return torch.distributions.Normal(mu.unsqueeze(0), var.unsqueeze(0))
 
         return

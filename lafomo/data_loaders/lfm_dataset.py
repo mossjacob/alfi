@@ -8,6 +8,22 @@ class LFMDataset(Dataset):
         pass
 
     @property
+    def num_outputs(self):
+        return self._num_outputs
+
+    @num_outputs.setter
+    def num_outputs(self, value):
+        self._num_outputs = value
+
+    @property
+    def num_latents(self):
+        return self._num_latents
+
+    @num_latents.setter
+    def num_latents(self, value):
+        self._num_latents = value
+
+    @property
     def data(self):
         return self._data
 

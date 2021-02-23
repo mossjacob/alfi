@@ -3,7 +3,8 @@ import torch
 from . import LFMDataset
 
 
-def flatten_dataset(dataset: LFMDataset, num_genes):
+def flatten_dataset(dataset: LFMDataset):
+    num_genes = dataset.num_outputs
     train_t = dataset[0][0]
     num_times = train_t.shape[0]
     m_observed = torch.stack([

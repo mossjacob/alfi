@@ -19,6 +19,15 @@ f64 = np.float64
 class TranscriptomicDataset(LFMDataset, ABC):
     def __init__(self):
         self._m_observed = None
+        self._t_observed = None
+
+    @property
+    def t_observed(self):
+        return self._t_observed
+
+    @t_observed.setter
+    def t_observed(self, value):
+        self._t_observed = value
 
     @property
     def m_observed(self):
@@ -40,16 +49,18 @@ class P53Data(TranscriptomicDataset):
         num_times = m_observed.shape[2]
         num_genes = m_observed.shape[1]
         num_replicates = m_observed.shape[0]
+        self.num_outputs = num_genes
+        self.num_latents = 1
         # f_df, f_observed = f_observed
         m_observed = torch.tensor(m_observed)
-        self.t = torch.linspace(f64(0), f64(12), 7)
+        self.t_observed = torch.linspace(f64(0), f64(12), 7)
         self.m_observed = m_observed
         if replicate is None:
             self.variance = np.array([f64(σ2_m_pre)[r, i] for r in range(num_replicates) for i in range(num_genes)])
-            self.data = [(self.t, m_observed[r, i]) for r in range(num_replicates) for i in range(num_genes)]
+            self.data = [(self.t_observed, m_observed[r, i]) for r in range(num_replicates) for i in range(num_genes)]
         else:
             self.variance = np.array([f64(σ2_m_pre)[replicate, i] for i in range(num_genes)])
-            self.data = [(self.t, m_observed[replicate, i]) for i in range(num_genes)]
+            self.data = [(self.t_observed, m_observed[replicate, i]) for i in range(num_genes)]
 
     def __getitem__(self, index):
         return self.data[index]

@@ -9,6 +9,7 @@
 
 [db]: https://img.shields.io/pypi/dm/lafomo?label=pypi%20downloads
 
+### Implement Latent Force Models in under 10 lines of code!
 
 This library implements several Latent Force Models. These are all
 implemented in building blocks simplifying the creation of novel models 
@@ -24,7 +25,6 @@ This library was previously known as REGGaE: Regulation of Gene Expression.
 ## Installation
 
 `pip install lafomo`
-
 
 
 

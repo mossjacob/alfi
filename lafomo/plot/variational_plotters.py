@@ -52,20 +52,20 @@ class Plotter:
         plt.tight_layout()
         return mu, var
 
-    def plot_latents(self, t_predict, ylim=(-2, 2), num_samples=7, plot_barenco=False, plot_inducing=False):
+    def plot_latents(self, t_predict, ylim=None, num_samples=7, plot_barenco=False, plot_inducing=False):
         q_f = self.model.predict_f(t_predict.reshape(-1))
         mean = q_f.mean.detach().numpy()  # (T)
         plt.figure(figsize=(5, 3*mean.shape[0]))
         for i in range(mean.shape[0]):
             plt.subplot(mean.shape[0], 1, i+1)
             std = torch.sqrt(q_f.variance)[i].detach().numpy()
-            if plot_barenco:
-                self._plot_barenco(mean[i])
+            plt.plot(t_predict, mean[i], color='gray')
             plt.fill_between(t_predict, mean[i] + std, mean[i] - std, color='orangered', alpha=0.5)
             for _ in range(num_samples):
                 plt.plot(t_predict, q_f.sample().detach()[i], alpha=0.3, color='gray')
-            plt.plot(t_predict, mean[i], color='gray')
 
+            if plot_barenco:
+                self._plot_barenco(mean[i])
             if self.variational:
                 inducing_points = self.model.inducing_inputs.detach()
                 plt.scatter(inducing_points, np.zeros_like(inducing_points), marker='_', c='black', linewidths=4)
@@ -77,12 +77,16 @@ class Plotter:
                 S = torch.matmul(self.model.q_cholS, self.model.q_cholS.transpose(1, 2))
                 std_u = torch.sqrt(torch.diagonal(S[0])).detach()
                 u = torch.squeeze(self.model.q_m[i].detach())
-                print(std_u, u.shape, self.model.q_m.shape)
                 plt.plot(self.t_inducing, u)
                 plt.fill_between(self.t_inducing.view(-1), u + std_u, u - std_u, color='green', alpha=0.5)
 
+            if ylim is None:
+                plt.ylim(min(mean[i])-0.3, max(mean[i])+0.3)
+            else:
+                plt.ylim(ylim)
+
         plt.title('Latent')
-        plt.ylim(ylim)
+
 
     def plot_kinetics(self):
         plt.figure(figsize=(8, 4))
