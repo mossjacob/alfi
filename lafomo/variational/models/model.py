@@ -34,7 +34,6 @@ class VariationalLFM(LFM):
         self.num_inducing = t_inducing.shape[0]
         self.num_observed = dataset[0][0].shape[0]
         self.inducing_inputs = Parameter(torch.tensor(t_inducing), requires_grad=options.learn_inducing)
-        self.num_samples = options.num_samples
         self.dtype = dtype
         self.kernel = RBF(num_outputs=num_latents, scale=options.kernel_scale, dtype=dtype)
 
@@ -103,7 +102,7 @@ class VariationalLFM(LFM):
         """
         Calls self on input `t_predict`
         """
-        initial_value = torch.zeros((self.num_samples, self.num_outputs, 1), dtype=self.dtype)
+        initial_value = torch.zeros((self.options.num_samples, self.num_outputs, 1), dtype=self.dtype)
         outputs, var = self(t_predict.view(-1), initial_value, compute_var=True, **kwargs)
         var = torch.squeeze(var).detach()
         outputs = torch.squeeze(outputs).detach()
@@ -169,18 +168,14 @@ class VariationalLFM(LFM):
         # is the product of the diagonal entries (i.e. sum of their logarithm).
         q_cholS = torch.tril(self.q_cholS)
 
-        logdetS = torch.sum(torch.log(torch.diagonal(q_cholS, dim1=1, dim2=2)**2))
+        logdetS = torch.sum(torch.log(torch.diagonal(q_cholS, dim1=1, dim2=2)**2))  # log(det(S))
+        logdetK = torch.sum(torch.log(torch.diagonal(self.L, dim1=1, dim2=2)**2))   # log(det(Kmm))
 
-        # log(det(Kmm)): (already checked, seems working)
-        logdetK = torch.sum(torch.log(torch.diagonal(self.L, dim1=1, dim2=2)**2))
-        # tr(inv_Kmm * S):
-        # trKS_1 = torch.matmul(self.inv_Kmm, self.S)
-        trKS = torch.cholesky_solve(self.S, self.L, upper=False)
+        trKS = torch.cholesky_solve(self.S, self.L, upper=False)  # tr(inv_Kmm * S):
         trKS = torch.sum(torch.diagonal(trKS, dim1=1, dim2=2))
 
-        # m^T Kuu^(-1) m: cholesky_solve(b, chol)
-        Kinv_m = torch.cholesky_solve(self.q_m, self.L, upper=False)
-        m_Kinv_m = torch.matmul(torch.transpose(self.q_m, 1, 2), Kinv_m)# (1,1,1)
+        Kinv_m = torch.cholesky_solve(self.q_m, self.L, upper=False)  # m^T Kuu^(-1) m: cholesky_solve(b, chol)
+        m_Kinv_m = torch.matmul(torch.transpose(self.q_m, 1, 2), Kinv_m)  # (1,1,1)
         m_Kinv_m = torch.squeeze(m_Kinv_m)
         KL += 0.5 * (logdetK - logdetS + trKS + m_Kinv_m)
         KL = torch.sum(KL)

@@ -63,7 +63,7 @@ class TranscriptionLikelihood():
 
         # Calculate p_i vector
         p_i = np.log(1+np.exp(fbar))
-        if self.options.tf_mrna_present:
+        if self.options.latent_data_present:
             p_i = self.calculate_protein(fbar, δbar)
 
         # Calculate m_pred
@@ -128,7 +128,7 @@ class TranscriptionLikelihood():
         Computes log-likelihood of the transcription factors.
         TODO this should be for the i-th TF
         '''
-        assert self.options.tf_mrna_present
+        assert self.options.latent_data_present
         if not self.preprocessing_variance:
             σ2_f = params.σ2_f.value
             variance = σ2_f.reshape(-1, 1)
@@ -178,7 +178,7 @@ class TranscriptionMCMC(MetropolisHastings):
         fbar = Parameter('fbar', self.fbar_prior, 0.5*np.ones((self.num_replicates, self.num_tfs, self.N_p)))
 
         # GP hyperparameters
-        V = Parameter('V', tfd.InverseGamma(f64(0.01), f64(0.01)), f64(1), step_size=0.05, fixed=not options.tf_mrna_present)
+        V = Parameter('V', tfd.InverseGamma(f64(0.01), f64(0.01)), f64(1), step_size=0.05, fixed=not options.latent_data_present)
         V.proposal_dist=lambda v: tfd.TruncatedNormal(v, V.step_size, low=0, high=100) #v_i Fix to 1 if translation model is not used (pg.8)
         L = Parameter('L', tfd.Uniform(f64(min_dist**2-0.5), f64(data.t[-1]**2)), f64(4), step_size=0.05) # TODO auto set
         L.proposal_dist=lambda l2: tfd.TruncatedNormal(l2, L.step_size, low=0, high=100) #l2_i
@@ -237,7 +237,7 @@ class TranscriptionMCMC(MetropolisHastings):
         # Compute likelihood for comparison
         old_m_likelihood, sq_diff_m  = self.likelihood.genes(params, return_sq_diff=True)
         old_f_likelihood = 0
-        if self.options.tf_mrna_present:
+        if self.options.latent_data_present:
             old_f_likelihood, sq_diff_f  = self.likelihood.tfs(params, params.fbar.value, return_sq_diff=True)
         
         # Untransformed tf mRNA vectors F (Step 1)
@@ -259,7 +259,7 @@ class TranscriptionMCMC(MetropolisHastings):
                 fstar = (1-mask) * fbar + mask * fstar_i
                 new_m_likelihood = self.likelihood.genes(params, fbar=fstar)
                 new_f_likelihood = 0 
-                if self.options.tf_mrna_present:
+                if self.options.latent_data_present:
                     new_f_likelihood = self.likelihood.tfs(params, fstar)
                 new_prob = np.sum(new_m_likelihood) + np.sum(new_f_likelihood)
                 old_prob = np.sum(old_m_likelihood) + np.sum(old_f_likelihood)
@@ -270,7 +270,7 @@ class TranscriptionMCMC(MetropolisHastings):
                     self.acceptance_rates['fbar'] += 1/(self.num_tfs*self.num_replicates)
 
 
-        if self.options.tf_mrna_present: # (Step 2)
+        if self.options.latent_data_present: # (Step 2)
             # Log of translation ODE degradation rates
             δbar = params.δbar.value
             for i in range(self.num_tfs):# TODO make for self.num_tfs > 1
@@ -353,7 +353,7 @@ class TranscriptionMCMC(MetropolisHastings):
             params.σ2_m.value = np.repeat(tfd.InverseGamma(α_post, β_post).sample(), self.num_genes)
             self.acceptance_rates['σ2_m'] += 1
             
-            if self.options.tf_mrna_present: # (Step 5)
+            if self.options.latent_data_present: # (Step 5)
                 # Prior parameters
                 α = params.σ2_f.prior.concentration
                 β = params.σ2_f.prior.scale
