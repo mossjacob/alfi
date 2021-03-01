@@ -24,7 +24,7 @@ class Plotter:
         barenco_f, _ = scaled_barenco_data(mean)
         plt.scatter(np.linspace(0, 12, 7), barenco_f, marker='x', s=60, linewidth=2, label='Barenco et al.')
 
-    def plot_outputs(self, t_predict, replicate=0, t_scatter=None, y_scatter=None, model_kwargs={}, ylim=None):
+    def plot_outputs(self, t_predict, replicate=0, t_scatter=None, y_scatter=None, model_kwargs={}, ylim=None, max_plots=10):
         """
         Parameters:
             t_predict: tensor (T*,)
@@ -37,9 +37,10 @@ class Plotter:
         var = 2 * torch.sqrt(var).detach()
         mu = mu.view(self.num_outputs, self.num_replicates, -1).transpose(0, 1)
         var = var.view(self.num_outputs, self.num_replicates, -1).transpose(0, 1)
-        plt.figure(figsize=(6, 4 * np.ceil(self.num_outputs / 3)))
-        for i in range(self.num_outputs):
-            plt.subplot(self.num_outputs, 3, i + 1)
+        num_plots = min(max_plots, self.num_outputs)
+        plt.figure(figsize=(6, 4 * np.ceil(num_plots / 3)))
+        for i in range(num_plots):
+            plt.subplot(num_plots, 3, i + 1)
             plt.title(self.output_names[i])
             plt.plot(t_predict, mu[replicate, i].detach())
             plt.fill_between(t_predict, mu[replicate, i] + var[replicate, i], mu[replicate, i] - var[replicate, i], alpha=0.4)

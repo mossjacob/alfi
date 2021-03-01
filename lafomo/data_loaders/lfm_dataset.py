@@ -5,7 +5,7 @@ import abc
 class LFMDataset(Dataset):
     @abc.abstractmethod
     def __getitem__(self, index):
-        pass
+        return self.data[index]
 
     @property
     def num_outputs(self):
@@ -30,3 +30,6 @@ class LFMDataset(Dataset):
     @data.setter
     def data(self, value):
         self._data = value
+
+    def __len__(self):
+        return len(self.data)
