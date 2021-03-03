@@ -39,6 +39,7 @@ class TranscriptomicDataset(LFMDataset, ABC):
         self._m_observed = value
 
 
+
 class P53Data(TranscriptomicDataset):
     def __init__(self, replicate=None, data_dir='../data/'):
         super().__init__()
@@ -61,12 +62,6 @@ class P53Data(TranscriptomicDataset):
         else:
             self.variance = np.array([f64(σ2_m_pre)[replicate, i] for i in range(num_genes)])
             self.data = [(self.t_observed, m_observed[replicate, i]) for i in range(num_genes)]
-
-    def __getitem__(self, index):
-        return self.data[index]
-
-    def __len__(self):
-        return len(self.data)
 
 
 class HafnerData(TranscriptomicDataset):
@@ -127,12 +122,6 @@ class HafnerData(TranscriptomicDataset):
             self.data = [(self.t, self.m_observed[replicate, i]) for i in range(num_genes)]
 
         self.gene_names = target_genes
-
-    def __getitem__(self, index):
-        return self.data[index]
-
-    def __len__(self):
-        return len(self.data)
 
 
 class ArtificialData(TranscriptomicDataset):
