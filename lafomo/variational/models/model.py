@@ -8,9 +8,9 @@ from torch.distributions.normal import Normal
 
 from lafomo.utilities import softplus, inv_softplus
 from lafomo.data_loaders import LFMDataset
-from lafomo.gp.variational.options import VariationalOptions
-from lafomo.gp import LFM
-from lafomo.gp.kernels import RBF
+from lafomo.options import VariationalOptions
+from lafomo import LFM
+from lafomo.kernels import RBF
 
 
 class VariationalLFM(LFM):

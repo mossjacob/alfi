@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 
 from lafomo.utilities import is_cuda
 from lafomo.data_loaders import LFMDataset
-import lafomo.gp.variational.models as models
+import lafomo.variational.models as models
 from torch.utils.data.dataloader import DataLoader
 
 
