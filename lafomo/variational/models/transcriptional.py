@@ -4,7 +4,8 @@ import torch
 from torch.nn.parameter import Parameter
 from torch.distributions.normal import Normal
 
-from .model import VariationalLFM, VariationalOptions
+from .model import VariationalLFM
+from lafomo.options import VariationalOptions
 from lafomo.utilities import softplus
 from lafomo.data_loaders import LFMDataset
 
@@ -22,12 +23,12 @@ class TranscriptionalRegulationLFM(VariationalLFM):
         # if (self.nfe % 100) == 0:
         #     print(t)
 
-        decay = torch.multiply(self.decay_rate.squeeze(), h.squeeze(-1)).view(self.num_samples, -1, 1)
+        decay = self.decay_rate * h
 
         q_f = self.get_latents(t.reshape(-1))
 
         # Reparameterisation trick
-        f = q_f.rsample([self.num_samples])  # (S, I, t)
+        f = q_f.rsample([self.options.num_samples])  # (S, I, t)
 
         f = self.G(f)  # (S, num_outputs, t)
 

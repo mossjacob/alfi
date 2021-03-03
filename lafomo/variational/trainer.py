@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 
 from lafomo.utilities import is_cuda
 from lafomo.data_loaders import LFMDataset
-import lafomo.gp.variational.models as models
+import lafomo.variational.models as models
 from torch.utils.data.dataloader import DataLoader
 
 
@@ -77,7 +77,7 @@ class Trainer:
             losses.append((-ll.item(), kl.item()))
             self.after_epoch()
 
-            if (epoch % plot_interval) == 0:
+            if plot_interval is not None and (epoch % plot_interval) == 0:
                 plt.plot(self.t_observed, output[0].cpu().detach().numpy(), label='epoch'+str(epoch))
             self.num_epochs += 1
         plt.legend()

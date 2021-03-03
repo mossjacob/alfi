@@ -1,6 +1,6 @@
 import torch
 
-from lafomo.gp.exact import AnalyticalLFM, Trainer
+from lafomo.exact import AnalyticalLFM, Trainer
 from lafomo.data_loaders import P53Data
 from lafomo.plot.variational_plotters import Plotter
 

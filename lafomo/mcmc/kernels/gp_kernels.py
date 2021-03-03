@@ -7,6 +7,7 @@ import numpy as np
 
 f64 = np.float64
 
+
 class GPKernelSelector():
     def __init__(self, data, options):
         self.kernel = options.kernel

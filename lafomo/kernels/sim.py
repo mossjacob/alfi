@@ -1,12 +1,11 @@
 import torch
 import gpytorch
 from gpytorch.constraints import Positive, Interval
+from matplotlib import pyplot as plt
 
 import numpy as np
 
 PI = torch.tensor(np.pi, requires_grad=False)
-
-from matplotlib import pyplot as plt
 
 
 class SIMMean(gpytorch.means.Mean):

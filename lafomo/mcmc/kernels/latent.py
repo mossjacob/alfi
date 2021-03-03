@@ -24,7 +24,7 @@ class LatentKernel(MetropolisKernel):
         self.num_genes = data.m_obs.shape[1]
         self.likelihood = likelihood
         self.options = options
-        self.tf_mrna_present = options.tf_mrna_present
+        self.tf_mrna_present = options.latent_data_present
         self.state_indices = state_indices
         self.num_replicates = data.f_obs.shape[0]
         self.step_fn = self.f_one_step
@@ -276,8 +276,8 @@ class ESSBuilder:
             # if 'σ2_f' in self.state_indices:
             #     σ2_f = all_states[self.state_indices['σ2_f']]
 
-            new_f_likelihood = tf.cond(tf.equal(self.options.tf_mrna_present, tf.constant(True)), 
-                                    lambda:tf.reduce_sum(self.likelihood.tfs(
+            new_f_likelihood = tf.cond(tf.equal(self.options.latent_data_present, tf.constant(True)),
+                                       lambda:tf.reduce_sum(self.likelihood.tfs(
                                         σ2_f,
                                         fstar
                                     )), lambda:f64(0))

@@ -8,7 +8,7 @@ from tensorflow_probability import distributions as tfd
 
 from lafomo.mcmc.parameter import KernelParameter, Params
 from lafomo.mcmc.results import SampleResults
-from lafomo.mcmc import Options
+from lafomo.mcmc import MCMCOptions
 from lafomo.mcmc.kernels import GPKernelSelector
 from lafomo.mcmc.kernels import LatentKernel, MixedKernel, DelayKernel, GibbsKernel
 from lafomo.mcmc.kernels.wrappers import RWMWrapperKernel
@@ -25,7 +25,7 @@ class TranscriptionMixedSampler:
     """
     An updated version of the Metropolis-Hastings model from Titsias et al. (2012) using a mixed sampler
     """
-    def __init__(self, data: DataHolder, options: Options):
+    def __init__(self, data: DataHolder, options: MCMCOptions):
         """
         @param data: a tuple (m, f) of shapes (reps, num, time), where time is a tuple (t, τ, common_indices)
         @param options: configuration of model

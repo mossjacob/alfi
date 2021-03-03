@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="lafomo",
-    version="0.0.4",
+    version="0.0.5",
     author="Jacob Moss",
     author_email="cob.mossy@gmail.com",
     description="A Latent Force Model library with variational and MCMC support for non-linear functions.",
@@ -19,4 +19,13 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.6',
+    install_requires=[
+        'tensorflow>=2.4.1',
+        'tensorflow-probability>=0.12.1',
+        'torch>=1.7.1',
+        'torchdiffeq>=0.2.0',
+        'pandas>=1.2.1',
+        'matplotlib',
+        'gpytorch>=1.3.1'
+    ]
 )
