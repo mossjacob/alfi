@@ -65,7 +65,7 @@ class VariationalLFM(LFM):
             h = self.initial_conditions.repeat(h.shape[0], 1, 1)
         return h
 
-    def forward(self, t, h, rtol=1e-4, atol=1e-6, compute_var=False):
+    def forward(self, t, h, rtol=1e-4, atol=1e-6, compute_var=False, return_samples=False):
         """
         t : torch.Tensor
             Shape (num_times)
@@ -87,8 +87,11 @@ class VariationalLFM(LFM):
         # Integrate forward from the initial positions h0.
         h0 = self.initial_state(h)
         h_samples = odeint(self.odefunc, h0, t, method='dopri5', rtol=rtol, atol=atol)  # (T, S, num_outputs, 1)
-
+        print('outtt', h_samples.shape)
+        if return_samples:
+            return h_samples
         h_out = torch.mean(h_samples, dim=1).transpose(0, 1)
+        print(h_out.shape, ' hout')
         h_std = torch.std(h_samples, dim=1).transpose(0, 1)
 
         if compute_var:
