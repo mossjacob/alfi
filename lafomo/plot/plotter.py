@@ -3,7 +3,7 @@ import numpy as np
 import torch
 
 from lafomo.data_loaders import scaled_barenco_data
-from lafomo.gp.variational.models import VariationalLFM
+from lafomo.variational.models import VariationalLFM
 
 plt.style.use('ggplot')
 

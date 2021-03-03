@@ -2,7 +2,7 @@ import torch
 from torch.nn import Module
 from torch.nn.parameter import Parameter
 
-from lafomo.utilities import softplus, inv_softplus
+from lafomo.utilities.torch import softplus, inv_softplus
 
 
 class RBF(Module):

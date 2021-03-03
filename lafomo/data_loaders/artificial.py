@@ -7,10 +7,11 @@ from scipy.interpolate import interp1d
 from tensorflow import math as tfm
 
 from lafomo.data_loaders import DataHolder
-from lafomo.mcmc import Options, TranscriptionLikelihood
+from lafomo.mcmc import TranscriptionLikelihood
+from lafomo.options import MCMCOptions
 
 from lafomo.mcmc.models import TranscriptionMixedSampler
-from lafomo.tf_utilities import discretise, logit, logistic, LogisticNormal, inverse_positivity
+from lafomo.tf import discretise, logit, logistic, LogisticNormal, inverse_positivity
 from matplotlib import pyplot as plt
 
 import numpy as np
@@ -128,12 +129,12 @@ def get_artificial_dataset(num_genes=20, num_tfs=3):
     )))
     true_kbar = true_kbar[:num_genes]
 
-    opt = Options(preprocessing_variance=False,
-                  tf_mrna_present=True,
-                  kinetic_exponential=True,
-                  weights=True,
-                  initial_step_sizes={'logistic': 1e-8, 'latents': 10},
-                  delays=True)
+    opt = MCMCOptions(preprocessing_variance=False,
+                      latent_data_present=True,
+                      kinetic_exponential=True,
+                      weights=True,
+                      initial_step_sizes={'logistic': 1e-8, 'latents': 10},
+                      delays=True)
 
     data, fbar, kinetics = artificial_dataset(opt, TranscriptionLikelihood, num_genes=num_genes,
                                               weights=(w, w_0), delays=Δ_delay.numpy(), t_end=10,

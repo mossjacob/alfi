@@ -13,7 +13,7 @@ from lafomo.mcmc.kernels import GPKernelSelector
 from lafomo.mcmc.kernels import LatentKernel, MixedKernel, DelayKernel, GibbsKernel
 from lafomo.mcmc.kernels.wrappers import RWMWrapperKernel
 from lafomo.data_loaders import DataHolder
-from lafomo.tf_utilities import logit, logistic, LogisticNormal, inverse_positivity, save_object
+from lafomo.utilities.tf import logit, logistic, LogisticNormal, inverse_positivity, save_object
 from lafomo.mcmc import TranscriptionLikelihood
 
 import numpy as np

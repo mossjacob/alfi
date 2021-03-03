@@ -6,7 +6,7 @@ from tensorflow_probability import distributions as tfd
 
 from lafomo.mcmc import MetropolisHastings, Parameter
 from lafomo.mcmc.kernels import GPKernelSelector
-from lafomo.tf_utilities import exp, mult, jitter_cholesky, save_object
+from lafomo.utilities.tf import exp, mult, jitter_cholesky, save_object
 
 import numpy as np
 from scipy.special import expit

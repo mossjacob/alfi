@@ -1,5 +1,5 @@
 import numpy as np
-from lafomo.tf_utilities import exp, ArrayList, discretise
+from lafomo.utilities.tf import exp, ArrayList, discretise
 import tensorflow_probability as tfp
 
 from ipywidgets import IntProgress

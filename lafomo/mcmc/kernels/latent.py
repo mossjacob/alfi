@@ -4,7 +4,7 @@ from tensorflow_probability import distributions as tfd
 from lafomo.mcmc.kernels.wrappers import ESSWrapper
 from .gp_kernels import GPKernelSelector
 from lafomo.mcmc.kernels import MetropolisKernel
-from lafomo.tf_utilities import jitter_cholesky, logit, add_diag
+from lafomo.utilities.tf import jitter_cholesky, logit, add_diag
 from lafomo.mcmc.results import GenericResults
 
 import numpy as np

@@ -1,8 +1,8 @@
 
 import torch
 
-from lafomo.gp.variational.models import SingleLinearLFM
-from lafomo.gp.variational.trainer import Trainer
+from lafomo.variational.models import SingleLinearLFM
+from lafomo.variational.trainer import Trainer
 from lafomo.data_loaders import load_barenco_puma
 import numpy as np
 

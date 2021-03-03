@@ -1,9 +1,9 @@
 import torch
 import gpytorch
 
-from lafomo.gp.kernels import SIMKernel, SIMMean
-from lafomo.gp import LFM
-from lafomo.data_loaders.utilities import flatten_dataset, LFMDataset
+from lafomo.kernels import SIMKernel, SIMMean
+from lafomo import LFM
+from lafomo.utilities.data import flatten_dataset, LFMDataset
 
 
 class AnalyticalLFM(LFM, gpytorch.models.ExactGP):

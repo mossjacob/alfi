@@ -6,7 +6,7 @@ from torch.nn.parameter import Parameter
 from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.normal import Normal
 
-from lafomo.utilities import softplus, inv_softplus
+from lafomo.utilities.torch import softplus, inv_softplus
 from lafomo.data_loaders import LFMDataset
 from lafomo.options import VariationalOptions
 from lafomo import LFM

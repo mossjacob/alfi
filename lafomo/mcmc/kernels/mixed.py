@@ -2,7 +2,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from lafomo.mcmc.results import MixedKernelResults
-from lafomo.tf_utilities import prog
+from lafomo.utilities.tf import prog
 
 from inspect import signature
 

@@ -2,7 +2,7 @@ import gpytorch
 import torch
 import numpy as np
 
-from lafomo.gp.exact import AnalyticalLFM
+from lafomo.exact import AnalyticalLFM
 
 
 class Trainer:

@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from matplotlib import pyplot as plt
 
-from lafomo.utilities import is_cuda
+from lafomo.utilities.torch import is_cuda
 from lafomo.data_loaders import LFMDataset
 import lafomo.variational.models as models
 from torch.utils.data.dataloader import DataLoader
@@ -50,7 +50,7 @@ class Trainer:
                 initial_value = initial_value.cuda() if is_cuda() else initial_value
                 if self.give_output:
                     initial_value = y[0]
-                initial_value = initial_value.repeat(self.model.num_samples, 1, 1)  # Add batch dimension for sampling
+                initial_value = initial_value.repeat(self.model.options.num_samples, 1, 1)  # Add batch dimension for sampling
                 output = self.model(t, initial_value, rtol=rtol, atol=atol)
                 output = torch.squeeze(output)
                 # Calc loss and backprop gradients

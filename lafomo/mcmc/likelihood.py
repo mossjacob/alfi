@@ -2,8 +2,8 @@ import tensorflow as tf
 from tensorflow import math as tfm
 
 from lafomo.data_loaders import DataHolder
-from lafomo.tf_utilities import rotate, jitter_cholesky, logit, logistic, LogisticNormal, inverse_positivity, save_object
-from lafomo.mcmc import Options
+from lafomo.utilities.tf import rotate, jitter_cholesky, logit, logistic, LogisticNormal, inverse_positivity, save_object
+from lafomo.options import Options
 
 import numpy as np
 PI = tf.constant(np.pi, dtype='float64')

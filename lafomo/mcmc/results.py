@@ -1,7 +1,7 @@
 import collections
 from numpy import float64 as f64
 from dataclasses import dataclass
-from lafomo.tf_utilities import inverse_positivity, logit
+from lafomo.utilities.tf import inverse_positivity, logit
 import numpy as np
 
 GenericResults = collections.namedtuple('GenericResults', [

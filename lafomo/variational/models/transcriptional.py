@@ -6,7 +6,7 @@ from torch.distributions.normal import Normal
 
 from .model import VariationalLFM
 from lafomo.options import VariationalOptions
-from lafomo.utilities import softplus
+from lafomo.utilities.torch import softplus
 from lafomo.data_loaders import LFMDataset
 
 

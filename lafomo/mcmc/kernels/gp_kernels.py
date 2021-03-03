@@ -1,4 +1,4 @@
-from lafomo.tf_utilities import get_time_square, FixedDistribution
+from lafomo.utilities.tf import get_time_square, FixedDistribution
 
 import tensorflow as tf
 from tensorflow import math as tfm

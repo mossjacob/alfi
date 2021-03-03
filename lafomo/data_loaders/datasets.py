@@ -6,7 +6,6 @@ import pandas as pd
 from scipy.io import loadmat
 
 from lafomo.data_loaders import load_barenco_puma
-from lafomo.data_loaders.artificial import get_artificial_dataset
 from lafomo.data_loaders import LFMDataset
 
 from tqdm import tqdm
@@ -126,6 +125,8 @@ class HafnerData(TranscriptomicDataset):
 
 class ArtificialData(TranscriptomicDataset):
     def __init__(self, delay=False):
+        # We import the dataset here since it uses TensorFlow
+        from lafomo.data_loaders.artificial import get_artificial_dataset
         super().__init__()
         nodelay_dataset, delay_dataset = get_artificial_dataset()
         p_nodelay, m_nodelay = nodelay_dataset
