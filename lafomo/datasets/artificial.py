@@ -6,12 +6,12 @@ from sklearn import preprocessing
 from scipy.interpolate import interp1d
 from tensorflow import math as tfm
 
-from lafomo.data_loaders import DataHolder
+from lafomo.datasets import DataHolder
 from lafomo.mcmc import TranscriptionLikelihood
 from lafomo.options import MCMCOptions
 
 from lafomo.mcmc.models import TranscriptionMixedSampler
-from lafomo.tf import discretise, logit, logistic, LogisticNormal, inverse_positivity
+from lafomo.utilities.tf import discretise, logistic, inverse_positivity
 from matplotlib import pyplot as plt
 
 import numpy as np
@@ -90,9 +90,11 @@ def get_artificial_dataset(num_genes=20, num_tfs=3):
     Returns:
         nodelay, delay datasets
     """
-    with open('../data/articial_nodelay.pkl', 'rb') as f:
+    nodelay_path = '../data/articial_nodelay.pkl'
+    delay_path = '../data/articial_delay.pkl'
+    with open(nodelay_path, 'rb') as f:
         nodelay_dataset = pkl.load(f)
-    with open('../data/articial_delay.pkl', 'rb') as f:
+    with open(delay_path, 'rb') as f:
         delay_dataset = pkl.load(f)
     return nodelay_dataset, delay_dataset
 
@@ -170,9 +172,9 @@ def get_artificial_dataset(num_genes=20, num_tfs=3):
     nodelay_dataset = (np.array(p_nodelay), np.array(m_observed_nodelay))
     delay_dataset = (np.array(p), np.array(m_observed))
 
-    with open('../data/articial_nodelay.pkl', 'wb') as f:
+    with open(nodelay_path, 'wb') as f:
         pkl.dump(nodelay_dataset, f)
-    with open('../data/articial_delay.pkl', 'wb') as f:
+    with open(delay_path, 'wb') as f:
         pkl.dump(delay_dataset, f)
 
     return nodelay_dataset, delay_dataset

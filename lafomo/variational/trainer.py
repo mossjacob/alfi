@@ -3,7 +3,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from lafomo.utilities.torch import is_cuda
-from lafomo.data_loaders import LFMDataset
+from lafomo.datasets import LFMDataset
 import lafomo.variational.models as models
 from torch.utils.data.dataloader import DataLoader
 

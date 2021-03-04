@@ -2,7 +2,7 @@ import torch
 from torch import nn
 
 from .model import VariationalLFM
-from lafomo.data_loaders import LFMDataset
+from lafomo.datasets import LFMDataset
 
 
 class MLPLFM(VariationalLFM):

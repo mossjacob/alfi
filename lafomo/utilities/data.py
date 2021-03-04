@@ -1,6 +1,6 @@
 import torch
 
-from lafomo.data_loaders import LFMDataset
+from lafomo.datasets import LFMDataset
 
 
 def flatten_dataset(dataset: LFMDataset):

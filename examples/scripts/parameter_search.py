@@ -3,7 +3,7 @@ import torch
 
 from lafomo.variational.models import SingleLinearLFM
 from lafomo.variational.trainer import Trainer
-from lafomo.data_loaders import load_barenco_puma
+from lafomo.datasets import load_barenco_puma
 import numpy as np
 
 f64 = np.float64

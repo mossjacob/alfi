@@ -1,5 +1,5 @@
 import torch
-
+import math
 CUDA_AVAILABLE = False
 
 
@@ -16,6 +16,10 @@ def load(name, model_class, *args, **kwargs):
     model = model_class(*args, **kwargs)
     model.load_state_dict(torch.load(f'./saved_models/{name}.pt'))
     return model
+
+
+def ceil(x):
+    return int(math.ceil(x))
 
 
 def softplus(value):

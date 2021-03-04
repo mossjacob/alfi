@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from lafomo.data_loaders import scaled_barenco_data
+from lafomo.datasets import scaled_barenco_data
 from lafomo.variational.models import VariationalLFM
 
 plt.style.use('ggplot')

@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow import math as tfm
 
-from lafomo.data_loaders import DataHolder
+from lafomo.datasets import DataHolder
 from lafomo.utilities.tf import rotate, jitter_cholesky, logit, logistic, LogisticNormal, inverse_positivity, save_object
 from lafomo.options import Options
 

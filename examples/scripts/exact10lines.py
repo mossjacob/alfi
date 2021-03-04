@@ -1,7 +1,7 @@
 import torch
 
 from lafomo.exact import AnalyticalLFM, Trainer
-from lafomo.data_loaders import P53Data
+from lafomo.datasets import P53Data
 from lafomo.plot.plotter import Plotter
 
 from matplotlib import pyplot as plt

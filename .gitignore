@@ -15,4 +15,4 @@ lafomo/data/
 *.pt
 lafomo.egg-info/
 
-lafomo/examples/saved_models/
+examples/saved_models/

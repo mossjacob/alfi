@@ -7,7 +7,7 @@ import networkx as nx
 import tensorflow as tf
 import random
 
-from lafomo.data_loaders import scaled_barenco_data
+from lafomo.datasets import scaled_barenco_data
 from lafomo.mcmc.results import SampleResults
 
 
