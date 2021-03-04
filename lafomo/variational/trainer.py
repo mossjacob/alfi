@@ -30,62 +30,78 @@ class Trainer:
         self.data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
         self.losses = np.empty((0, 2))
         self.give_output = give_output
+        self.output_plots = list()
+
+    def initial_value(self, y):
+        initial_value = torch.zeros((self.batch_size, 1), dtype=torch.float64)
+        initial_value = initial_value.cuda() if is_cuda() else initial_value
+        if self.give_output:
+            initial_value = y[0]
+        return initial_value.repeat(self.model.options.num_samples, 1, 1)  # Add batch dimension for sampling
 
     def train(self, epochs=20, report_interval=1, plot_interval=20, rtol=1e-5, atol=1e-6):
         losses = list()
         end_epoch = self.num_epochs+epochs
         plt.figure(figsize=(4, 2.3))
+
         for epoch in range(epochs):
-            epoch_loss = 0
-            for i, data in enumerate(self.data_loader):
-                self.optimizer.zero_grad()
-                t, y = data
-                t = t.cuda() if is_cuda() else t
-                y = y.cuda() if is_cuda() else y
-                # Assume that the batch of t s are the same
-                t, y = t[0].view(-1), y
-
-                # with ef.scan():
-                initial_value = torch.zeros((self.batch_size, 1), dtype=torch.float64)
-                initial_value = initial_value.cuda() if is_cuda() else initial_value
-                if self.give_output:
-                    initial_value = y[0]
-                initial_value = initial_value.repeat(self.model.options.num_samples, 1, 1)  # Add batch dimension for sampling
-                output = self.model(t, initial_value, rtol=rtol, atol=atol)
-                output = torch.squeeze(output)
-                # Calc loss and backprop gradients
-                mult = 1
-                if self.num_epochs <= 10:
-                    mult = self.num_epochs/10
-
-                ll, kl = self.model.elbo(y, output, mult, data_index=i)
-                total_loss = -ll + kl
-
-                total_loss.backward()
-                self.optimizer.step()
-                epoch_loss += total_loss.item()
+            output, epoch_loss, split_loss = self.single_epoch(rtol, atol)
 
             if (epoch % report_interval) == 0:
-                print('Epoch %d/%d - Loss: %.2f (%.2f %.2f) λ: %.3f' % (
-                    self.num_epochs + 1, end_epoch,
-                    epoch_loss,
-                    -ll.item(), kl.item(),
-                    self.model.kernel.lengthscale[0].item(),
-                ), end='')
+                print('Epoch %d/%d - Loss: %.2f (' % (
+                    self.num_epochs + 1, end_epoch, epoch_loss), end='')
+                for loss in split_loss:
+                    print('%.2f  ' % loss, end='')
+
+                print(') λ: %.3f' % self.model.kernel.lengthscale[0].item(), end='')
                 self.print_extra()
 
-            losses.append((-ll.item(), kl.item()))
-            self.after_epoch()
+            losses.append(split_loss)
 
             if plot_interval is not None and (epoch % plot_interval) == 0:
-                plt.plot(self.t_observed, output[0].cpu().detach().numpy(), label='epoch'+str(epoch))
+                plt.plot(self.t_observed, output[0].cpu().detach().numpy(), label='epoch' + str(epoch))
+
+            self.after_epoch()
             self.num_epochs += 1
+
         plt.legend()
 
         losses = np.array(losses)
         self.losses = np.concatenate([self.losses, losses], axis=0)
 
-        return output
+    def single_epoch(self, rtol, atol):
+        epoch_loss = 0
+        epoch_ll = 0
+        epoch_kl = 0
+        output = None
+        for i, data in enumerate(self.data_loader):
+
+            self.optimizer.zero_grad()
+            t, y = data
+            t = t.cuda() if is_cuda() else t
+            y = y.cuda() if is_cuda() else y
+            # Assume that the batch of t s are the same
+            t, y = t[0].view(-1), y
+
+            # with ef.scan():
+            initial_value = self.initial_value(y)
+            output = self.model(t, initial_value, rtol=rtol, atol=atol)
+            output = torch.squeeze(output)
+            # Calc loss and backprop gradients
+            mult = 1
+            if self.num_epochs <= 10:
+                mult = self.num_epochs/10
+
+            ll, kl = self.model.elbo(y, output, mult, data_index=i)
+            total_loss = -ll + kl
+
+            total_loss.backward()
+            self.optimizer.step()
+            epoch_loss += total_loss.item()
+            epoch_ll += ll.item()
+            epoch_kl += kl.item()
+
+        return output, epoch_loss, (-epoch_ll, epoch_kl)
 
     def print_extra(self):
         print('')
