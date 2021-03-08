@@ -12,20 +12,20 @@ class GPKernelSelector():
     def __init__(self, data, options):
         self.kernel = options.kernel
         self.options = options
-        self.τ = data.τ        
-        self.N_p = data.τ.shape[0]
+        self.t_discretised = data.t_discretised
+        self.N_p = data.t_discretised.shape[0]
         self.num_tfs = data.f_obs.shape[1]
-        t_1, t_2 = get_time_square(self.τ, self.N_p)
+        t_1, t_2 = get_time_square(self.t_discretised, self.N_p)
         self.t_dist = t_1-t_2
         self.tt = t_1*t_2
         self.t2 = tf.square(t_1)
         self.tprime2 = tf.square(t_2)
         self.fixed_dist = FixedDistribution(tf.ones(self.num_tfs, dtype='float64'))
-        min_dist = min(data.t[1:]-data.t[:-1])
+        min_dist = min(data.t_observed[1:] - data.t_observed[:-1])
         min_dist = max(min_dist, 1.)
         self._ranges = {
-            'rbf': [(f64(1e-4), f64(5)), #1+max(np.var(data.f_obs, axis=2))
-                    (f64(min_dist**2)-1.2, f64(data.t[-1]**2))],
+            'rbf': [(f64(1e-4), f64(5)),  #1+max(np.var(data.f_obs, axis=2))
+                    (f64(min_dist**2)-1.2, f64(data.t_observed[-1] ** 2))],
             'mlp': [(f64(1), f64(10)), (f64(3.5), f64(20))],
         }
         self._priors = {

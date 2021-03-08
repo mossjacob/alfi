@@ -30,8 +30,8 @@ class TranscriptionLikelihood():
         self.num_replicates = data.m_obs.shape[0]
 
     def calculate_protein(self, fbar, δbar): # Calculate p_i vector
-        τ = self.data.τ
-        N_p = self.data.τ.shape[0]
+        τ = self.data.t_discretised
+        N_p = self.data.t_discretised.shape[0]
         f_i = np.log(1+np.exp(fbar))
         δ_i = np.exp(δbar)
 
@@ -58,8 +58,8 @@ class TranscriptionLikelihood():
         else:
             b_j, d_j, s_j = kin
 
-        τ = self.data.τ
-        N_p = self.data.τ.shape[0]
+        τ = self.data.t_discretised
+        N_p = self.data.t_discretised.shape[0]
 
         # Calculate p_i vector
         p_i = np.log(1+np.exp(fbar))
@@ -154,9 +154,9 @@ class TranscriptionMCMC(MetropolisHastings):
     '''
     def __init__(self, data, options):
         self.data = data
-        min_dist = min(data.t[1:]-data.t[:-1])
-        self.N_p = data.τ.shape[0]
-        self.N_m = data.t.shape[0]      # Number of observations
+        min_dist = min(data.t_observed[1:] - data.t_observed[:-1])
+        self.N_p = data.t_discretised.shape[0]
+        self.N_m = data.t_observed.shape[0]      # Number of observations
         self.num_replicates = data.f_obs.shape[0]
         self.num_tfs = data.f_obs.shape[1]
         self.num_genes = data.m_obs.shape[1]
@@ -180,7 +180,7 @@ class TranscriptionMCMC(MetropolisHastings):
         # GP hyperparameters
         V = Parameter('V', tfd.InverseGamma(f64(0.01), f64(0.01)), f64(1), step_size=0.05, fixed=not options.latent_data_present)
         V.proposal_dist=lambda v: tfd.TruncatedNormal(v, V.step_size, low=0, high=100) #v_i Fix to 1 if translation model is not used (pg.8)
-        L = Parameter('L', tfd.Uniform(f64(min_dist**2-0.5), f64(data.t[-1]**2)), f64(4), step_size=0.05) # TODO auto set
+        L = Parameter('L', tfd.Uniform(f64(min_dist**2-0.5), f64(data.t_observed[-1] ** 2)), f64(4), step_size=0.05) # TODO auto set
         L.proposal_dist=lambda l2: tfd.TruncatedNormal(l2, L.step_size, low=0, high=100) #l2_i
 
 

@@ -38,8 +38,8 @@ class Plotter():
         self.num_tfs = data.f_obs.shape[1]
         self.num_genes = data.m_obs.shape[1]
         self.data = data
-        self.τ = data.τ
-        self.t = data.t
+        self.τ = data.t_discretised
+        self.t = data.t_observed
         self.common_ind = data.common_indices.numpy()
 
     def plot_kinetics(self, k, k_f, true_k=None, true_k_f=None, true_hpds=None):

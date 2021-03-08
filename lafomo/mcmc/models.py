@@ -3,19 +3,19 @@ from tensorflow import math as tfm
 
 from lafomo.datasets import DataHolder
 from lafomo.utilities.tf import rotate, jitter_cholesky, logit, logistic, LogisticNormal, inverse_positivity, save_object
-from lafomo.options import Options
+from lafomo.options import MCMCOptions
 
 import numpy as np
 PI = tf.constant(np.pi, dtype='float64')
 
 
-class TranscriptionLikelihood:
+class MCMCLFM():
     """
     Likelihood of the form:
     N(m(t), s(t))
     where m(t) = b/d + (a - b/d) exp(-dt) + s int^t_0 G(p(u); w) exp(-d(t-u)) du
     """
-    def __init__(self, data: DataHolder, options: Options):
+    def __init__(self, data: DataHolder, options: MCMCOptions):
         self.options = options
         self.data = data
         self.preprocessing_variance = options.preprocessing_variance
@@ -23,9 +23,64 @@ class TranscriptionLikelihood:
         self.num_tfs = data.f_obs.shape[1]
         self.num_replicates = data.f_obs.shape[0]
 
+
+class TranscriptionRegulationLFM(MCMCLFM):
+    def __init__(self, data: DataHolder, options: MCMCOptions):
+        super().__init__(data, options)
+        step_sizes = self.options.initial_step_sizes
+        logistic_step_size = step_sizes['nuts'] if 'nuts' in step_sizes else 0.00001
+
+        num_kin = 4 if self.options.initial_conditions else 3
+        kbar_initial = 0.8*tf.ones((self.num_genes, num_kin), dtype='float64')
+        k_fbar_initial = 0.8*tf.ones((self.num_tfs,), dtype='float64')
+        kinetics_initial = [kbar_initial]
+        kinetics_priors = [LogisticNormal(0.01, 30)]
+        if options.translation:
+            kinetics_initial += [k_fbar_initial]
+            kinetics_priors += [LogisticNormal(0.1, 7)]
+        if options.weights:
+            kinetics_initial += [w_initial, w_0_initial]
+        self.kinetics = KernelParameter(
+            'kinetics',
+            kinetics_priors,
+            kinetics_initial,
+            hmc_log_prob=self.kbar_log_prob, step_size=logistic_step_size, requires_all_states=True)
+
+    def kbar_log_prob(self, *args):  # kbar, k_fbar, wbar, w_0bar
+        index = 0
+        kbar = args[index]
+        new_prob = 0
+        k_m = logit(kbar)
+        if self.options.kinetic_exponential:
+            k_m = tf.exp(k_m)
+        # tf.print(k_m)
+        lik_args = {'kbar': kbar}
+        new_prob += tf.reduce_sum(self.params.kinetics.prior[index].log_prob(k_m))
+        # tf.print('kbar', new_prob)
+        if options.translation:
+            index += 1
+            k_fbar = args[index]
+            lik_args['k_fbar'] = k_fbar
+            kfprob = tf.reduce_sum(self.params.kinetics.prior[index].log_prob(logit(k_fbar)))
+            new_prob += kfprob
+        if options.weights:
+            index += 1
+            wbar = args[index]
+            w_0bar = args[index + 1]
+            new_prob += tf.reduce_sum(self.params.weights.prior[0].log_prob((wbar)))
+            new_prob += tf.reduce_sum(self.params.weights.prior[1].log_prob((w_0bar)))
+            lik_args['wbar'] = wbar
+            lik_args['w_0bar'] = w_0bar
+        new_prob += tf.reduce_sum(self.likelihood.genes(
+            all_states=all_states,
+            state_indices=self.state_indices,
+            **lik_args
+        ))
+        return tf.reduce_sum(new_prob)
+
     @tf.function
     def calculate_protein(self, fbar, k_fbar, Δ): # Calculate p_i vector
-        τ = self.data.τ
+        τ = self.data.t_discretised
         f_i = inverse_positivity(fbar)
         δ_i = tf.reshape(logit(k_fbar), (-1, 1))
         if self.options.delays:
@@ -62,8 +117,8 @@ class TranscriptionLikelihood:
             b_j, d_j, s_j = kin
         w = (wbar)
         w_0 = tf.reshape((w_0bar), (-1, 1))
-        τ = self.data.τ
-        N_p = self.data.τ.shape[0]
+        τ = self.data.t_discretised
+        N_p = self.data.t_discretised.shape[0]
 
         p_i = inverse_positivity(fbar)
         if self.options.translation:
@@ -71,11 +126,11 @@ class TranscriptionLikelihood:
 
         # Calculate m_pred
         resolution = τ[1]-τ[0]
-        interactions =  tf.matmul(w, tfm.log(p_i+1e-100)) + w_0
+        interactions = tf.matmul(w, tfm.log(p_i+1e-100)) + w_0
         G = tfm.sigmoid(interactions) # TF Activation Function (sigmoid)
         sum_term = G * tfm.exp(d_j*τ)
         integrals = tf.concat([tf.zeros((self.num_replicates, self.num_genes, 1), dtype='float64'), # Trapezoid rule
-                            0.5*resolution*tfm.cumsum(sum_term[:, :, :-1] + sum_term[:, :, 1:], axis=2)], axis=2) 
+                               0.5*resolution*tfm.cumsum(sum_term[:, :, :-1] + sum_term[:, :, 1:], axis=2)], axis=2)
         exp_dt = tfm.exp(-d_j*τ)
         integrals = tfm.multiply(exp_dt, integrals)
 

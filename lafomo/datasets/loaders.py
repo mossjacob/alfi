@@ -10,8 +10,8 @@ class DataHolder(object):
         self.m_obs, self.f_obs = data
         if noise is not None:
             self.σ2_m_pre, self.σ2_f_pre = noise
-        self.t = time[0]
-        self.τ = time[1]
+        self.t_observed = time[0]
+        self.t_discretised = time[1]
         self.common_indices = time[2]
 
 

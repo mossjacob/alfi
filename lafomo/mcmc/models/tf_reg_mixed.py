@@ -32,8 +32,8 @@ class TranscriptionMixedSampler:
         """
         self.data = data
         self.samples = None
-        self.N_p = data.τ.shape[0]
-        self.N_m = data.t.shape[0]      # Number of observations
+        self.N_p = data.t_discretised.shape[0]
+        self.N_m = data.t_observed.shape[0]      # Number of observations
 
         self.num_tfs = data.f_obs.shape[1] # Number of TFs
         self.num_genes = data.m_obs.shape[1]
@@ -44,8 +44,6 @@ class TranscriptionMixedSampler:
         self.kernel_selector = GPKernelSelector(data, options)
 
         self.state_indices = {}
-        step_sizes = self.options.initial_step_sizes
-        logistic_step_size = step_sizes['nuts'] if 'nuts' in step_sizes else 0.00001
 
         # Latent function & GP hyperparameters
         kernel_initial = self.kernel_selector.initial_params()
@@ -135,58 +133,10 @@ class TranscriptionMixedSampler:
             hmc_log_prob=weights_log_prob, step_size=10*logistic_step_size, requires_all_states=True)
             #TODO kernel=weights_kernel
 
-        num_kin = 4 if self.options.initial_conditions else 3
-        kbar_initial = 0.8*tf.ones((self.num_genes, num_kin), dtype='float64')
-
-        def kbar_log_prob(all_states):
-            def kbar_log_prob_fn(*args): #kbar, k_fbar, wbar, w_0bar
-                index = 0
-                kbar = args[index]
-                new_prob = 0
-                k_m =logit(kbar)
-                if self.options.kinetic_exponential:
-                    k_m = tf.exp(k_m)
-                # tf.print(k_m)
-                lik_args = {'kbar': kbar}
-                new_prob += tf.reduce_sum(self.params.kinetics.prior[index].log_prob(k_m))
-                # tf.print('kbar', new_prob)
-                if options.translation:
-                    index += 1
-                    k_fbar = args[index]
-                    lik_args['k_fbar'] = k_fbar
-                    kfprob = tf.reduce_sum(self.params.kinetics.prior[index].log_prob(logit(k_fbar)))
-                    new_prob += kfprob
-                if options.weights:
-                    index += 1
-                    wbar = args[index]
-                    w_0bar = args[index+1]
-                    new_prob += tf.reduce_sum(self.params.weights.prior[0].log_prob((wbar))) 
-                    new_prob += tf.reduce_sum(self.params.weights.prior[1].log_prob((w_0bar)))
-                    lik_args['wbar'] = wbar
-                    lik_args['w_0bar'] = w_0bar
-                new_prob += tf.reduce_sum(self.likelihood.genes(
-                    all_states=all_states,
-                    state_indices=self.state_indices,
-                    **lik_args
-                ))
-                return tf.reduce_sum(new_prob)
-            return kbar_log_prob_fn
 
 
-        k_fbar_initial = 0.8*tf.ones((self.num_tfs,), dtype='float64')
 
-        kinetics_initial = [kbar_initial]
-        kinetics_priors = [LogisticNormal(0.01, 30)]
-        if options.translation:
-            kinetics_initial += [k_fbar_initial]
-            kinetics_priors += [LogisticNormal(0.1, 7)]
-        if options.weights:
-            kinetics_initial += [w_initial, w_0_initial]
-        kinetics = KernelParameter(
-            'kinetics', 
-            kinetics_priors, 
-            kinetics_initial,
-            hmc_log_prob=kbar_log_prob, step_size=logistic_step_size, requires_all_states=True)
+
 
 
         delta_kernel = DelayKernel(self.likelihood, 0, 10, self.state_indices, tfd.Exponential(f64(0.3)))

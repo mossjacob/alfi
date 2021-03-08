@@ -143,7 +143,7 @@ def get_artificial_dataset(num_genes=20, num_tfs=3):
                                               true_kbar=true_kbar[:num_genes])
     true_kbar, true_k_fbar = kinetics
     f_i = inverse_positivity(fbar)
-    t, τ, common_indices = data.t, data.τ, data.common_indices
+    t_observed, t_discretised, common_indices = data.t_observed, data.t_discretised, data.common_indices
 
     common_indices = common_indices.numpy()
 
@@ -152,11 +152,11 @@ def get_artificial_dataset(num_genes=20, num_tfs=3):
     # Transcription factor
     plt.title('TFs')
     for i in range(num_tfs):
-        plt.plot(τ, f_i[0, i], label=f'TF {i}')
-        plt.scatter(t, data.f_obs[0, i], marker='x')
+        plt.plot(t_discretised, f_i[0, i], label=f'TF {i}')
+        plt.scatter(t_observed, data.f_obs[0, i], marker='x')
     plt.xticks(np.arange(0, 10))
     plt.legend()
-    print(τ.shape)
+    print(t_discretised.shape)
 
 
     lik = model.likelihood

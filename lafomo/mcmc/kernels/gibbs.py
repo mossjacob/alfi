@@ -14,7 +14,7 @@ class GibbsKernel(tfp.mcmc.TransitionKernel):
         self.prior = prior
         self.state_indices = state_indices
         self.sq_diff_fn = sq_diff_fn
-        self.N_p = data.τ.shape[0]
+        self.N_p = data.t_discretised.shape[0]
 
     @tf.function
     def one_step(self, current_state, previous_kernel_results, all_states):
