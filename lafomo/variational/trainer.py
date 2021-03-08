@@ -1,6 +1,5 @@
 import torch
 import numpy as np
-from matplotlib import pyplot as plt
 
 from lafomo.utilities.torch import is_cuda
 from lafomo.datasets import LFMDataset
@@ -42,7 +41,6 @@ class Trainer:
     def train(self, epochs=20, report_interval=1, plot_interval=20, rtol=1e-5, atol=1e-6):
         losses = list()
         end_epoch = self.num_epochs+epochs
-        plt.figure(figsize=(4, 2.3))
 
         for epoch in range(epochs):
             output, epoch_loss, split_loss = self.single_epoch(rtol, atol)
@@ -59,12 +57,10 @@ class Trainer:
             losses.append(split_loss)
 
             if plot_interval is not None and (epoch % plot_interval) == 0:
-                plt.plot(self.t_observed, output[0].cpu().detach().numpy(), label='epoch' + str(epoch))
+                self.output_plots.append((epoch, output[0].cpu().detach().numpy()))
 
             self.after_epoch()
             self.num_epochs += 1
-
-        plt.legend()
 
         losses = np.array(losses)
         self.losses = np.concatenate([self.losses, losses], axis=0)
