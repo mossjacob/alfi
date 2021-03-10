@@ -1,13 +1,8 @@
 from lafomo.datasets import DataHolder
 from lafomo.options import MCMCOptions
-
+import abc
 
 class MCMCLFM():
-    """
-    Likelihood of the form:
-    N(m(t), s(t))
-    where m(t) = b/d + (a - b/d) exp(-dt) + s int^t_0 G(p(u); w) exp(-d(t-u)) du
-    """
 
     def __init__(self, data: DataHolder, options: MCMCOptions):
         self.options = options
@@ -16,3 +11,8 @@ class MCMCLFM():
         self.num_genes = data.m_obs.shape[1]
         self.num_tfs = data.f_obs.shape[1]
         self.num_replicates = data.f_obs.shape[0]
+        self.parameter_state = None
+
+    @abc.abstractmethod
+    def sample(self, T=2000, **kwargs):
+        pass

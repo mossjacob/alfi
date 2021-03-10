@@ -23,12 +23,10 @@ class Parameter():
                  prior,
                  initial_value,
                  transform=None,
-                 fixed=False,
-                 sampler=None):
+                 fixed=False):
         self.name = name
-        self.sampler = sampler
         self.prior = prior
-        self.transform = lambda x: x if transform is None else transform
+        self.transform = (lambda x: x) if transform is None else transform
         self.value = initial_value
         self.fixed = fixed
 

@@ -3,17 +3,17 @@ import tensorflow_probability as tfp
 from tensorflow_probability import distributions as tfd
 
 from lafomo.mcmc.results import GenericResults
+from .mixins import ParamGroupMixin
 
-
-class GibbsSampler(tfp.mcmc.TransitionKernel):
+class GibbsSampler(tfp.mcmc.TransitionKernel, ParamGroupMixin):
     
-    def __init__(self, data, options, likelihood, prior, sq_diff_fn):
-        self.data = data
-        self.options = options
+    def __init__(self, likelihood, param, sq_diff_fn, N):
+        super().__init__()
+        self.param_group = [param]
         self.likelihood = likelihood
-        self.prior = prior
+        self.prior = param.prior
         self.sq_diff_fn = sq_diff_fn
-        self.N_p = data.t_discretised.shape[0]
+        self.N = N
 
     @tf.function
     def one_step(self, current_state, previous_kernel_results):

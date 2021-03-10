@@ -3,15 +3,22 @@ from tensorflow import math as tfm
 import tensorflow_probability as tfp
 
 from lafomo.mcmc.results import GenericResults
+from .mixins import ParamGroupMixin
 import numpy as np
 
 
-class DelaySampler(tfp.mcmc.TransitionKernel):
-    def __init__(self, likelihood, lower, upper, prior, start_iteration=1):
+class DelaySampler(tfp.mcmc.TransitionKernel, ParamGroupMixin):
+    """
+    Parameters:
+        param: the associated Parameter (only one, not a list)
+    """
+    def __init__(self, likelihood, param, lower, upper, start_iteration=1):
+        super().__init__()
+        self.param_group = [param]
         self.likelihood = likelihood
         self.lower = lower
         self.upper = upper
-        self.prior = prior
+        self.prior = param.prior
         self.start_iteration = start_iteration
         
     def one_step(self, current_state, previous_kernel_results, all_states):

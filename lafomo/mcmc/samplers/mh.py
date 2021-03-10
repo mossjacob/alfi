@@ -22,7 +22,7 @@ class MetropolisKernel(tfp.mcmc.TransitionKernel):
     #         alpha = alpha.numpy()
     #     return not np.isnan(alpha) and random.random() < min(1, alpha)
 
-    def one_step(self, current_state, previous_kernel_results, all_states):
+    def one_step(self, current_state, previous_kernel_results):
         new_state, prob, is_accepted = self._one_step(current_state, previous_kernel_results, all_states)
 
         acc_rate, iteration = previous_kernel_results.acc_iter
@@ -36,7 +36,7 @@ class MetropolisKernel(tfp.mcmc.TransitionKernel):
         return new_state, GenericResults(prob, is_accepted, (acc_rate, iteration)) # TODO for multiple TFs
 
     @abstractmethod
-    def _one_step(self, current_state, previous_kernel_results, all_states):
+    def _one_step(self, current_state, previous_kernel_results):
         pass
     
     def tune(self, acc_rate):
