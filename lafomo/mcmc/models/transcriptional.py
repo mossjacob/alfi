@@ -42,19 +42,19 @@ class TranscriptionRegulationLFM(MCMCLFM):
         basal_rate = HMCParameter(
             'basal',
             LogisticNormal(0.01, 30),
-            0.8 * tf.ones((self.num_genes), dtype='float64'),
+            0.8 * tf.ones((self.num_genes, 1), dtype='float64'),
             transform=kinetic_transform
         )
         sensitivity = HMCParameter(
             'sensitivity',
             LogisticNormal(0.01, 30),
-            0.8 * tf.ones((self.num_genes), dtype='float64'),
+            0.8 * tf.ones((self.num_genes, 1), dtype='float64'),
             transform=kinetic_transform
         )
         decay_rate = HMCParameter(
             'decay',
             LogisticNormal(0.01, 30),
-            0.8 * tf.ones((self.num_genes), dtype='float64'),
+            0.8 * tf.ones((self.num_genes, 1), dtype='float64'),
             transform=kinetic_transform
         )
         kinetics = [basal_rate, decay_rate, sensitivity]
@@ -64,7 +64,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
             self.initial_conditions = HMCParameter(
                 'initial',
                 LogisticNormal(0.01, 30),
-                0.8 * tf.ones((self.num_genes), dtype='float64'),
+                0.8 * tf.ones((self.num_genes, 1), dtype='float64'),
                 transform=kinetic_transform
             )
             kinetics.append(self.initial_conditions)
@@ -176,18 +176,6 @@ class TranscriptionRegulationLFM(MCMCLFM):
     def sample(self, T=2000, **kwargs):
         return self.sampler.sample(T, **kwargs)
 
-
-
-    def fbar_prior(self, fbar, param_0bar, param_1bar): #TODO delete?
-        m, K = self.kernel_selector()(param_0bar, param_1bar)
-        jitter = tf.linalg.diag(1e-8 * tf.ones(self.N_p, dtype='float64'))
-        prob = 0
-        for r in range(self.num_replicates):
-            for i in range(self.num_tfs):
-                prob += tfd.MultivariateNormalTriL(loc=m, scale_tril=tf.linalg.cholesky(K[i] + jitter)).log_prob(
-                    fbar[r, i])
-        return prob
-
     @tf.function
     def calculate_protein(self, fbar, protein_decay, Δ):  # Calculate p_i vector
         τ = self.data.t_discretised
@@ -217,17 +205,25 @@ class TranscriptionRegulationLFM(MCMCLFM):
     @tf.function
     def predict_m(self,
                   initial, basal, decay, sensitivity,
-                  protein_decay, w, w_0, latent, Δ, **excess_parameters):
+                  protein_decay, latent, **optional_parameters):
+
         τ = self.data.t_discretised
         fbar = latent[0]
         p_i = inverse_positivity(fbar)
         if self.options.translation:
+            Δ = optional_parameters['Δ'] if self.options.delays else None
             p_i = self.calculate_protein(fbar, protein_decay, Δ)
 
         # Calculate m_pred
         resolution = τ[1] - τ[0]
-        interactions = tf.matmul(w, tfm.log(p_i + 1e-100)) + w_0
-        G = tfm.sigmoid(interactions)  # TF Activation Function (sigmoid)
+        if self.options.weights:
+            w = optional_parameters['w']
+            w_0 = optional_parameters['w_0']
+            interactions = tf.matmul(w, tfm.log(p_i + 1e-100)) + w_0
+            G = tfm.sigmoid(interactions)  # TF Activation Function (sigmoid)
+        else:
+            G = tf.tile(p_i, (1, self.num_genes, 1))
+
         sum_term = G * tfm.exp(decay * τ)
         integrals = tf.concat([tf.zeros((self.num_replicates, self.num_genes, 1), dtype='float64'),  # Trapezoid rule
                                0.5 * resolution * tfm.cumsum(sum_term[:, :, :-1] + sum_term[:, :, 1:], axis=2)], axis=2)
@@ -241,6 +237,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
 
     @tf.function
     def _genes(self, σ2_m=None, **parameter_state):
+        # print('_genes', parameter_state)
         m_pred = self.predict_m(σ2_m=σ2_m, **parameter_state)
         sq_diff = tfm.square(self.data.m_obs - tf.transpose(tf.gather(tf.transpose(m_pred), self.data.common_indices)))
 
@@ -252,26 +249,33 @@ class TranscriptionRegulationLFM(MCMCLFM):
         return log_lik
 
     @tf.function  # (experimental_compile=True)
-    def likelihood(self, **kwargs):
+    def likelihood(self, **parameters):
         """
         Likelihood of the form:
         N(m(t), s(t))
         where m(t) = b/d + (a - b/d) exp(-dt) + s int^t_0 G(p(u); w) exp(-d(t-u)) du
         """
-        parameter_state = {**self.parameter_state, **kwargs}
+        # print(self.parameter_state)
+        # print('likelihood', parameters)
+        parameter_state = {**self.parameter_state, **parameters}
         return self._genes(**parameter_state)
 
     @tf.function  # (experimental_compile=True)
-    def tfs_likelihood(self, σ2_f, fbar):
+    def tfs_likelihood(self, **parameters):
         """
         Computes log-likelihood of the transcription factors.
         """
+        parameter_state = {**self.parameter_state, **parameters}
+
+        σ2_f = parameter_state['σ2_f']
+        latent = parameter_state['latent']
+
         # assert self.options.tf_mrna_present
         if not self.preprocessing_variance:
             variance = tf.reshape(σ2_f, (-1, 1))
         else:
             variance = self.data.σ2_f_pre
-        f_pred = inverse_positivity(fbar)
+        f_pred = inverse_positivity(latent[0])
         sq_diff = tfm.square(self.data.f_obs - tf.transpose(tf.gather(tf.transpose(f_pred), self.data.common_indices)))
         log_lik = -0.5 * tfm.log(2 * PI * variance) - 0.5 * sq_diff / variance
         log_lik = tf.reduce_sum(log_lik)

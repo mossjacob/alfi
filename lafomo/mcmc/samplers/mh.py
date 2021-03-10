@@ -23,7 +23,7 @@ class MetropolisKernel(tfp.mcmc.TransitionKernel):
     #     return not np.isnan(alpha) and random.random() < min(1, alpha)
 
     def one_step(self, current_state, previous_kernel_results):
-        new_state, prob, is_accepted = self._one_step(current_state, previous_kernel_results, all_states)
+        new_state, prob, is_accepted = self._one_step(current_state, previous_kernel_results)
 
         acc_rate, iteration = previous_kernel_results.acc_iter
         acc = acc_rate*iteration

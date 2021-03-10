@@ -71,8 +71,8 @@ class LatentGPSampler(MetropolisKernel, ParamGroupMixin):
             mask[r] = 1
             test_state = (1-mask) * new_state + mask * fstar
 
-            new_prob = self.calc_prob_fn(test_state, all_states)
-            old_prob = self.calc_prob_fn(new_state, all_states)
+            new_prob = self.calc_prob_fn(test_state)
+            old_prob = self.calc_prob_fn(new_state)
             #previous_kernel_results.target_log_prob #tf.reduce_sum(old_m_likelihood) + old_f_likelihood
 
             is_accepted = self.metropolis_is_accepted(new_prob, old_prob)
@@ -214,18 +214,17 @@ class LatentGPSampler(MetropolisKernel, ParamGroupMixin):
         new_prob = tf.reduce_sum(new_m_likelihood) + new_f_likelihood
         return new_prob
 
-    def joint_calc_prob(self, fstar, new_hyp, old_hyp, all_states):
-        new_m_likelihood = self.likelihood(
-            fbar=fstar,
+    def joint_calc_prob(self, fstar, new_hyp, old_hyp):
+        new_m_likelihood = self.likelihood_fn(
+            latent=[fstar],
         )
-        σ2_f = 1e-6 * tf.ones(fstar.shape[1], dtype='float64')
-        if 'σ2_f' in self.state_indices:
-            σ2_f = all_states[self.state_indices['σ2_f']]
+        # σ2_f = 1e-6 * tf.ones(fstar.shape[1], dtype='float64')
+        # if 'σ2_f' in self.state_indices:
+        #     σ2_f = all_states[self.state_indices['σ2_f']]
 
         new_f_likelihood = tf.cond(tf.equal(self.data_present, tf.constant(True)),
                                    lambda: tf.reduce_sum(self.latent_likelihood_fn(
-                                       σ2_f,
-                                       fstar
+                                       latent=[fstar]
                                    )), lambda: f64(0))
         new_prob = tf.reduce_sum(new_m_likelihood) + new_f_likelihood
 
@@ -242,9 +241,12 @@ class LatentGPSampler(MetropolisKernel, ParamGroupMixin):
         )
         return new_prob
 
-    def bootstrap_results(self, init_state, all_states):
-        prob = self.calc_prob_fn(init_state[0], [init_state[1], init_state[2]], 
-                                 [init_state[1], init_state[2]], all_states)
+    def bootstrap_results(self, init_state):
+        print(init_state)
+        init_state = init_state[0]
+        prob = self.calc_prob_fn(
+            init_state[0], [init_state[1], init_state[2]],
+            [init_state[1], init_state[2]])
 
         return GenericResults(prob, True)
     

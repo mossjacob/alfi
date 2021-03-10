@@ -30,7 +30,7 @@ class GibbsSampler(tfp.mcmc.TransitionKernel, ParamGroupMixin):
         new_state = tf.reshape(new_state, (sq_diff.shape[0], 1))
         return new_state, GenericResults(list(), True)
 
-    def bootstrap_results(self, init_state, all_states):
+    def bootstrap_results(self, init_state):
         return GenericResults(list(), True) 
     
     def is_calibrated(self):

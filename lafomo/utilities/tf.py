@@ -25,7 +25,7 @@ def discretise(t, num_disc = 10):
     i = int(t[0]/gcd)
     τ = τ[i*num_disc+i:]
     common_indices = np.searchsorted(τ, t)
-    return τ, common_indices
+    return tf.constant(τ), common_indices
 
 def get_time_square(times, N):
     t_1 = tf.transpose(tf.reshape(tf.tile(times, [N]), [N, N]))

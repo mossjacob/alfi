@@ -132,7 +132,7 @@ class MixedSampler(tfp.mcmc.TransitionKernel):
                 result_state, kernel_results = self.subsamplers[i].one_step(
                     current_state[i], previous_kernel_results.inner_results[i])
             except Exception as e:
-                tf.print('Failed at ', i, self.kernels[i], current_state)
+                tf.print('Failed at ', i, self.subsamplers[i], current_state)
                 raise e
 
             if type(result_state) is list:
