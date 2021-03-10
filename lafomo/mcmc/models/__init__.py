@@ -1,7 +1,7 @@
-from lafomo.mcmc.models.tf_reg_mh import TranscriptionMCMC
-from lafomo.mcmc.models.tf_reg_mixed import TranscriptionMixedSampler
+from .model import MCMCLFM
+from .transcriptional import TranscriptionRegulationLFM
 
 __all__ = [
-    'TranscriptionMCMC',
-    'TranscriptionMixedSampler',
+    'MCMCLFM',
+    'TranscriptionRegulationLFM',
 ]

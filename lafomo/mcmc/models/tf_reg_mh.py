@@ -366,7 +366,7 @@ class TranscriptionMCMC(MetropolisHastings):
                 self.acceptance_rates['σ2_f'] += 1
 
             # print('val', params.σ2_m.value)
-        # Length scales and variances of GP kernels
+        # Length scales and variances of GP samplers
         l2 = params.L.value
         v = params.V.value
         for i in range(self.num_tfs):
