@@ -301,15 +301,26 @@ class TranscriptionRegulationLFM(MCMCLFM):
         for i, subsampler in enumerate(self.subsamplers):
             group_samples = self.sampler.samples[i]
             for j, param in enumerate(subsampler.param_group):
-                results[param.name] = group_samples[j]
+                samples = group_samples[j]
+                if type(samples) is list:
+                    samples = [s.numpy() for s in samples]
+                else:
+                    samples = samples.numpy()
+                results[param.name] = samples
 
         return results
 
     def predict_m_with_results(self, results, i=1):
-        delay = results.delay[-i] if self.options.delays else None
-        k_fbar = results.k_fbar[-i] if self.options.translation else None
-        return self.likelihood.predict_m(results.kbar[-i], k_fbar, results.wbar[-i],
-                                         results.fbar[-i], results.w_0bar[-i], delay)
+        parameter_state = self.parameter_state
+        for key in results:
+            result = results[key]
+            if type(result) is list:
+                parameter_state[key] = [result[0][-1]]
+            else:
+                parameter_state[key] = result[-1]
+        # delay = results.delay[-i] if self.options.delays else None
+        # k_fbar = results.k_fbar[-i] if self.options.translation else None
+        return self.predict_m(**parameter_state)
 
     def predict_m_with_current(self):
         return self.likelihood.predict_m(self.params.kinetics.value[0],

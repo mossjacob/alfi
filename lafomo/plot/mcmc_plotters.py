@@ -37,7 +37,7 @@ class Plotter():
         self.num_tfs = data.f_obs.shape[1]
         self.num_genes = data.m_obs.shape[1]
         self.data = data
-        self.τ = data.t_discretised
+        self.τ = data.t_discretised.numpy()
         self.t = data.t_observed
         self.common_ind = data.common_indices.numpy()
 
@@ -75,7 +75,7 @@ class Plotter():
         hpds = abs(hpds - np.expand_dims(var, 2))
         for k in range(var_samples.shape[2]):
             plt.subplot(plotnum)
-            plotnum+=1
+            plotnum += 1
             plt.bar(np.arange(num)-width, var[:, k], width=2*width, tick_label=labels, color='chocolate', label=self.opt.model_label)
             plt.errorbar(np.arange(num)-width, var[:, k], hpds[:, k].swapaxes(0,1), fmt='none', capsize=5, color='black')
             plt.xlim(-1, num)
@@ -170,7 +170,7 @@ class Plotter():
         self.plot_samples(m_preds, names, self.opt.num_plot_genes, 
                           scatters=scatters, legend=not self.opt.for_report)
 
-    def plot_tfs(self, f_samples, replicate=0, scale_observed=False, plot_barenco=False, sample_gap=2):
+    def plot_latents(self, f_samples, replicate=0, scale_observed=False, plot_barenco=False, sample_gap=2):
         f_samples = f_samples[:, replicate]
         num_tfs = self.data.f_obs.shape[1]
         width = 6*min(num_tfs, 3)
@@ -321,19 +321,9 @@ class Plotter():
         G.add_nodes_from(nodes)
         G.add_edges_from(edges)
         node_size = sizes if use_basal else 1000
-        pos=nx.spring_layout(G, seed=42)
+        pos = nx.spring_layout(G, seed=42)
         pos = nx.nx_pydot.graphviz_layout(G, prog='dot')
         nx.draw(G, pos=pos, edge_color=colors, node_color=node_colors, node_size=node_size, with_labels=True)
-
-    def summary(self, results, m_preds, true_k=None, true_k_f=None,
-                replicate=0, scale_observed=False):
-        self.plot_tfs(results.f, replicate=replicate, scale_observed=scale_observed)
-        self.plot_genes(m_preds, replicate=replicate)
-        self.plot_kinetics(results.k, results.k_f, true_k=true_k, true_k_f=true_k_f)
-        plt.figure()
-        kp = np.array(results.kernel_params).swapaxes(0,1)
-        kp_latest = np.mean(kp[-50:], axis=0)
-        self.plot_bar_hpd(kp, kp_latest, self.opt.kernel_names)
 
     def convergence_summary(self, results):
         self.plot_kinetics_convergence(results.k, results.k_f)
