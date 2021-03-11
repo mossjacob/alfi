@@ -6,11 +6,8 @@ from lafomo.datasets import DataHolder
 from lafomo.utilities.tf import rotate, logit, logistic, LogisticNormal, inverse_positivity, \
     save_object
 from lafomo.options import MCMCOptions
-from lafomo.mcmc.parameter import Parameter, MHParameter, HMCParameter, ParamType
-from lafomo.mcmc.samplers.hmc import HMCSampler
-from lafomo.mcmc.samplers.latent import LatentGPSampler
-from lafomo.mcmc.samplers.delay import DelaySampler
-from lafomo.mcmc.samplers.gibbs import GibbsSampler
+from lafomo.mcmc.parameter import Parameter
+from lafomo.mcmc.samplers import HMCSampler, LatentGPSampler, DelaySampler, GibbsSampler
 from lafomo.mcmc.samplers.mixed import MixedSampler
 from lafomo.mcmc.gp.gp_kernels import GPKernelSelector
 from lafomo.mcmc.models import MCMCLFM
@@ -39,19 +36,19 @@ class TranscriptionRegulationLFM(MCMCLFM):
         else:
             kinetic_transform = logit
 
-        basal_rate = HMCParameter(
+        basal_rate = Parameter(
             'basal',
             LogisticNormal(0.01, 30),
             0.8 * tf.ones((self.num_genes, 1), dtype=self.dtype),
             transform=kinetic_transform
         )
-        sensitivity = HMCParameter(
+        sensitivity = Parameter(
             'sensitivity',
             LogisticNormal(0.01, 30),
             0.8 * tf.ones((self.num_genes, 1), dtype=self.dtype),
             transform=kinetic_transform
         )
-        decay_rate = HMCParameter(
+        decay_rate = Parameter(
             'decay',
             LogisticNormal(0.01, 30),
             0.8 * tf.ones((self.num_genes, 1), dtype=self.dtype),
@@ -61,7 +58,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
 
         # Add optional kinetic parameters
         if options.initial_conditions:
-            self.initial_conditions = HMCParameter(
+            self.initial_conditions = Parameter(
                 'initial',
                 LogisticNormal(0.01, 30),
                 0.8 * tf.ones((self.num_genes, 1), dtype=self.dtype),
@@ -69,7 +66,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
             )
             kinetics.append(self.initial_conditions)
         if options.translation:
-            self.protein_decay = HMCParameter(
+            self.protein_decay = Parameter(
                 'protein_decay',
                 LogisticNormal(0.1, 7),
                 0.8 * tf.ones((self.num_tfs,), dtype=self.dtype),
@@ -82,13 +79,12 @@ class TranscriptionRegulationLFM(MCMCLFM):
 
         # Weights
         if options.weights:
-            self.weights = HMCParameter(
+            self.weights = Parameter(
                 'w',
                 LogisticNormal(f64(-2), f64(2)),
-                logistic(1 * tf.ones((self.num_genes, self.num_tfs), dtype=self.dtype)),
-                param_type=ParamType.HMC
+                logistic(1 * tf.ones((self.num_genes, self.num_tfs), dtype=self.dtype))
             )
-            self.weights_biases = HMCParameter(
+            self.weights_biases = Parameter(
                 'w_0',
                 LogisticNormal(f64(-0.8), f64(0.8)),
                 logistic(0 * tf.ones(self.num_genes, dtype=self.dtype))
@@ -114,7 +110,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
             for i, k in enumerate(kernel_initial):
                 range = self.kernel_selector.ranges()[i]
                 transform = lambda x: logit(x, nan_replace=range[1])
-                kernel_params.append(HMCParameter(
+                kernel_params.append(Parameter(
                     'kernel_{}' % i,
                     LogisticNormal(*range),
                     logistic(k),
@@ -161,7 +157,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
                              1e-3*tf.ones((self.num_genes, 1), dtype=self.dtype))
             σ2_m_sampler = GibbsSampler(σ2_m, m_sq_diff_fn, self.N_p)
         else:
-            σ2_m = HMCParameter('σ2_m', LogisticNormal(f64(1e-5), f64(1e-2)), # f64(max(np.var(data.f_obs, axis=1)))                                logistic(f64(5e-3))*tf.ones(self.num_genes, dtype=self.dtype),
+            σ2_m = Parameter('σ2_m', LogisticNormal(f64(1e-5), f64(1e-2)), # f64(max(np.var(data.f_obs, axis=1)))                                logistic(f64(5e-3))*tf.ones(self.num_genes, dtype=self.dtype),
                                 transform=logit)
             σ2_m_sampler = HMCSampler(self.likelihood, [self.σ2_m], logistic_step_size)
 

@@ -3,9 +3,7 @@ import tensorflow_probability as tfp
 
 from lafomo.mcmc.results import MixedKernelResults
 from lafomo.utilities.tf import prog
-from lafomo.mcmc.parameter import ParamType
 
-from inspect import signature
 from datetime import datetime
 
 
