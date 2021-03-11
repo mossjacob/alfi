@@ -76,21 +76,20 @@ class MixedSampler(tfp.mcmc.TransitionKernel):
         if profile:
             tf.profiler.experimental.stop()
 
-        add_to_previous = (self.samples is not None)
-        for param in self.active_params:
-            index = self.state_indices[param.name]
-            param_samples = samples[index]
-            if type(param_samples) is list:
-                if add_to_previous:
+        if self.samples is not None:
+            for index, sampler in enumerate(self.subsamplers):
+                param_samples = samples[index]
+                if type(param_samples[0]) is list:
+                    param_samples = param_samples[0]
                     for i in range(len(param_samples)):
-                        self.samples[index][i] = tf.concat([self.samples[index][i], samples[index][i]], axis=0)
-                param_samples = [[param_samples[i][-1] for i in range(len(param_samples))]]
-            else:
-                if add_to_previous:
-                    self.samples[index] = tf.concat([self.samples[index], samples[index]], axis=0)
-            param.value = param_samples[-1]
+                        self.samples[index][0][i] = tf.concat([self.samples[index][i], param_samples[i]], axis=0)
+                else:
+                    for i in range(len(param_samples)):
+                        self.samples[index][i] = tf.concat([self.samples[index][i], param_samples[i]], axis=0)
 
-        if not add_to_previous:
+                param_samples = [[param_samples[i][-1] for i in range(len(param_samples))]]
+                # param.value = param_samples[-1]
+        else:
             self.samples = samples
         self.is_accepted = is_accepted
         print()
@@ -135,10 +134,10 @@ class MixedSampler(tfp.mcmc.TransitionKernel):
                 tf.print('Failed at ', i, self.subsamplers[i], current_state)
                 raise e
 
-            if type(result_state) is list:
-                new_state.append([tf.identity(res) for res in result_state])
+            if type(result_state[0]) is list:
+                new_state.append([[tf.identity(res) for res in result_state[0]]])
             else:
-                new_state.append(result_state)
+                new_state.append([tf.identity(res) for res in result_state])
 
             is_accepted.append(kernel_results.is_accepted)
             inner_results.append(kernel_results)

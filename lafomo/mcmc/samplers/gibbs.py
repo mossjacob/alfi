@@ -7,10 +7,9 @@ from .mixins import ParamGroupMixin
 
 class GibbsSampler(tfp.mcmc.TransitionKernel, ParamGroupMixin):
     
-    def __init__(self, likelihood, param, sq_diff_fn, N):
+    def __init__(self, param, sq_diff_fn, N):
         super().__init__()
         self.param_group = [param]
-        self.likelihood = likelihood
         self.prior = param.prior
         self.sq_diff_fn = sq_diff_fn
         self.N = N
@@ -22,13 +21,13 @@ class GibbsSampler(tfp.mcmc.TransitionKernel, ParamGroupMixin):
         β = self.prior.scale
         # Conditional posterior of inv gamma parameters:
         sq_diff = self.sq_diff_fn()
-        α_post = α + 0.5*self.N_p
+        α_post = α + 0.5*self.N
         β_post = β + 0.5*tf.reduce_sum(sq_diff, axis=1)
         # print(α.shape, sq_diff.shape)
         # print('val', β_post.shape, params.σ2_m.value)
         new_state = tfd.InverseGamma(α_post, β_post).sample()
         new_state = tf.reshape(new_state, (sq_diff.shape[0], 1))
-        return new_state, GenericResults(list(), True)
+        return [new_state], GenericResults(list(), True)
 
     def bootstrap_results(self, init_state):
         return GenericResults(list(), True) 

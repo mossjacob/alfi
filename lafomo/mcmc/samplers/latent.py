@@ -1,7 +1,6 @@
 import tensorflow as tf
 from tensorflow_probability import distributions as tfd
 
-from lafomo.mcmc.samplers.wrappers import ESSWrapper
 from lafomo.mcmc.gp.gp_kernels import GPKernelSelector
 from lafomo.mcmc.samplers import MetropolisKernel
 from lafomo.utilities.tf import jitter_cholesky, logit, add_diag
@@ -87,9 +86,10 @@ class LatentGPSampler(MetropolisKernel, ParamGroupMixin):
 
     @tf.function
     def joint_one_step(self, current_state, previous_kernel_results):
+        current_state = current_state[0]
         new_state = tf.identity(current_state[0])
         num_replicates = new_state.shape[0]
-        num_tfs = current_state.shape[1]
+        num_tfs = new_state.shape[1]
         new_params = []
         S = tf.linalg.diag(self.step_size)
         # MH
@@ -150,7 +150,7 @@ class LatentGPSampler(MetropolisKernel, ParamGroupMixin):
             #                     lambda:current_state[0], lambda:new_state)
         # new_params = tf.cond(tf.equal(is_accepted, tf.constant(False)),
         #                         lambda:[current_state[1], current_state[2]], lambda:[v, l2])
-        return [new_state, *new_hyp], f64(0), is_accepted[0]
+        return [[new_state, *new_hyp]], f64(0), is_accepted[0]
 
     def _joint_one_step(self, current_state, previous_kernel_results, all_states):
         # Untransformed tf mRNA vectors F (Step 1)
@@ -252,45 +252,3 @@ class LatentGPSampler(MetropolisKernel, ParamGroupMixin):
     
     def is_calibrated(self):
         return True
-
-
-class ESSBuilder:
-    def __init__(self, data, state_indices, kernel_selector):
-        self.state_indices = state_indices
-        self.kernel_selector = kernel_selector
-        self.num_replicates = data.f_obs.shape[0]
-        self.num_tfs = data.f_obs.shape[1]
-
-    def normal_sampler_fn_fn(self, all_states):
-        def normal_sampler_fn(seed):
-            p1, p2 = all_states[self.state_indices['kernel_params']]
-            m, K = self.kernel_selector()(logit(p1), logit(p2))
-            m = tf.zeros((self.num_replicates, self.num_tfs, self.N_p), dtype='float64')
-            K = tf.stack([K for _ in range(3)], axis=0)
-            jitter = tf.linalg.diag(1e-8 *tf.ones(self.N_p, dtype='float64'))
-            z = tfd.MultivariateNormalTriL(loc=m, 
-                                scale_tril=tf.linalg.cholesky(K+jitter)).sample(seed=seed)
-            # tf.print(z)
-            return z
-        return normal_sampler_fn
-
-    def f_log_prob_fn(self, all_states):
-        def f_log_prob(fstar):
-            # print(all_states)
-            new_m_likelihood = self.likelihood.genes(
-                all_states,
-                self.state_indices,
-                fbar=fstar,
-            )
-            σ2_f = 1e-6*tf.ones(self.num_tfs, dtype='float64')
-            # if 'σ2_f' in self.state_indices:
-            #     σ2_f = all_states[self.state_indices['σ2_f']]
-
-            new_f_likelihood = tf.cond(tf.equal(self.options.latent_data_present, tf.constant(True)),
-                                       lambda:tf.reduce_sum(self.likelihood.tfs(
-                                        σ2_f,
-                                        fstar
-                                    )), lambda:f64(0))
-            return tf.reduce_sum(new_m_likelihood) + new_f_likelihood
-        return f_log_prob
-    latents_kernel = ESSWrapper(normal_sampler_fn_fn, f_log_prob_fn)

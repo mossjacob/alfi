@@ -13,7 +13,6 @@ from lafomo.mcmc.samplers.delay import DelaySampler
 from lafomo.mcmc.samplers.gibbs import GibbsSampler
 from lafomo.mcmc.samplers.mixed import MixedSampler
 from lafomo.mcmc.gp.gp_kernels import GPKernelSelector
-from lafomo.mcmc.results import SampleResults
 from lafomo.mcmc.models import MCMCLFM
 
 import numpy as np
@@ -33,6 +32,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
         step_sizes = self.options.initial_step_sizes
         logistic_step_size = step_sizes['nuts'] if 'nuts' in step_sizes else 0.00001
         self.subsamplers = list()
+        self.dtype = 'float64'
         # Kinetics
         if options.kinetic_exponential:
             kinetic_transform = lambda x: tf.exp(logit(x))
@@ -42,19 +42,19 @@ class TranscriptionRegulationLFM(MCMCLFM):
         basal_rate = HMCParameter(
             'basal',
             LogisticNormal(0.01, 30),
-            0.8 * tf.ones((self.num_genes, 1), dtype='float64'),
+            0.8 * tf.ones((self.num_genes, 1), dtype=self.dtype),
             transform=kinetic_transform
         )
         sensitivity = HMCParameter(
             'sensitivity',
             LogisticNormal(0.01, 30),
-            0.8 * tf.ones((self.num_genes, 1), dtype='float64'),
+            0.8 * tf.ones((self.num_genes, 1), dtype=self.dtype),
             transform=kinetic_transform
         )
         decay_rate = HMCParameter(
             'decay',
             LogisticNormal(0.01, 30),
-            0.8 * tf.ones((self.num_genes, 1), dtype='float64'),
+            0.8 * tf.ones((self.num_genes, 1), dtype=self.dtype),
             transform=kinetic_transform
         )
         kinetics = [basal_rate, decay_rate, sensitivity]
@@ -64,7 +64,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
             self.initial_conditions = HMCParameter(
                 'initial',
                 LogisticNormal(0.01, 30),
-                0.8 * tf.ones((self.num_genes, 1), dtype='float64'),
+                0.8 * tf.ones((self.num_genes, 1), dtype=self.dtype),
                 transform=kinetic_transform
             )
             kinetics.append(self.initial_conditions)
@@ -72,7 +72,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
             self.protein_decay = HMCParameter(
                 'protein_decay',
                 LogisticNormal(0.1, 7),
-                0.8 * tf.ones((self.num_tfs,), dtype='float64'),
+                0.8 * tf.ones((self.num_tfs,), dtype=self.dtype),
                 transform=logit
             )
             kinetics.append(self.protein_decay)
@@ -85,13 +85,13 @@ class TranscriptionRegulationLFM(MCMCLFM):
             self.weights = HMCParameter(
                 'w',
                 LogisticNormal(f64(-2), f64(2)),
-                logistic(1 * tf.ones((self.num_genes, self.num_tfs), dtype='float64')),
+                logistic(1 * tf.ones((self.num_genes, self.num_tfs), dtype=self.dtype)),
                 param_type=ParamType.HMC
             )
             self.weights_biases = HMCParameter(
                 'w_0',
                 LogisticNormal(f64(-0.8), f64(0.8)),
-                logistic(0 * tf.ones(self.num_genes, dtype='float64'))
+                logistic(0 * tf.ones(self.num_genes, dtype=self.dtype))
             )
             weights = [self.weights, self.weights_biases]
             weights_subsampler = HMCSampler(self.likelihood, weights, logistic_step_size)
@@ -103,7 +103,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
 
         f_step_size = step_sizes['latents'] if 'latents' in step_sizes else 20
         latent_likelihood = self.tfs_likelihood if options.latent_data_present else None
-        latents_initial = 0.3 * tf.ones((self.num_replicates, self.num_tfs, self.N_p), dtype='float64')
+        latents_initial = 0.3 * tf.ones((self.num_replicates, self.num_tfs, self.N_p), dtype=self.dtype)
 
         if self.options.joint_latent:
             latents_initial = [latents_initial, *kernel_initial]
@@ -122,11 +122,11 @@ class TranscriptionRegulationLFM(MCMCLFM):
                 ))
             kernel_params_sampler = HMCSampler(self.likelihood, kernel_params, step_size=0.1 * logistic_step_size)
             self.subsamplers.append(kernel_params_sampler)
-
+        
         latents = Parameter('latent', None, latents_initial)
         latents_sampler = LatentGPSampler(self.likelihood, latent_likelihood,
                                           latents, self.kernel_selector,
-                                          f_step_size,
+                                          f_step_size*tf.ones(self.N_p, dtype=self.dtype),
                                           joint=options.joint_latent,
                                           kernel_exponential=options.kernel_exponential)
 
@@ -136,32 +136,32 @@ class TranscriptionRegulationLFM(MCMCLFM):
             delay_prior = tfd.InverseGamma(f64(0.01), f64(0.01)) #TODO choose between these two
             delay_prior = tfd.Exponential(f64(0.3))
             delay = Parameter('Δ', delay_prior,
-                              0.6 * tf.ones(self.num_tfs, dtype='float64'))
+                              0.6 * tf.ones(self.num_tfs, dtype=self.dtype))
             delay_sampler = DelaySampler(self.likelihood, delay, 0, 10)
             self.subsamplers.append(delay_sampler)
         σ2_f = None
         if not options.preprocessing_variance:
-            def f_sq_diff_fn(all_states):
+            def f_sq_diff_fn():
                 f_pred = inverse_positivity(self.parameter_state['latent'][0])
                 sq_diff = tfm.square(self.data.f_obs - tf.transpose(tf.gather(tf.transpose(f_pred),self.data.common_indices)))
                 return tf.reduce_sum(sq_diff, axis=0)
             σ2_f = Parameter('σ2_f',
                              tfd.InverseGamma(f64(0.01), f64(0.01)),
-                             1e-4*tf.ones((self.num_tfs,1), dtype='float64'))
-            σ2_f_sampler = GibbsSampler(self.likelihood, σ2_f, f_sq_diff_fn, self.N_p)
+                             1e-4*tf.ones((self.num_tfs,1), dtype=self.dtype))
+            σ2_f_sampler = GibbsSampler(σ2_f, f_sq_diff_fn, self.N_p)
             self.subsamplers.append(σ2_f_sampler)
         # White noise for genes
         if not options.preprocessing_variance:
             def m_sq_diff_fn():
-                m_pred = self.likelihood.predict_m(**self.parameter_state)
+                m_pred = self.predict_m(**self.parameter_state)
                 sq_diff = tfm.square(self.data.m_obs - tf.transpose(tf.gather(tf.transpose(m_pred), self.data.common_indices)))
                 return tf.reduce_sum(sq_diff, axis=0)
             σ2_m = Parameter('σ2_m',
-                                  tfd.InverseGamma(f64(0.01), f64(0.01)),
-                                  1e-3*tf.ones((self.num_genes, 1), dtype='float64'))
-            σ2_m_sampler = GibbsSampler(self.likelihood, σ2_m, m_sq_diff_fn, self.N_p)
+                             tfd.InverseGamma(f64(0.01), f64(0.01)),
+                             1e-3*tf.ones((self.num_genes, 1), dtype=self.dtype))
+            σ2_m_sampler = GibbsSampler(σ2_m, m_sq_diff_fn, self.N_p)
         else:
-            σ2_m = HMCParameter('σ2_m', LogisticNormal(f64(1e-5), f64(1e-2)), # f64(max(np.var(data.f_obs, axis=1)))                                logistic(f64(5e-3))*tf.ones(self.num_genes, dtype='float64'),
+            σ2_m = HMCParameter('σ2_m', LogisticNormal(f64(1e-5), f64(1e-2)), # f64(max(np.var(data.f_obs, axis=1)))                                logistic(f64(5e-3))*tf.ones(self.num_genes, dtype=self.dtype),
                                 transform=logit)
             σ2_m_sampler = HMCSampler(self.likelihood, [self.σ2_m], logistic_step_size)
 
@@ -189,7 +189,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
                 f_ir = rotate(f_i[r], -Δ)
                 mask = ~tf.sequence_mask(Δ, f_i.shape[2])
                 f_ir = tf.where(mask, f_ir, 0)
-                mask = np.zeros((self.num_replicates, 1, 1), dtype='float64')
+                mask = np.zeros((self.num_replicates, 1, 1), dtype=self.dtype)
                 mask[r] = 1
                 f_i = (1 - mask) * f_i + mask * f_ir
 
@@ -197,7 +197,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
         resolution = τ[1] - τ[0]
         sum_term = tfm.multiply(tfm.exp(δ_i * τ), f_i)
         cumsum = 0.5 * resolution * tfm.cumsum(sum_term[:, :, :-1] + sum_term[:, :, 1:], axis=2)
-        integrals = tf.concat([tf.zeros((self.num_replicates, self.num_tfs, 1), dtype='float64'), cumsum], axis=2)
+        integrals = tf.concat([tf.zeros((self.num_replicates, self.num_tfs, 1), dtype=self.dtype), cumsum], axis=2)
         exp_δt = tfm.exp(-δ_i * τ)
         p_i = exp_δt * integrals
         return p_i
@@ -225,7 +225,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
             G = tf.tile(p_i, (1, self.num_genes, 1))
 
         sum_term = G * tfm.exp(decay * τ)
-        integrals = tf.concat([tf.zeros((self.num_replicates, self.num_genes, 1), dtype='float64'),  # Trapezoid rule
+        integrals = tf.concat([tf.zeros((self.num_replicates, self.num_genes, 1), dtype=self.dtype),  # Trapezoid rule
                                0.5 * resolution * tfm.cumsum(sum_term[:, :, :-1] + sum_term[:, :, 1:], axis=2)], axis=2)
         exp_dt = tfm.exp(-decay * τ)
         integrals = tfm.multiply(exp_dt, integrals)
@@ -297,41 +297,16 @@ class TranscriptionRegulationLFM(MCMCLFM):
         return np.array(m_preds)
 
     def results(self, burnin=0):
-        Δ = σ2_f = k_fbar = None
-        σ2_m = self.samples[self.state_indices['σ2_m']][burnin:]
-        if self.options.preprocessing_variance:
-            σ2_m = logit(σ2_m)
-        else:
-            σ2_f = self.samples[self.state_indices['σ2_f']][burnin:]
+        results = dict()
+        for i, subsampler in enumerate(self.subsamplers):
+            group_samples = self.sampler.samples[i]
+            for j, param in enumerate(subsampler.param_group):
+                results[param.name] = group_samples[j]
 
-        nuts_index = 0
-        kbar = self.samples[self.state_indices['kinetics']][nuts_index].numpy()[burnin:]
-        fbar = self.samples[self.state_indices['latents']]
-        if self.options.translation:
-            nuts_index += 1
-            k_fbar = self.samples[self.state_indices['kinetics']][nuts_index].numpy()[burnin:]
-            if k_fbar.ndim < 3:
-                k_fbar = np.expand_dims(k_fbar, 2)
-        if not self.options.joint_latent:
-            kernel_params = self.samples[self.state_indices['kernel_params']][burnin:]
-        else:
-            kernel_params = [fbar[1][burnin:], fbar[2][burnin:]]
-            fbar = fbar[0][burnin:]
-        wbar = tf.stack(
-            [logistic(1 * tf.ones((self.num_genes, self.num_tfs), dtype='float64')) for _ in range(fbar.shape[0])],
-            axis=0)
-        w_0bar = tf.stack([0.5 * tf.ones(self.num_genes, dtype='float64') for _ in range(fbar.shape[0])], axis=0)
-        if self.options.weights:
-            nuts_index += 1
-            wbar = self.samples[self.state_indices['kinetics']][nuts_index][burnin:]
-            w_0bar = self.samples[self.state_indices['kinetics']][nuts_index + 1][burnin:]
-        if self.options.delays:
-            Δ = self.samples[self.state_indices['Δ']][burnin:]
-        return SampleResults(self.options, fbar, kbar, k_fbar, Δ, kernel_params, wbar, w_0bar, σ2_m, σ2_f)
-
+        return results
 
     def predict_m_with_results(self, results, i=1):
-        delay = results.Δ[-i] if self.options.delays else None
+        delay = results.delay[-i] if self.options.delays else None
         k_fbar = results.k_fbar[-i] if self.options.translation else None
         return self.likelihood.predict_m(results.kbar[-i], k_fbar, results.wbar[-i],
                                          results.fbar[-i], results.w_0bar[-i], delay)

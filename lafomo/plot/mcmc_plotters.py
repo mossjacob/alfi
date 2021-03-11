@@ -8,7 +8,6 @@ import tensorflow as tf
 import random
 
 from lafomo.datasets import scaled_barenco_data
-from lafomo.mcmc.results import SampleResults
 
 
 @dataclass
@@ -326,7 +325,7 @@ class Plotter():
         pos = nx.nx_pydot.graphviz_layout(G, prog='dot')
         nx.draw(G, pos=pos, edge_color=colors, node_color=node_colors, node_size=node_size, with_labels=True)
 
-    def summary(self, results: SampleResults, m_preds, true_k=None, true_k_f=None,
+    def summary(self, results, m_preds, true_k=None, true_k_f=None,
                 replicate=0, scale_observed=False):
         self.plot_tfs(results.f, replicate=replicate, scale_observed=scale_observed)
         self.plot_genes(m_preds, replicate=replicate)
@@ -336,7 +335,7 @@ class Plotter():
         kp_latest = np.mean(kp[-50:], axis=0)
         self.plot_bar_hpd(kp, kp_latest, self.opt.kernel_names)
 
-    def convergence_summary(self, results: SampleResults):
+    def convergence_summary(self, results):
         self.plot_kinetics_convergence(results.k, results.k_f)
         plt.figure(figsize=(10, 4))
         plotnum = 0

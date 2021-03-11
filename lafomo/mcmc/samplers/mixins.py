@@ -14,3 +14,7 @@ class ParamGroupMixin:
     @param_group.setter
     def param_group(self, value):
         self._param_group = value
+
+    def __str__(self):
+        param_names = [param.name for param in self.param_group]
+        return '{} {}'.format(self.__class__.__name__, param_names)
