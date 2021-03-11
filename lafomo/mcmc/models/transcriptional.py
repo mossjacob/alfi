@@ -135,7 +135,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
         if options.delays:
             delay_prior = tfd.InverseGamma(f64(0.01), f64(0.01)) #TODO choose between these two
             delay_prior = tfd.Exponential(f64(0.3))
-            delay = Parameter('Δ', delay_prior,
+            delay = Parameter('delay', delay_prior,
                               0.6 * tf.ones(self.num_tfs, dtype=self.dtype))
             delay_sampler = DelaySampler(self.likelihood, delay, 0, 10)
             self.subsamplers.append(delay_sampler)
@@ -177,28 +177,28 @@ class TranscriptionRegulationLFM(MCMCLFM):
         return self.sampler.sample(T, **kwargs)
 
     @tf.function
-    def calculate_protein(self, fbar, protein_decay, Δ):  # Calculate p_i vector
-        τ = self.data.t_discretised
+    def calculate_protein(self, fbar, protein_decay, delay):  # Calculate p_i vector
+        t_discretised = self.data.t_discretised
         f_i = inverse_positivity(fbar)
         δ_i = tf.reshape(protein_decay, (-1, 1))
         if self.options.delays:
             # Add delay
-            Δ = tf.cast(Δ, 'int32')
+            delay = tf.cast(delay, 'int32')
 
             for r in range(self.num_replicates):
-                f_ir = rotate(f_i[r], -Δ)
-                mask = ~tf.sequence_mask(Δ, f_i.shape[2])
+                f_ir = rotate(f_i[r], -delay)
+                mask = ~tf.sequence_mask(delay, f_i.shape[2])
                 f_ir = tf.where(mask, f_ir, 0)
                 mask = np.zeros((self.num_replicates, 1, 1), dtype=self.dtype)
                 mask[r] = 1
                 f_i = (1 - mask) * f_i + mask * f_ir
 
         # Approximate integral (trapezoid rule)
-        resolution = τ[1] - τ[0]
-        sum_term = tfm.multiply(tfm.exp(δ_i * τ), f_i)
+        resolution = t_discretised[1] - t_discretised[0]
+        sum_term = tfm.multiply(tfm.exp(δ_i * t_discretised), f_i)
         cumsum = 0.5 * resolution * tfm.cumsum(sum_term[:, :, :-1] + sum_term[:, :, 1:], axis=2)
         integrals = tf.concat([tf.zeros((self.num_replicates, self.num_tfs, 1), dtype=self.dtype), cumsum], axis=2)
-        exp_δt = tfm.exp(-δ_i * τ)
+        exp_δt = tfm.exp(-δ_i * t_discretised)
         p_i = exp_δt * integrals
         return p_i
 
@@ -207,15 +207,15 @@ class TranscriptionRegulationLFM(MCMCLFM):
                   initial, basal, decay, sensitivity,
                   protein_decay, latent, **optional_parameters):
 
-        τ = self.data.t_discretised
+        t_discretised = self.data.t_discretised
         fbar = latent[0]
         p_i = inverse_positivity(fbar)
         if self.options.translation:
-            Δ = optional_parameters['Δ'] if self.options.delays else None
-            p_i = self.calculate_protein(fbar, protein_decay, Δ)
+            delay = optional_parameters['delay'] if self.options.delays else None
+            p_i = self.calculate_protein(fbar, protein_decay, delay)
 
         # Calculate m_pred
-        resolution = τ[1] - τ[0]
+        resolution = t_discretised[1] - t_discretised[0]
         if self.options.weights:
             w = optional_parameters['w']
             w_0 = optional_parameters['w_0']
@@ -224,10 +224,10 @@ class TranscriptionRegulationLFM(MCMCLFM):
         else:
             G = tf.tile(p_i, (1, self.num_genes, 1))
 
-        sum_term = G * tfm.exp(decay * τ)
+        sum_term = G * tfm.exp(decay * t_discretised)
         integrals = tf.concat([tf.zeros((self.num_replicates, self.num_genes, 1), dtype=self.dtype),  # Trapezoid rule
                                0.5 * resolution * tfm.cumsum(sum_term[:, :, :-1] + sum_term[:, :, 1:], axis=2)], axis=2)
-        exp_dt = tfm.exp(-decay * τ)
+        exp_dt = tfm.exp(-decay * t_discretised)
         integrals = tfm.multiply(exp_dt, integrals)
 
         m_pred = basal / decay + sensitivity * integrals
@@ -285,7 +285,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
     def sample_proteins(self, results, num_results):
         p_samples = list()
         for i in range(1, num_results + 1):
-            delta = results.Δ[i] if results.Δ is not None else None
+            delta = results['delay'][i] if results['delay'] is not None else None
             p_samples.append(self.likelihood.calculate_protein(results.fbar[-i],
                                                                results.k_fbar[-i], delta))
         return np.array(p_samples)

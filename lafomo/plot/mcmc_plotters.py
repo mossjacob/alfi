@@ -37,7 +37,7 @@ class Plotter():
         self.num_tfs = data.f_obs.shape[1]
         self.num_genes = data.m_obs.shape[1]
         self.data = data
-        self.τ = data.t_discretised.numpy()
+        self.t_discretised = data.t_discretised.numpy()
         self.t = data.t_observed
         self.common_ind = data.common_indices.numpy()
 
@@ -127,7 +127,7 @@ class Plotter():
             ax = plt.subplot(subplot_shape[0], subplot_shape[1], 1+j)
             plt.title(titles[j])
             if scatters is not None:
-                plt.scatter(self.τ[self.common_ind], scatters[j], marker='x', label='Observed', **scatter_args)
+                plt.scatter(self.t_discretised[self.common_ind], scatters[j], marker='x', label='Observed', **scatter_args)
             # plt.errorbar([n*10+n for n in range(7)], Y[j], 2*np.sqrt(Y_var[j]), fmt='none', capsize=5)
 
             for s in range(1, sample_gap*num_samples, sample_gap):
@@ -135,14 +135,14 @@ class Plotter():
                 if s == 1:
                     kwargs = {'label':'Samples'}
 
-                plt.plot(self.τ, samples[-s,j,:], color=color, alpha=0.5, **kwargs)
+                plt.plot(self.t_discretised, samples[-s,j,:], color=color, alpha=0.5, **kwargs)
             if j % subplot_shape[1] == 0:
                 plt.ylabel(self.opt.ylabel)
 
 
             # HPD:
             bounds = arviz.hdi(samples[-self.opt.num_hpd:,j,:], 0.95)
-            plt.fill_between(self.τ, bounds[:, 0], bounds[:, 1], color='grey', alpha=0.3, label='95% credibility interval')
+            plt.fill_between(self.t_discretised, bounds[:, 0], bounds[:, 1], color='grey', alpha=0.3, label='95% credibility interval')
 
             plt.xticks(self.t)
             ax.set_xticklabels(self.t)
@@ -185,7 +185,7 @@ class Plotter():
         
         # if 'σ2_f' in model.params._fields:
         #     σ2_f = model.params.σ2_f.value
-        #     plt.errorbar(τ[common_indices], f_observed[0], 2*np.sqrt(σ2_f[0]), 
+        #     plt.errorbar(t_discretised[common_indices], f_observed[0], 2*np.sqrt(σ2_f[0]),
         #                 fmt='none', capsize=5, color='blue')
         # else:
         #     σ2_f = σ2_f_pre
@@ -196,7 +196,7 @@ class Plotter():
 
         if plot_barenco:
             barenco_f, _ = scaled_barenco_data(np.mean(f_samples[-10:], axis=0))
-            plt.scatter(self.τ[self.common_ind], barenco_f, marker='x', s=60, linewidth=3, label='Barenco et al.')
+            plt.scatter(self.t_discretised[self.common_ind], barenco_f, marker='x', s=60, linewidth=3, label='Barenco et al.')
 
         plt.tight_layout()
 
