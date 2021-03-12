@@ -16,3 +16,5 @@ lafomo/data/
 lafomo.egg-info/
 
 examples/saved_models/
+
+data/

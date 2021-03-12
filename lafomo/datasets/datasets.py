@@ -39,7 +39,7 @@ class TranscriptomicDataset(LFMDataset, ABC):
 
 
 class P53Data(TranscriptomicDataset):
-    def __init__(self, replicate=None, data_dir='../lafomo/data/'):
+    def __init__(self, replicate=None, data_dir='../data/'):
         super().__init__()
         m_observed, f_observed, σ2_m_pre, σ2_f_pre, t = load_barenco_puma(data_dir)
 
@@ -68,7 +68,7 @@ class HafnerData(TranscriptomicDataset):
     MCF7 cells gamma-irradiated over 24 hours
     p53 is typically the protein of interest
     """
-    def __init__(self, replicate=None, data_dir='../lafomo/data/', extra_targets=True):
+    def __init__(self, replicate=None, data_dir='../data/', extra_targets=True):
         super().__init__()
         target_genes = [
             'KAZN','PMAIP1','PRKAB1','CSNK1G1','E2F7','SLC30A1',
