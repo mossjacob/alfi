@@ -13,7 +13,6 @@ class HMCSampler(tfp.mcmc.NoUTurnSampler, ParamGroupMixin):
         super().__init__(self.log_prob, step_size)
 
     def log_prob(self, *args):
-        print('log_prob hmc sampler args', *args)
         new_prob = 0
 
         param_kwargs = {}

@@ -297,13 +297,6 @@ class TranscriptionRegulationLFM(MCMCLFM):
         # k_fbar = results.k_fbar[-i] if self.options.translation else None
         return self.predict_m(**parameter_state)
 
-    def predict_m_with_current(self):
-        return self.likelihood.predict_m(self.params.kinetics.value[0],
-                                         self.params.kinetics.value[1],
-                                         self.params.weights.value[0],
-                                         self.params.latents.value,
-                                         self.params.weights.value[1])
-
     def save(self, name):
         save_object({'samples': self.samples, 'is_accepted': self.is_accepted}, f'custom-{name}')
 

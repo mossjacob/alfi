@@ -24,13 +24,13 @@ class MixedSampler(tfp.mcmc.TransitionKernel):
         self.skip = skip
         self.samples = None
         self.initial_state = list()
-        self.parameter_state = dict()
-        self.ordered_param_keysets = list()
+        self.ordered_param_names = list()
+        self.param_transforms = dict()
         for subsampler in self.subsamplers:
             param_state = [param.transform(param.value) for param in subsampler.param_group]
             self.initial_state.append(param_state)
-            self.ordered_param_keysets.append([param.name for param in subsampler.param_group])
-
+            self.ordered_param_names.append([param.name for param in subsampler.param_group])
+            self.param_transforms.update({param.name: param.transform for param in subsampler.param_group})
         super().__init__()
 
     def before_iteration(self, current_state):
@@ -39,8 +39,11 @@ class MixedSampler(tfp.mcmc.TransitionKernel):
             # print()
             # print(current_state)
             parameter_state = dict()
-            for i, param_keyset in enumerate(self.ordered_param_keysets):
-                parameter_state.update({param_key: current_state[i][j] for j, param_key in enumerate(param_keyset)})
+            for i, param_keyset in enumerate(self.ordered_param_names):
+                parameter_state.update({
+                    param_key: self.param_transforms[param_key](current_state[i][j])
+                    for j, param_key in enumerate(param_keyset)
+                })
 
             self.iteration_callback(parameter_state)
 

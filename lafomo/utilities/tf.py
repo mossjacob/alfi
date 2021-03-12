@@ -146,9 +146,9 @@ def rotate(matrix, shifts):
 def prog(T, current):
     mult = 20
     pc = current/T
-    x = tf.strings.reduce_join(tf.repeat("=", tf.cast(mult*pc, 'int32')))
-    y = tf.strings.reduce_join(tf.repeat("-", tf.cast(mult*(1-pc), 'int32')))
-    tf.print('Progress: \t ', tf.round(pc *1000.), '%\t| ', x, y, '| ', '\r', sep='\b', end='')
+    x = tf.strings.reduce_join(tf.repeat('=', tf.cast(mult*pc, 'int32')))
+    y = tf.strings.reduce_join(tf.repeat('-', tf.cast(mult*(1-pc), 'int32')))
+    tf.print('Progress: \t ', tf.round(pc *100.), '%\t| ', x, y, '| ', '\r', sep='', end='')
 
 def save_object(obj, filename):
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")

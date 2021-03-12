@@ -154,7 +154,7 @@ class Plotter:
                 plt.legend()
         plt.tight_layout()
 
-    def plot_genes(self, m_preds, replicate=0, height_mul=3, width_mul=2, indices=None):
+    def plot_outputs(self, m_preds, replicate=0, height_mul=3, width_mul=2, indices=None):
         m_preds = m_preds[:, replicate]
         scatters = self.data.m_obs[replicate]
         if indices:
