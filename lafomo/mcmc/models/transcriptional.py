@@ -135,13 +135,13 @@ class TranscriptionRegulationLFM(MCMCLFM):
                 m_pred = self.predict_m(**self.parameter_state)
                 sq_diff = tfm.square(self.data.m_obs - tf.transpose(tf.gather(tf.transpose(m_pred), self.data.common_indices)))
                 return tf.reduce_sum(sq_diff, axis=0)
-            σ2_m = Parameter('σ2_m',
-                             tfd.InverseGamma(f64(0.01), f64(0.01)),
+            σ2_m = Parameter('σ2_m', tfd.InverseGamma(f64(0.01), f64(0.01)),
                              1e-3 * tf.ones((self.num_outputs, 1), dtype=self.dtype))
             σ2_m_sampler = GibbsSampler(σ2_m, m_sq_diff_fn, self.N_p)
         else:
-            σ2_m = Parameter('σ2_m', LogisticNormal(f64(1e-5), f64(1e-2)), # f64(max(np.var(data.f_obs, axis=1)))                                logistic(f64(5e-3))*tf.ones(self.num_genes, dtype=self.dtype),
-                                transform=logit)
+            σ2_m = Parameter('σ2_m', LogisticNormal(f64(1e-5), f64(1e-2)),
+                             1e-3 * tf.ones((self.num_outputs, 1), dtype=self.dtype),
+                             transform=logit)
             σ2_m_sampler = HMCSampler(self.likelihood, [self.σ2_m], logistic_step_size)
 
         self.subsamplers.append(σ2_m_sampler)
