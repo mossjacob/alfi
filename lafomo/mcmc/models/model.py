@@ -8,7 +8,7 @@ class MCMCLFM():
         self.options = options
         self.data = data
         self.preprocessing_variance = options.preprocessing_variance
-        self.num_genes = data.m_obs.shape[1]
+        self.num_outputs = data.m_obs.shape[1]
         self.num_tfs = data.f_obs.shape[1]
         self.num_replicates = data.f_obs.shape[0]
         self.parameter_state = None

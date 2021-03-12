@@ -39,19 +39,19 @@ class TranscriptionRegulationLFM(MCMCLFM):
         basal_rate = Parameter(
             'basal',
             LogisticNormal(0.01, 30),
-            0.8 * tf.ones((self.num_genes, 1), dtype=self.dtype),
+            0.8 * tf.ones((self.num_outputs, 1), dtype=self.dtype),
             transform=kinetic_transform
         )
         sensitivity = Parameter(
             'sensitivity',
             LogisticNormal(0.01, 30),
-            0.8 * tf.ones((self.num_genes, 1), dtype=self.dtype),
+            0.8 * tf.ones((self.num_outputs, 1), dtype=self.dtype),
             transform=kinetic_transform
         )
         decay_rate = Parameter(
             'decay',
             LogisticNormal(0.01, 30),
-            0.8 * tf.ones((self.num_genes, 1), dtype=self.dtype),
+            0.8 * tf.ones((self.num_outputs, 1), dtype=self.dtype),
             transform=kinetic_transform
         )
         kinetics = [basal_rate, decay_rate, sensitivity]
@@ -61,7 +61,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
             self.initial_conditions = Parameter(
                 'initial',
                 LogisticNormal(0.01, 30),
-                0.8 * tf.ones((self.num_genes, 1), dtype=self.dtype),
+                0.8 * tf.ones((self.num_outputs, 1), dtype=self.dtype),
                 transform=kinetic_transform
             )
             kinetics.append(self.initial_conditions)
@@ -69,7 +69,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
             self.protein_decay = Parameter(
                 'protein_decay',
                 LogisticNormal(0.1, 7),
-                0.8 * tf.ones((self.num_tfs,), dtype=self.dtype),
+                0.8 * tf.ones((self.num_tfs, 1), dtype=self.dtype),
                 transform=logit
             )
             kinetics.append(self.protein_decay)
@@ -82,12 +82,12 @@ class TranscriptionRegulationLFM(MCMCLFM):
             self.weights = Parameter(
                 'w',
                 LogisticNormal(f64(-2), f64(2)),
-                logistic(1 * tf.ones((self.num_genes, self.num_tfs), dtype=self.dtype))
+                logistic(1 * tf.ones((self.num_outputs, self.num_tfs), dtype=self.dtype))
             )
             self.weights_biases = Parameter(
                 'w_0',
                 LogisticNormal(f64(-0.8), f64(0.8)),
-                logistic(0 * tf.ones(self.num_genes, dtype=self.dtype))
+                logistic(0 * tf.ones(self.num_outputs, dtype=self.dtype))
             )
             weights = [self.weights, self.weights_biases]
             weights_subsampler = HMCSampler(self.likelihood, weights, logistic_step_size)
@@ -137,7 +137,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
                 return tf.reduce_sum(sq_diff, axis=0)
             σ2_m = Parameter('σ2_m',
                              tfd.InverseGamma(f64(0.01), f64(0.01)),
-                             1e-3*tf.ones((self.num_genes, 1), dtype=self.dtype))
+                             1e-3 * tf.ones((self.num_outputs, 1), dtype=self.dtype))
             σ2_m_sampler = GibbsSampler(σ2_m, m_sq_diff_fn, self.N_p)
         else:
             σ2_m = Parameter('σ2_m', LogisticNormal(f64(1e-5), f64(1e-2)), # f64(max(np.var(data.f_obs, axis=1)))                                logistic(f64(5e-3))*tf.ones(self.num_genes, dtype=self.dtype),
@@ -147,7 +147,6 @@ class TranscriptionRegulationLFM(MCMCLFM):
         self.subsamplers.append(σ2_m_sampler)
 
         def iteration_callback(current_state):
-            print('iteration_callback()', current_state)
             self.parameter_state = current_state
 
         self.sampler = MixedSampler(self.subsamplers, iteration_callback=iteration_callback)
@@ -201,10 +200,10 @@ class TranscriptionRegulationLFM(MCMCLFM):
             interactions = tf.matmul(w, tfm.log(p_i + 1e-100)) + w_0
             G = tfm.sigmoid(interactions)  # TF Activation Function (sigmoid)
         else:
-            G = tf.tile(p_i, (1, self.num_genes, 1))
+            G = tf.tile(p_i, (1, self.num_outputs, 1))
 
         sum_term = G * tfm.exp(decay * t_discretised)
-        integrals = tf.concat([tf.zeros((self.num_replicates, self.num_genes, 1), dtype=self.dtype),  # Trapezoid rule
+        integrals = tf.concat([tf.zeros((self.num_replicates, self.num_outputs, 1), dtype=self.dtype),  # Trapezoid rule
                                0.5 * resolution * tfm.cumsum(sum_term[:, :, :-1] + sum_term[:, :, 1:], axis=2)], axis=2)
         exp_dt = tfm.exp(-decay * t_discretised)
         integrals = tfm.multiply(exp_dt, integrals)
@@ -216,7 +215,6 @@ class TranscriptionRegulationLFM(MCMCLFM):
 
     @tf.function
     def _genes(self, σ2_m=None, **parameter_state):
-        # print('_genes', parameter_state)
         m_pred = self.predict_m(σ2_m=σ2_m, **parameter_state)
         sq_diff = tfm.square(self.data.m_obs - tf.transpose(tf.gather(tf.transpose(m_pred), self.data.common_indices)))
 
@@ -234,8 +232,6 @@ class TranscriptionRegulationLFM(MCMCLFM):
         N(m(t), s(t))
         where m(t) = b/d + (a - b/d) exp(-dt) + s int^t_0 G(p(u); w) exp(-d(t-u)) du
         """
-        # print(self.parameter_state)
-        # print('likelihood', parameters)
         parameter_state = {**self.parameter_state, **parameters}
         return self._genes(**parameter_state)
 

@@ -27,7 +27,7 @@ class PlotOptions:
     kernel_names:   list = field(default_factory=lambda:['Param 1', 'Param 2']) 
 
 
-class Plotter():
+class Plotter:
     def __init__(self, data, options: PlotOptions):
         self.opt = options
         if self.opt.gene_names is None:
@@ -35,34 +35,44 @@ class Plotter():
         if self.opt.tf_names is None:
             self.opt.tf_names = np.array([f'TF {i}' for i in range(data.f_obs.shape[1])])
         self.num_tfs = data.f_obs.shape[1]
-        self.num_genes = data.m_obs.shape[1]
+        self.num_outputs = data.m_obs.shape[1]
         self.data = data
         self.t_discretised = data.t_discretised.numpy()
         self.t = data.t_observed
         self.common_ind = data.common_indices.numpy()
 
-    def plot_kinetics(self, k, k_f, true_k=None, true_k_f=None, true_hpds=None):
-        k_latest = np.mean(k[-self.opt.num_kinetic_avg:], axis=0)
-        num_genes = k.shape[1]
+    def plot_kinetics(self, results, kinetic_params, true_k=None, true_hpds=None, title='', xlabels=None):
+        """
+        Parameters:
+            results: the results dictionary from the sampler
+            kinetic_params: list of strings. The keys in `results` which are kinetic parameters of shape
+                            (num_samples, num_outputs, 1)
+        """
+        kinetics = np.stack([results[k] for k in kinetic_params]).transpose((1, 2, 0, 3)).squeeze(-1)
+        mean_kinetics = np.mean(kinetics[-self.opt.num_kinetic_avg:], axis=0)
+
         plot_labels = ['Initial Conditions', 'Basal rates', 'Decay rates', 'Sensitivities']
-
-        width = 18 if num_genes > 10 else 10
-        plt.figure(figsize=(width, 16))
+        num_x = mean_kinetics.shape[0]
+        width = num_x
+        height = 10
+        if num_x < 2:
+            width = 4
+            height = 3
+        plt.figure(figsize=(width, height))
         if not self.opt.for_report:
-            plt.suptitle('Transcription ODE Kinetic Parameters')
+            plt.suptitle(title)
 
-        if k_latest.shape[1] < 4:
+        if mean_kinetics.shape[1] < 4:
             plot_labels = plot_labels[1:]
 
-        hpds = self.plot_bar_hpd(k, k_latest, self.opt.gene_names, true_var=true_k, width=0.2,
-                                 rotation=60, true_hpds=true_hpds)
+        hpds = self.plot_bar_hpd(
+            kinetics, mean_kinetics,
+            xlabels,
+            true_var=true_k, true_hpds=true_hpds,
+            width=0.2, rotation=60)
         plt.tight_layout(h_pad=2.0)
 
-        if self.opt.protein_present:
-            k_f_latest = np.mean(k_f[-self.opt.num_kinetic_avg:], axis=0)
-            plt.figure(figsize=(10, 6))
-            self.plot_bar_hpd(k_f, k_f_latest, self.opt.tf_names, true_var=true_k_f)
-        return k_latest, hpds
+        return mean_kinetics, hpds
 
     def plot_bar_hpd(self, var_samples, var, labels, true_var=None, width=0.1, titles=None, 
                      rotation=0, true_hpds=None):
@@ -90,28 +100,17 @@ class Plotter():
         plt.tight_layout()
         return hpds
 
-    def plot_kinetics_convergence(self, k, k_f):
-        num_genes = k.shape[1]
-        labels = ['a', 'b', 'd', 's']
-        height = (num_genes//2)*5
-        plt.figure(figsize=(14, height))
-        plt.suptitle('Convergence of ODE Kinetic Parameters')
-        self.plot_kinetics_convergence_group(k, labels, self.opt.gene_names)
-        if self.opt.protein_present:
-            width = 14 if k_f.shape[1] > 1 else 6
-            plt.figure(figsize=(width, 4*np.ceil(k_f.shape[1]/2)))
-            plt.suptitle('Translation Convergence')
-            labels = ['a', 'δ']
-            self.plot_kinetics_convergence_group(k_f, labels, self.opt.tf_names)
+    def plot_convergence(self, results, param_names, title=''):
+        params = [results[param] for param in param_names]
+        num = len(params)
+        plt.figure(figsize=(8, 3 * num))
+        plt.suptitle(title)
 
-    def plot_kinetics_convergence_group(self, k, labels, names):
-        num = k.shape[1]
-        horizontal_subplots = min(2, num)
         for j in range(num):
-            ax = plt.subplot(num, horizontal_subplots, j+1)
-            ax.set_title(names[j])            
-            for v in range(k.shape[2]):
-                plt.plot(k[:, j, v], label=labels[v])
+            param = params[j]
+            ax = plt.subplot(num, 1, j + 1)
+            ax.set_title(param_names[j])
+            plt.plot(np.squeeze(param[:, :]))  # , label=labels[v])
             plt.legend()
         plt.tight_layout()
 
@@ -238,7 +237,7 @@ class Plotter():
       samples: 1D array
       lims: tuple (lower, upper)
     '''
-    def plot_convergence(self, samples, lims=None, fig_height=6, fig_width=8, color='slategrey'):
+    def plot_convergence_hist(self, samples, lims=None, fig_height=6, fig_width=8, color='slategrey'):
         left, width = 0.1, 0.65
         bottom, height = 0.1, 0.65
         spacing = 0.005
@@ -310,7 +309,7 @@ class Plotter():
         w_min = tf.math.reduce_min(w).numpy()
         diff = tf.math.reduce_max(w).numpy() - w_min
 
-        for j in range(self.num_genes):
+        for j in range(self.num_outputs):
             for i in range(self.num_tfs):
                 edge = (self.opt.tf_names[i], self.opt.gene_names[j])
                 weight = (s[j]-s_min) / s_diff if use_sensitivities else (w[j, i]-w_min) / diff
@@ -324,17 +323,3 @@ class Plotter():
         pos = nx.spring_layout(G, seed=42)
         pos = nx.nx_pydot.graphviz_layout(G, prog='dot')
         nx.draw(G, pos=pos, edge_color=colors, node_color=node_colors, node_size=node_size, with_labels=True)
-
-    def convergence_summary(self, results):
-        self.plot_kinetics_convergence(results.k, results.k_f)
-        plt.figure(figsize=(10, 4))
-        plotnum = 0
-        for name, param in zip(self.opt.kernel_names, results.kernel_params):
-            ax = plt.subplot(221+plotnum)
-            plt.plot(param)
-            ax.set_title(name)
-            plotnum+=1
-
-        self.plot_noises(results.σ2_m, results.σ2_f)
-        if results.weights is not None:
-            self.plot_weights(results.weights)
