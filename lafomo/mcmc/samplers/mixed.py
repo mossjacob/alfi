@@ -27,7 +27,7 @@ class MixedSampler(tfp.mcmc.TransitionKernel):
         self.parameter_state = dict()
         self.ordered_param_keysets = list()
         for subsampler in self.subsamplers:
-            param_state = [param.value for param in subsampler.param_group]
+            param_state = [param.transform(param.value) for param in subsampler.param_group]
             self.initial_state.append(param_state)
             self.ordered_param_keysets.append([param.name for param in subsampler.param_group])
 
@@ -41,7 +41,7 @@ class MixedSampler(tfp.mcmc.TransitionKernel):
             parameter_state = dict()
             for i, param_keyset in enumerate(self.ordered_param_keysets):
                 parameter_state.update({param_key: current_state[i][j] for j, param_key in enumerate(param_keyset)})
-            print(parameter_state)
+
             self.iteration_callback(parameter_state)
 
     def sample(self, T=2000, store_every=10, burn_in=1000, report_every=100, skip=None, num_chains=4,
@@ -85,7 +85,7 @@ class MixedSampler(tfp.mcmc.TransitionKernel):
                     for i in range(len(param_samples)):
                         self.samples[index][i] = tf.concat([self.samples[index][i], param_samples[i]], axis=0)
 
-                param_samples = [[param_samples[i][-1] for i in range(len(param_samples))]]
+                # param_samples = [[param_samples[i][-1] for i in range(len(param_samples))]]
                 # param.value = param_samples[-1]
         else:
             self.samples = samples
@@ -95,18 +95,17 @@ class MixedSampler(tfp.mcmc.TransitionKernel):
         return samples, is_accepted
 
     def one_step(self, current_state, previous_kernel_results):
-        # tf.print('running iteration')
         # if previous_kernel_results.iteration % 10:
         prog(self.T, previous_kernel_results.iteration)
         # tf.print('running', current_state)
         new_state = list()
         is_accepted = list()
         inner_results = list()
-
+        # Update initial state in case the sampler is run multiple times.
+        self.initial_state = current_state
         self.before_iteration(current_state)
         for i in range(self.num_samplers):
             if self.skip is not None and self.skip[i]:
-                # print(previous_kernel_results)
                 is_accepted.append(previous_kernel_results.inner_results[i].is_accepted)
                 new_state.append(current_state[i])
                 inner_results.append(previous_kernel_results.inner_results[i])
@@ -157,6 +156,7 @@ class MixedSampler(tfp.mcmc.TransitionKernel):
             #     inner_kernels_bootstraps.append(results)
             #
             # else:
+            print('Preparing', self.subsamplers[i])
             results = self.subsamplers[i].bootstrap_results(init_state[i])
             inner_kernels_bootstraps.append(results)
 

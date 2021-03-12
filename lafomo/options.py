@@ -22,6 +22,5 @@ class VariationalOptions(Options):
 
 @dataclass
 class MCMCOptions(Options):
-    joint_latent: bool = True  # Whether to sample the latents jointly with hyperparams
     initial_step_sizes: dict = field(default_factory=dict)
     weights: bool = True  # True if weights used

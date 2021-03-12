@@ -22,7 +22,7 @@ class LatentGPSampler(MetropolisKernel, ParamGroupMixin):
     def __init__(self, likelihood_fn, latent_likelihood_fn,
                  param,
                  kernel_selector: GPKernelSelector, 
-                 step_size, joint=True, kernel_exponential=False):
+                 step_size, kernel_exponential=False):
         self.param_group = [param]
         self.fbar_prior_params = kernel_selector()
         self.kernel_priors = kernel_selector.priors()
@@ -31,58 +31,13 @@ class LatentGPSampler(MetropolisKernel, ParamGroupMixin):
         self.latent_likelihood_fn = latent_likelihood_fn
         self.kernel_exponential = kernel_exponential
         self.data_present = latent_likelihood_fn is not None
-        self.step_fn = self.f_one_step
-        self.calc_prob_fn = self.f_calc_prob
-        if joint:
-            self.step_fn = self.joint_one_step
-            self.calc_prob_fn = self.joint_calc_prob
+        self.step_fn = self.joint_one_step
+        self.calc_prob_fn = self.joint_calc_prob
             
         super().__init__(step_size, tune_every=100)
 
     def _one_step(self, current_state, previous_kernel_results):
         return self.step_fn(current_state, previous_kernel_results)
-
-    def f_one_step(self, current_state, previous_kernel_results):
-        old_probs = list()
-        new_state = tf.identity(current_state)
-        num_replicates = new_state.shape[0]
-        num_tfs = current_state.shape[1]
-
-        # MH
-        kernel_params = (all_states[self.state_indices['kernel_params']][0], all_states[self.state_indices['kernel_params']][1])
-        m, K = self.fbar_prior_params(*kernel_params)
-        for r in range(num_replicates):
-            # Gibbs step
-            fbar = current_state[r]
-            z_i = tfd.MultivariateNormalDiag(fbar, self.step_size).sample()
-            fstar = tf.zeros_like(fbar)
-
-            for i in range(num_tfs):
-                invKsigmaK = tf.matmul(tf.linalg.inv(K[i]+tf.linalg.diag(self.step_size)), K[i]) # (C_i + hI)C_i
-                L = jitter_cholesky(K[i]-tf.matmul(K[i], invKsigmaK))
-                c_mu = tf.matmul(z_i[i, None], invKsigmaK)
-                fstar_i = tf.matmul(tf.random.normal((1, L.shape[0]), dtype='float64'), L) + c_mu
-                mask = np.zeros((num_tfs, 1), dtype='float64')
-                mask[i] = 1
-                fstar = (1-mask) * fstar + mask * fstar_i
-
-            mask = np.zeros((num_replicates, 1, 1), dtype='float64')
-            mask[r] = 1
-            test_state = (1-mask) * new_state + mask * fstar
-
-            new_prob = self.calc_prob_fn(test_state)
-            old_prob = self.calc_prob_fn(new_state)
-            #previous_kernel_results.target_log_prob #tf.reduce_sum(old_m_likelihood) + old_f_likelihood
-
-            is_accepted = self.metropolis_is_accepted(new_prob, old_prob)
-            
-            prob = tf.cond(tf.equal(is_accepted, tf.constant(True)), lambda:new_prob, lambda:old_prob)
-
-
-            new_state = tf.cond(tf.equal(is_accepted, tf.constant(False)),
-                                lambda:new_state, lambda:test_state)
-        return new_state, prob, is_accepted[0]
-
 
     @tf.function
     def joint_one_step(self, current_state, previous_kernel_results):
@@ -198,21 +153,6 @@ class LatentGPSampler(MetropolisKernel, ParamGroupMixin):
                                 lambda:[current_state[1], current_state[2]], lambda:[v, l2])
 
         return [new_state, *new_params], prob, is_accepted[0]
-    
-    def f_calc_prob(self, fstar, all_states):
-        new_m_likelihood = self.likelihood.genes(
-            all_states,
-            self.state_indices,
-            fbar=fstar,
-        )
-        σ2_f = 1e-6 * tf.ones(fstar.shape[1], dtype='float64')  # TODO
-        new_f_likelihood = tf.cond(tf.equal(self.data_present, tf.constant(True)),
-                                   lambda:tf.reduce_sum(self.likelihood.tfs(
-                                       σ2_f,
-                                       fstar
-                                   )), lambda:f64(0))
-        new_prob = tf.reduce_sum(new_m_likelihood) + new_f_likelihood
-        return new_prob
 
     def joint_calc_prob(self, fstar, new_hyp, old_hyp):
         new_m_likelihood = self.likelihood_fn(
@@ -242,7 +182,6 @@ class LatentGPSampler(MetropolisKernel, ParamGroupMixin):
         return new_prob
 
     def bootstrap_results(self, init_state):
-        print(init_state)
         init_state = init_state[0]
         prob = self.calc_prob_fn(
             init_state[0], [init_state[1], init_state[2]],

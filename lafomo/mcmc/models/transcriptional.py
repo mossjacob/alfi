@@ -101,29 +101,12 @@ class TranscriptionRegulationLFM(MCMCLFM):
         latent_likelihood = self.tfs_likelihood if options.latent_data_present else None
         latents_initial = 0.3 * tf.ones((self.num_replicates, self.num_tfs, self.N_p), dtype=self.dtype)
 
-        if self.options.joint_latent:
-            latents_initial = [latents_initial, *kernel_initial]
-        else:
-            # GP kernel
-            kernel_initial = self.kernel_selector.initial_params()
-            kernel_params = list()
-            for i, k in enumerate(kernel_initial):
-                range = self.kernel_selector.ranges()[i]
-                transform = lambda x: logit(x, nan_replace=range[1])
-                kernel_params.append(Parameter(
-                    'kernel_{}' % i,
-                    LogisticNormal(*range),
-                    logistic(k),
-                    transform=transform
-                ))
-            kernel_params_sampler = HMCSampler(self.likelihood, kernel_params, step_size=0.1 * logistic_step_size)
-            self.subsamplers.append(kernel_params_sampler)
-        
+        latents_initial = [latents_initial, *kernel_initial]
+
         latents = Parameter('latent', None, latents_initial)
         latents_sampler = LatentGPSampler(self.likelihood, latent_likelihood,
                                           latents, self.kernel_selector,
                                           f_step_size*tf.ones(self.N_p, dtype=self.dtype),
-                                          joint=options.joint_latent,
                                           kernel_exponential=options.kernel_exponential)
 
         self.subsamplers.append(latents_sampler)
