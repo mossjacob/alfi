@@ -4,13 +4,13 @@ import torch
 from torch.nn.parameter import Parameter
 from torch.distributions.normal import Normal
 
-from .model import VariationalLFM
+from .model import OrdinaryLFM
 from lafomo.options import VariationalOptions
 from lafomo.utilities.torch import softplus
 from lafomo.datasets import LFMDataset
 
 
-class TranscriptionalRegulationLFM(VariationalLFM):
+class TranscriptionalRegulationLFM(OrdinaryLFM):
     def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, options: VariationalOptions, **kwargs):
         super().__init__(num_outputs, num_latents, t_inducing, dataset, options, **kwargs)
         self.decay_rate = Parameter(0.1 + torch.rand((self.num_outputs, 1), dtype=torch.float64))

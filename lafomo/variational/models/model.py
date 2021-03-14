@@ -13,7 +13,7 @@ from lafomo import LFM
 from lafomo.kernels import RBF
 
 
-class VariationalLFM(LFM):
+class OrdinaryLFM(LFM):
     """
     Variational inducing point approximation of Latent Force Models.
     Must override the `odefunc` function which encodes the ODE. This odefunc may call
@@ -27,7 +27,7 @@ class VariationalLFM(LFM):
     t_inducing : tensor of shape (T_u) : the inducing timepoints.
     """
     def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, options: VariationalOptions, dtype=torch.float64):
-        super(VariationalLFM, self).__init__()
+        super(OrdinaryLFM, self).__init__()
         self.num_outputs = num_outputs
         self.num_latents = num_latents
         self.options = options

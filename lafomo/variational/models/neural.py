@@ -1,11 +1,11 @@
 import torch
 from torch import nn
 
-from .model import VariationalLFM
+from .model import OrdinaryLFM
 from lafomo.datasets import LFMDataset
 
 
-class MLPLFM(VariationalLFM):
+class MLPLFM(OrdinaryLFM):
     def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, **kwargs):
         super().__init__(num_outputs, num_latents, t_inducing, dataset, **kwargs)
         h_dim = 20  # number of hidden units
@@ -37,7 +37,7 @@ class MLPLFM(VariationalLFM):
         return y
 
 
-class ConvLFM(VariationalLFM):
+class ConvLFM(OrdinaryLFM):
     def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, **kwargs):
         super().__init__(num_outputs, num_latents, t_inducing, dataset, dtype=torch.float32, **kwargs)
         self.loss = nn.BCEWithLogitsLoss(reduction='none')

@@ -15,7 +15,7 @@ from abc import ABC
 f64 = np.float64
 
 
-class TranscriptomicDataset(LFMDataset, ABC):
+class TranscriptomicTimeSeries(LFMDataset, ABC):
     def __init__(self):
         self._m_observed = None
         self._t_observed = None
@@ -38,7 +38,7 @@ class TranscriptomicDataset(LFMDataset, ABC):
         self._m_observed = value
 
 
-class P53Data(TranscriptomicDataset):
+class P53Data(TranscriptomicTimeSeries):
     def __init__(self, replicate=None, data_dir='../data/'):
         super().__init__()
         m_observed, f_observed, σ2_m_pre, σ2_f_pre, t = load_barenco_puma(data_dir)
@@ -62,7 +62,7 @@ class P53Data(TranscriptomicDataset):
             self.data = [(self.t_observed, m_observed[replicate, i]) for i in range(num_genes)]
 
 
-class HafnerData(TranscriptomicDataset):
+class HafnerData(TranscriptomicTimeSeries):
     """
     Dataset of GSE100099
     MCF7 cells gamma-irradiated over 24 hours
@@ -122,7 +122,7 @@ class HafnerData(TranscriptomicDataset):
         self.gene_names = target_genes
 
 
-class ArtificialData(TranscriptomicDataset):
+class ArtificialData(TranscriptomicTimeSeries):
     def __init__(self, delay=False):
         # We import the dataset here since it uses TensorFlow
         from lafomo.datasets.artificial import get_artificial_dataset

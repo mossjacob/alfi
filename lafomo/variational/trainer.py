@@ -19,7 +19,7 @@ class Trainer:
     inducing timepoints.
     give_output: whether the trainer should give the first output (y_0) as initial value to the model `forward()`
     """
-    def __init__(self, model: models.VariationalLFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=1, give_output=False):
+    def __init__(self, model: models.OrdinaryLFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=1, give_output=False):
         self.num_epochs = 0
         self.kl_mult = 0
         self.optimizer = optimizer
@@ -112,7 +112,7 @@ class TranscriptionalTrainer(Trainer):
     Parameters:
         batch_size: in the case of the transcriptional regulation model, we train the entire gene set as a batch
     """
-    def __init__(self, model: models.VariationalLFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=None):
+    def __init__(self, model: models.OrdinaryLFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=None):
         if batch_size is None:
             batch_size = model.num_outputs
         super(TranscriptionalTrainer, self).__init__(model, optimizer, dataset, batch_size=batch_size)
