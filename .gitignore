@@ -10,11 +10,13 @@ tf_reggae.egg-info/
 
 .DS_Store
 
-lafomo/data/
-
 *.pt
 lafomo.egg-info/
 
 examples/saved_models/
 
 data/
+
+# Fenics:
+jitfailure-*
+ffc_element*
