@@ -149,6 +149,19 @@ class ArtificialData(TranscriptomicTimeSeries):
         return 1
 
 
+class ToySpatialTranscriptomics(LFMDataset):
+    """
+    TODO this class is not yet implemented
+    """
+    def __init__(self, data_dir='../data/'):
+        data = pd.read_csv(path.join(data_dir, 'demToy1GPmRNA.csv'))
+        num_genes = 1
+
+        t_observed = torch.tensor(data.iloc[:, 0])
+        data = torch.ones((4, 5))
+        self.data = [(t_observed, data) for i in range(num_genes)]
+
+
 class MarkovJumpProcess:
     """
     Implements a generic markov jump process and algorithms for simulating it.
