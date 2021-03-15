@@ -1,3 +1,4 @@
+from lafomo.variational.models import VariationalLFM
 import torch
 import numpy as np
 
@@ -19,7 +20,7 @@ class Trainer:
     inducing timepoints.
     give_output: whether the trainer should give the first output (y_0) as initial value to the model `forward()`
     """
-    def __init__(self, model: models.OrdinaryLFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=1, give_output=False):
+    def __init__(self, model: VariationalLFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=1, give_output=False):
         self.num_epochs = 0
         self.kl_mult = 0
         self.optimizer = optimizer
@@ -51,7 +52,7 @@ class Trainer:
                 for loss in split_loss:
                     print('%.2f  ' % loss, end='')
 
-                print(') λ: %.3f' % self.model.kernel.lengthscale[0].item(), end='')
+                print(f') λ: {str(self.model.kernel)}', end='')
                 self.print_extra()
 
             losses.append(split_loss)
@@ -112,7 +113,7 @@ class TranscriptionalTrainer(Trainer):
     Parameters:
         batch_size: in the case of the transcriptional regulation model, we train the entire gene set as a batch
     """
-    def __init__(self, model: models.OrdinaryLFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=None):
+    def __init__(self, model: VariationalLFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=None):
         if batch_size is None:
             batch_size = model.num_outputs
         super(TranscriptionalTrainer, self).__init__(model, optimizer, dataset, batch_size=batch_size)
