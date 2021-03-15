@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from .model import OrdinaryLFM
+from lafomo.variational.models import OrdinaryLFM
 from lafomo.datasets import LFMDataset
 
 

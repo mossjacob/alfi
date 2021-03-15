@@ -1,41 +1,40 @@
-from abc import abstractmethod
-
 import torch
-from torchdiffeq import odeint
 from torch.nn.parameter import Parameter
 from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.normal import Normal
 
 from lafomo.utilities.torch import softplus, inv_softplus
-from lafomo.datasets import LFMDataset
-from lafomo.options import VariationalOptions
 from lafomo import LFM
-from lafomo.kernels import RBF
+from lafomo.configuration import VariationalConfiguration
+from lafomo.datasets import LFMDataset
 
 
-class OrdinaryLFM(LFM):
+class VariationalLFM(LFM):
     """
-    Variational inducing point approximation of Latent Force Models.
-    Must override the `odefunc` function which encodes the ODE. This odefunc may call
-    `get_latents` to get the values of the latent function at arbitrary time `t`.
+    Variational inducing point approximation for Latent Force Models.
 
     Parameters
     ----------
     num_outputs : int : the number of outputs, size of h vector (for example, the number of genes)
     num_latents : int : the number of latent functions (for example, the number of TFs)
     fixed_variance : tensor : variance if the preprocessing variance is known, otherwise learnt.
-    t_inducing : tensor of shape (T_u) : the inducing timepoints.
+    t_inducing : tensor of shape (..., T_u) : the inducing timepoints.
     """
-    def __init__(self, num_outputs, num_latents, t_inducing, dataset: LFMDataset, options: VariationalOptions, dtype=torch.float64):
-        super(OrdinaryLFM, self).__init__()
-        self.num_outputs = num_outputs
-        self.num_latents = num_latents
+    def __init__(self,
+                 options: VariationalConfiguration,
+                 kernel: torch.nn.Module,
+                 t_inducing,
+                 dataset: LFMDataset,
+                 dtype=torch.float64):
+        super().__init__()
+        self.num_outputs = options.num_outputs
+        self.num_latents = options.num_latents
         self.options = options
-        self.num_inducing = t_inducing.shape[0]
+        self.num_inducing = t_inducing.shape[-1]
         self.num_observed = dataset[0][0].shape[0]
         self.inducing_inputs = Parameter(torch.tensor(t_inducing), requires_grad=options.learn_inducing)
         self.dtype = dtype
-        self.kernel = RBF(num_outputs=num_latents, scale=options.kernel_scale, dtype=dtype)
+        self.kernel = kernel
 
         q_m = torch.rand((self.num_latents, self.num_inducing, 1), dtype=dtype)
         q_S = self.kernel(self.inducing_inputs)
@@ -50,7 +49,6 @@ class OrdinaryLFM(LFM):
 
         if options.initial_conditions:
             self.initial_conditions = Parameter(torch.tensor(torch.zeros(self.num_outputs, 1)), requires_grad=True)
-        self.nfe = 0
 
     @property
     def likelihood_variance(self):
@@ -59,72 +57,6 @@ class OrdinaryLFM(LFM):
     @likelihood_variance.setter
     def likelihood_variance(self, value):
         self.raw_likelihood_variance = inv_softplus(value)
-
-    def initial_state(self, h):
-        if self.options.initial_conditions:
-            h = self.initial_conditions.repeat(h.shape[0], 1, 1)
-        return h
-
-    def forward(self, t, h, rtol=1e-4, atol=1e-6, compute_var=False, return_samples=False):
-        """
-        t : torch.Tensor
-            Shape (num_times)
-        h : torch.Tensor the initial state of the ODE
-            Shape (num_genes, 1)
-        Returns
-        -------
-        Returns evolved h across times t.
-        Shape (num_genes, num_points).
-        """
-        self.nfe = 0
-
-        # Precompute variables
-        self.Kmm = self.kernel(self.inducing_inputs)
-        self.L = torch.cholesky(self.Kmm)
-        q_cholS = torch.tril(self.q_cholS)
-        self.S = torch.matmul(q_cholS, torch.transpose(q_cholS, 1, 2))
-
-        # Integrate forward from the initial positions h0.
-        h0 = self.initial_state(h)
-        h_samples = odeint(self.odefunc, h0, t, method='dopri5', rtol=rtol, atol=atol)  # (T, S, num_outputs, 1)
-
-        if return_samples:
-            return h_samples
-
-        h_out = torch.mean(h_samples, dim=1).transpose(0, 1)
-        h_std = torch.std(h_samples, dim=1).transpose(0, 1)
-
-        if compute_var:
-            return self.decode(h_out), h_std
-        return self.decode(h_out)
-
-    def decode(self, h_out):
-        return h_out
-
-    def predict_m(self, t_predict, **kwargs):
-        """
-        Calls self on input `t_predict`
-        """
-        initial_value = torch.zeros((self.options.num_samples, self.num_outputs, 1), dtype=self.dtype)
-        outputs, var = self(t_predict.view(-1), initial_value, compute_var=True, **kwargs)
-        var = torch.squeeze(var).detach()
-        outputs = torch.squeeze(outputs).detach()
-        return outputs, var
-
-    def predict_f(self, t_predict):
-        """
-        Returns the latents
-        """
-        q_f = self.get_latents(t_predict)
-        return q_f
-
-    @abstractmethod
-    def odefunc(self, t, h):
-        """
-        Parameters:
-            h: shape (num_samples, num_outputs, 1)
-        """
-        pass
 
     def get_latents(self, t):
         """
@@ -149,6 +81,23 @@ class OrdinaryLFM(LFM):
         else:
             q_f = Normal(m_s, torch.squeeze(S_s, 2))
 
+        return q_f
+
+    def predict_m(self, t_predict, **kwargs):
+        """
+        Calls self on input `t_predict`
+        """
+        initial_value = torch.zeros((self.options.num_samples, self.num_outputs, 1), dtype=self.dtype)
+        outputs, var = self(t_predict.view(-1), initial_value, compute_var=True, **kwargs)
+        var = torch.squeeze(var).detach()
+        outputs = torch.squeeze(outputs).detach()
+        return outputs, var
+
+    def predict_f(self, t_predict):
+        """
+        Returns the latents
+        """
+        q_f = self.get_latents(t_predict)
         return q_f
 
     def log_likelihood(self, y, h, data_index=None):
@@ -194,3 +143,5 @@ class OrdinaryLFM(LFM):
 
     def elbo(self, y, h, kl_mult=1, data_index=None):
         return self.log_likelihood(y, h, data_index=data_index), kl_mult * self.kl_divergence()
+
+
