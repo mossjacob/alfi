@@ -5,7 +5,7 @@ from tensorflow_probability import distributions as tfd
 from lafomo.datasets import DataHolder
 from lafomo.utilities.tf import rotate, logit, logistic, LogisticNormal, inverse_positivity, \
     save_object
-from lafomo.options import MCMCOptions
+from lafomo.configuration import MCMCConfiguration
 from lafomo.mcmc.parameter import Parameter
 from lafomo.mcmc.samplers import HMCSampler, LatentGPSampler, DelaySampler, GibbsSampler
 from lafomo.mcmc.samplers.mixed import MixedSampler
@@ -23,7 +23,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
     """
     An updated version of the Metropolis-Hastings model from Titsias et al. (2012) using a mixed sampler
     """
-    def __init__(self, data: DataHolder, options: MCMCOptions):
+    def __init__(self, data: DataHolder, options: MCMCConfiguration):
         super().__init__(data, options)
         self.N_p = data.t_discretised.shape[0]
         step_sizes = self.options.initial_step_sizes

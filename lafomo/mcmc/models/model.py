@@ -1,10 +1,10 @@
 from lafomo.datasets import DataHolder
-from lafomo.options import MCMCOptions
+from lafomo.configuration import MCMCConfiguration
 import abc
 
 class MCMCLFM():
 
-    def __init__(self, data: DataHolder, options: MCMCOptions):
+    def __init__(self, data: DataHolder, options: MCMCConfiguration):
         self.options = options
         self.data = data
         self.preprocessing_variance = options.preprocessing_variance

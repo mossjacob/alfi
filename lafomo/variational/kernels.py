@@ -51,3 +51,49 @@ class RBF(Module):
             K += jitter
 
         return K
+
+    def __str__(self):
+        return '%.02f' % self.lengthscale[0].item()
+
+
+class SpatioTemporalRBF(RBF):
+    def __init__(self, num_outputs, initial_lengthscale=1.5, scale=True, dtype=torch.float32):
+        super().__init__(num_outputs, scale, dtype)
+
+        lengthscales = torch.stack([
+            inv_softplus(initial_lengthscale * torch.ones((num_outputs), dtype=dtype)),
+            inv_softplus(initial_lengthscale * torch.ones((num_outputs), dtype=dtype))
+        ], dim=1)
+        print(lengthscales.shape)
+
+        self.raw_lengthscale = Parameter(lengthscales, requires_grad=True)
+
+    def forward(self, x: torch.Tensor, x2: torch.Tensor=None):
+        """
+        Radial basis function kernel.
+        Parameters:
+            x: tensor (2, T)
+            x2: tensor (2, T'). if None, then x2 becomes x
+        Returns:
+             K of shape (I, |x|, |x2|)
+        """
+        add_jitter = x2 is None
+        if x2 is None:
+            x2 = x
+        # (num_outputs, 2, N, N')
+
+        l = 2 * self.lengthscale.view((self.num_outputs, 2, 1, 1))
+        sq_dist = torch.square(x.view(1, 2, -1, 1)-x2.view(1, 2, 1, -1))
+        sq_dist = torch.div(sq_dist, l).sum(dim=1)
+        sq_dist = sq_dist.repeat(self.num_outputs, 1, 1)
+        K = self.scale.view(-1, 1, 1) * torch.exp(-sq_dist)
+        # from matplotlib import pyplot as plt
+        # plt.imshow(K[0].detach())
+        if add_jitter:
+            jitter = 1e-5 * torch.eye(K.shape[-1], dtype=K.dtype, device=K.device)
+            K += jitter
+
+        return K
+
+    def __str__(self):
+        return '%.02f %.02f' % (self.lengthscale[0][0].item(), self.lengthscale[0][1].item())

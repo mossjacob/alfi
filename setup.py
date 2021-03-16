@@ -26,6 +26,7 @@ setuptools.setup(
         'torchdiffeq>=0.2.0',
         'pandas>=1.2.1',
         'matplotlib',
+        'nbsphinx',
         'gpytorch>=1.3.1'
     ]
 )
