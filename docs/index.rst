@@ -11,8 +11,6 @@ Welcome to LaFoMo!
    :caption: Contents:
 
    intro
-   notebooks/intro
-   notebooks/variational
 
 .. toctree::
    :maxdepth: 1
