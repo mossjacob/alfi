@@ -3,8 +3,6 @@ from dataclasses import dataclass, field
 
 @dataclass
 class Configuration:
-    num_outputs:            int
-    num_latents:            int
     preprocessing_variance: object = None # data processing variances if present (e.g. mmgmos) otherwise None
     latent_data_present:    bool = False  # False for fully inferred latents
     delays:                 bool = False  # True if delay params used

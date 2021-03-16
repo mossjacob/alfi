@@ -27,8 +27,8 @@ class VariationalLFM(LFM):
                  dataset: LFMDataset,
                  dtype=torch.float64):
         super().__init__()
-        self.num_outputs = options.num_outputs
-        self.num_latents = options.num_latents
+        self.num_outputs = dataset.num_outputs
+        self.num_latents = dataset.num_latents
         self.options = options
         self.num_inducing = t_inducing.shape[-1]
         self.num_observed = dataset[0][0].shape[0]

@@ -1,7 +1,7 @@
 import torch
 import gpytorch
 
-from lafomo.kernels import SIMKernel, SIMMean
+from lafomo.exact.transcriptional import SIMMean, SIMKernel
 from lafomo import LFM
 from lafomo.utilities.data import flatten_dataset, LFMDataset
 

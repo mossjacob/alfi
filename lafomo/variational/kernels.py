@@ -87,6 +87,8 @@ class SpatioTemporalRBF(RBF):
         sq_dist = torch.div(sq_dist, l).sum(dim=1)
         sq_dist = sq_dist.repeat(self.num_outputs, 1, 1)
         K = self.scale.view(-1, 1, 1) * torch.exp(-sq_dist)
+        # from matplotlib import pyplot as plt
+        # plt.imshow(K[0].detach())
         if add_jitter:
             jitter = 1e-5 * torch.eye(K.shape[-1], dtype=K.dtype, device=K.device)
             K += jitter
@@ -94,4 +96,4 @@ class SpatioTemporalRBF(RBF):
         return K
 
     def __str__(self):
-        return '%.02f %.02f' % (self.lengthscale[0][0].item(), self.lengthscale[0][0].item())
+        return '%.02f %.02f' % (self.lengthscale[0][0].item(), self.lengthscale[0][1].item())

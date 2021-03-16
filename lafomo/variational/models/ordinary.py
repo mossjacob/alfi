@@ -14,6 +14,7 @@ class OrdinaryLFM(VariationalLFM):
     Inheriting classes must override the `odefunc` function which encodes the ODE. This odefunc
     may call `get_latents` to get the values of the latent function at arbitrary time `t`.
     """
+
     def __init__(self, options: VariationalConfiguration, kernel, t_inducing, dataset: LFMDataset, dtype=torch.float64):
         super().__init__(options, kernel, t_inducing, dataset, dtype)
         self.nfe = 0

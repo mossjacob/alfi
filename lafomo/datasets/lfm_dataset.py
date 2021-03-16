@@ -9,6 +9,7 @@ class LFMDataset(Dataset):
 
     @property
     def num_outputs(self):
+        """The number of LFM outputs."""
         return self._num_outputs
 
     @num_outputs.setter
@@ -17,6 +18,7 @@ class LFMDataset(Dataset):
 
     @property
     def num_latents(self):
+        """The number of latent GPs (i.e. number of outputs for a multi-output GP)"""
         return self._num_latents
 
     @num_latents.setter
@@ -25,6 +27,11 @@ class LFMDataset(Dataset):
 
     @property
     def data(self):
+        """
+        List of data points, each a tuple(a, b).
+        For time-series, a and b are 1-D.
+        For spatiotemporal series, a is (2, T) corresponding to a row for time and space, and b is 1-D.
+        """
         return self._data
 
     @data.setter

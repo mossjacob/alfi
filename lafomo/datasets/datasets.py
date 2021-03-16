@@ -122,7 +122,7 @@ class HafnerData(TranscriptomicTimeSeries):
         self.gene_names = target_genes
 
 
-class ArtificialData(TranscriptomicTimeSeries):
+class ToyTimeSeries(TranscriptomicTimeSeries):
     def __init__(self, delay=False):
         # We import the dataset here since it uses TensorFlow
         from lafomo.datasets.artificial import get_artificial_dataset
@@ -151,15 +151,16 @@ class ArtificialData(TranscriptomicTimeSeries):
 
 class ToySpatialTranscriptomics(LFMDataset):
     """
-    TODO this class is not yet implemented
+
     """
     def __init__(self, data_dir='../data/'):
         data = pd.read_csv(path.join(data_dir, 'demToy1GPmRNA.csv'))
-        num_genes = 1
 
-        t_observed = torch.tensor(data.iloc[:, 0])
-        data = torch.ones((4, 5))
-        self.data = [(t_observed, data) for i in range(num_genes)]
+        self.num_outputs = 1
+        self.num_latents = 1
+        t_observed = torch.tensor(data.values[:, 0:2]).permute(1, 0)
+        data = torch.tensor(data.values[:, 3])
+        self.data = [(t_observed, data)]
 
 
 class MarkovJumpProcess:
