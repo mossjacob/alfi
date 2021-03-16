@@ -2,12 +2,14 @@
 
 > _Don't miss out!_
 
-[![Latest PyPI Version][pb]][pypi] [![PyPI Downloads][db]][pypi]
+[![Latest PyPI Version][pb]][pypi] [![PyPI Downloads][db]][pypi] [![Documentation Status](https://readthedocs.org/projects/lafomo/badge/?version=latest)](https://lafomo.readthedocs.io/en/latest/?badge=latest)
+
 
 [pb]: https://img.shields.io/pypi/v/lafomo.svg
 [pypi]: https://pypi.org/project/lafomo/
 
 [db]: https://img.shields.io/pypi/dm/lafomo?label=pypi%20downloads
+
 
 ### Implement Latent Force Models in under 10 lines of code!
 
