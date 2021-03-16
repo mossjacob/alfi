@@ -20,3 +20,6 @@ data/
 # Fenics:
 jitfailure-*
 ffc_element*
+
+# Sphinx docs
+/docs/_build/
