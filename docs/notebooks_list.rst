@@ -25,13 +25,8 @@ For non-linear Latent Force Models, two approaches are implemented: variational 
    :maxdepth: 1
    :glob:
 
-   notebooks/variational/*
+   notebooks/nonlinear/*
 
-.. toctree::
-   :maxdepth: 1
-   :glob:
-
-   notebooks/mcmc/*
 
 Partial Differential Equations
 ------------------------------

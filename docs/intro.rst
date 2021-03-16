@@ -15,7 +15,7 @@ LaFoMo can be installed running ``pip install lafomo``. This also installs requi
 
 Getting Started
 ---------------
-Get started with our `examples and tutorials <notebooks/intro.html>`_.
+Get started with our `examples and tutorials <notebooks_list.html>`_.
 
 
 Which models are implemented?
