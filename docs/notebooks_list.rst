@@ -8,7 +8,8 @@ These notebooks should help get started with LaFoMo.
 Linear LFMs
 -----------
 
-For analytical Latent Force Models, have a look at these notebooks carrying out exact inference
+For analytical Latent Force Models, have a look at these notebooks carrying out exact inference.
+
 
 .. toctree::
    :maxdepth: 1

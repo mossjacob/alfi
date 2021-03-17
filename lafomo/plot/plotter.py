@@ -61,7 +61,7 @@ class Plotter:
             plt.subplot(mean.shape[0], 1, i+1)
             std = torch.sqrt(q_f.variance)[i].detach().numpy()
             plt.plot(t_predict, mean[i], color='gray')
-            plt.fill_between(t_predict, mean[i] + std, mean[i] - std, color='orangered', alpha=0.5)
+            plt.fill_between(t_predict, mean[i] + 2 * std, mean[i] - 2 * std, color='orangered', alpha=0.5)
             for _ in range(num_samples):
                 plt.plot(t_predict, q_f.sample().detach()[i], alpha=0.3, color='gray')
 

@@ -70,6 +70,7 @@ class AnalyticalLFM(LFM, gpytorch.models.ExactGP):
             Kff = self.covar_module.K_ff(pred_t, pred_t)  # (100, 500)
             var = Kff - torch.matmul(KfxKxx, Kxf)
             var = torch.diagonal(var, dim1=0, dim2=1).view(-1)
+            print(var)
             return torch.distributions.Normal(mu.unsqueeze(0), var.unsqueeze(0))
 
         return
