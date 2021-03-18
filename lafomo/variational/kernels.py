@@ -8,7 +8,7 @@ from lafomo.utilities.torch import softplus, inv_softplus
 class RBF(Module):
     def __init__(self, num_outputs, scale=True, dtype=torch.float32):
         super(RBF, self).__init__()
-        self.raw_lengthscale = Parameter(inv_softplus(1.5 * torch.ones((num_outputs), dtype=dtype)))
+        self.raw_lengthscale = Parameter(inv_softplus(1 * torch.ones((num_outputs), dtype=dtype)))
         self.raw_scale = Parameter(inv_softplus(torch.ones((num_outputs), dtype=dtype)), requires_grad=scale)
         self.num_outputs = num_outputs
 
