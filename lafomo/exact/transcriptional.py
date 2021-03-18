@@ -118,31 +118,32 @@ class SIMKernel(gpytorch.kernels.Kernel):
         plt.colorbar()
         return Kxx
 
-    def forward(self, x1, x2, **params):
+    def forward(self, t1, t2, **params):
         """
         This calculates Kxx (not cross-covariance)
+        t1, t2 are blocked timepoint vectors
         Parameters:
            x1 shape (num_genes*num_times)
         """
-        # calculate the distance between inputs
-        '''Computes Kxx'''
-        self.block_size = int(x1.shape[0] / self.num_genes)  # 7
-        shape = [x1.shape[0], x2.shape[0]]
-        K_xx = torch.zeros(shape)
-        self.diff = self.covar_dist(x1, x2)
-
+        vert_block_size = int(t1.shape[0] / self.num_genes)
+        hori_block_size = int(t2.shape[0] / self.num_genes)
+        t1_block, t2_block = t1[:vert_block_size], t2[:hori_block_size]
+        shape = [vert_block_size * self.num_genes, hori_block_size * self.num_genes]
+        K_xx = torch.zeros(shape, dtype=torch.float64)
         for j in range(self.num_genes):
             for k in range(self.num_genes):
-                kxx = self.k_xx(j, k, x1[:self.block_size], x2[:self.block_size])
-                # print('kxx', kxx.shape)
-                K_xx[j * self.block_size:(j + 1) * self.block_size,
-                k * self.block_size:(k + 1) * self.block_size] = kxx
+                kxx = self.k_xx(j, k, t1_block, t2_block)
+                K_xx[j * vert_block_size:(j + 1) * vert_block_size,
+                     k * hori_block_size:(k + 1) * hori_block_size] = kxx
 
-        noise = self.noise.view(-1, 1).repeat(1, self.block_size).view(-1)
-        noise = torch.diag(noise)
-
-        jitter = 1e-1 * torch.eye(K_xx.shape[0])
-        return K_xx + jitter + self.variance + noise
+        if hori_block_size == vert_block_size:
+            noise = self.noise.view(-1, 1).repeat(1, hori_block_size).view(-1)
+            noise = torch.diag(noise)
+            jitter = 1e-4 * torch.eye(K_xx.shape[0], dtype=torch.float64)
+            K_xx += noise + jitter
+            if K_xx.shape[0] == self.variance.shape[0]:
+                K_xx += self.variance
+        return K_xx
 
     def k_xx(self, j, k, t1_block, t2_block):
         """
@@ -152,8 +153,8 @@ class SIMKernel(gpytorch.kernels.Kernel):
             t1_block: tensor shape (T1,)
             t2_block: tensor shape (T2,)
         """
-        t1_block = t1_block.view(1, -1)
-        t2_block = t2_block.view(-1, 1)
+        t1_block = t1_block.view(-1, 1)
+        t2_block = t2_block.view(1, -1)
         mult = self.sensitivity[j] * self.sensitivity[k] * self.lengthscale * 0.5 * torch.sqrt(PI)
         k_xx = mult * (self.h(k, j, t2_block, t1_block) + self.h(j, k, t1_block, t2_block))
         return k_xx
@@ -169,25 +170,6 @@ class SIMKernel(gpytorch.kernels.Kernel):
 
     def gamma(self, k):
         return self.decay[k] * self.lengthscale / 2
-
-    def K_xstarxstar(self, x1, x2):
-        """Computes Kx*,x*
-        Args:
-          x1:  x a single block of observation vector
-          x2: x* a non-blocked prediction timepoint vector
-        """
-        self.vert_block_size = int(x1.shape[0])
-        self.hori_block_size = int(x2.shape[0])
-        shape = [self.vert_block_size * self.num_genes, self.hori_block_size * self.num_genes]
-        K_xx = torch.zeros(shape, dtype=torch.float32)
-        t1_block, t2_block = x1, x2
-        for j in range(self.num_genes):
-            for k in range(self.num_genes):
-                kxx = self.k_xx(j, k, t2_block, t1_block)
-                K_xx[j * self.vert_block_size:(j + 1) * self.vert_block_size,
-                     k * self.hori_block_size:(k + 1) * self.hori_block_size] = kxx
-
-        return K_xx
 
     def K_xf(self, x, f):
         """
@@ -216,13 +198,12 @@ class SIMKernel(gpytorch.kernels.Kernel):
 
     def K_ff(self, x1, x2):
         """Returns the RBF kernel between latent TF"""
-        add_jitter = x2 is None
         x1 = x1.view(-1)
         x2 = x2.view(-1)
         sq_dist = torch.square(x1.view(-1, 1)-x2)
         sq_dist = torch.div(sq_dist, 2*self.lengthscale.view((-1, 1)))
         K = torch.exp(-sq_dist)
-        if add_jitter:
-            jitter = 1e-5 * torch.eye(x1.shape[0])
+        if K.shape[0] == K.shape[1]:
+            jitter = 1e-3 * torch.eye(x1.shape[0])
             K += jitter
         return K

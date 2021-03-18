@@ -46,13 +46,14 @@ class AnalyticalLFM(LFM, gpytorch.models.ExactGP):
     def predict_m(self, pred_t, compute_var=True):
         Kxx = self.covar_module(self.train_t, self.train_t)
         K_inv = torch.inverse(Kxx.evaluate())
-        K_xxstar = self.covar_module.K_xstarxstar(self.train_t[:self.block_size], pred_t)
+        pred_t_blocked = pred_t.repeat(self.num_outputs)
+        K_xxstar = self.covar_module(self.train_t, pred_t_blocked).evaluate()
         K_xstarx = torch.transpose(K_xxstar, 0, 1).type(torch.float64)
         K_xstarxK_inv = torch.matmul(K_xstarx, K_inv)
         KxstarxKinvY = torch.matmul(K_xstarxK_inv, self.train_y)
         mu = KxstarxKinvY.view(self.num_outputs, pred_t.shape[0])
         if compute_var:
-            K_xstarxstar = self.covar_module.K_xstarxstar(pred_t, pred_t)  # (100, 500)
+            K_xstarxstar = self.covar_module(pred_t_blocked, pred_t_blocked).evaluate()
             var = K_xstarxstar - torch.matmul(K_xstarxK_inv, torch.transpose(K_xstarx, 0, 1))
             var = torch.diagonal(var, dim1=0, dim2=1).view(self.num_outputs, pred_t.shape[0])
             return mu, var

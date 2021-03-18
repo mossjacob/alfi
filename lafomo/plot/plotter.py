@@ -34,16 +34,16 @@ class Plotter:
         """
         mu, var = self.model.predict_m(t_predict, **model_kwargs)
         mu = mu.detach()
-        var = 2 * torch.sqrt(var).detach()
+        std = torch.sqrt(var).detach()
         mu = mu.view(self.num_outputs, self.num_replicates, -1).transpose(0, 1)
-        var = var.view(self.num_outputs, self.num_replicates, -1).transpose(0, 1)
+        std = std.view(self.num_outputs, self.num_replicates, -1).transpose(0, 1)
         num_plots = min(max_plots, self.num_outputs)
         plt.figure(figsize=(6, 4 * np.ceil(num_plots / 3)))
         for i in range(num_plots):
             plt.subplot(num_plots, 3, i + 1)
             plt.title(self.output_names[i])
             plt.plot(t_predict, mu[replicate, i].detach())
-            plt.fill_between(t_predict, mu[replicate, i] + var[replicate, i], mu[replicate, i] - var[replicate, i], alpha=0.4)
+            plt.fill_between(t_predict, mu[replicate, i] + 2*std[replicate, i], mu[replicate, i] - 2*std[replicate, i], alpha=0.4)
 
             if t_scatter is not None:
                 plt.scatter(t_scatter, y_scatter[replicate, i])
@@ -87,7 +87,6 @@ class Plotter:
                 plt.ylim(ylim)
 
         plt.title('Latent')
-
 
     def plot_kinetics(self):
         plt.figure(figsize=(8, 4))
