@@ -80,7 +80,7 @@ class VariationalLFM(LFM):
                 S_s = S_s + jitter
             q_f = MultivariateNormal(m_s, S_s)
         else:
-            q_f = Normal(m_s, torch.squeeze(S_s, 2))
+            q_f = Normal(m_s, S_s.squeeze(2))
 
         return q_f
 
@@ -90,8 +90,8 @@ class VariationalLFM(LFM):
         """
         initial_value = torch.zeros((self.options.num_samples, self.num_outputs, 1), dtype=self.dtype)
         outputs, var = self(t_predict.view(-1), initial_value, compute_var=True, **kwargs)
-        var = torch.squeeze(var).detach()
-        outputs = torch.squeeze(outputs).detach()
+        var = var.squeeze().detach()
+        outputs = outputs.squeeze().detach()
         return outputs, var
 
     def predict_f(self, t_predict):
