@@ -47,7 +47,7 @@ class Trainer:
             output, epoch_loss, split_loss = self.single_epoch(rtol, atol)
 
             if (epoch % report_interval) == 0:
-                print('Epoch %d/%d - Loss: %.2f (' % (
+                print('Epoch %03d/%03d - Loss: %.2f (' % (
                     self.num_epochs + 1, end_epoch, epoch_loss), end='')
                 for loss in split_loss:
                     print('%.2f  ' % loss, end='')

@@ -25,14 +25,21 @@ class TranscriptionalRegulationLFM(OrdinaryLFM):
 
         decay = self.decay_rate * h
 
-        q_f = self.get_latents(t.reshape(-1))
+        # q_f = self.get_latents(t.reshape(-1))
 
         # Reparameterisation trick
-        f = q_f.rsample([self.options.num_samples])  # (S, I, t)
+        # f = q_f.rsample([self.options.num_samples])  # (S, I, t)
+        #
+        # f = self.G(f)  # (S, num_outputs, t)
 
-        f = self.G(f)  # (S, num_outputs, t)
+        f = self.f[:, :, self.t_index].unsqueeze(2)
 
-        return self.basal_rate + self.sensitivity * f - decay
+        h = self.basal_rate + self.sensitivity * f - decay
+        if t > self.last_t:
+            self.t_index += 1
+        self.last_t = t
+        return h
+
 
     @abstractmethod
     def G(self, f):
@@ -53,6 +60,9 @@ class TranscriptionalRegulationLFM(OrdinaryLFM):
 
 
 class SingleLinearLFM(TranscriptionalRegulationLFM):
+
+    def initial_state(self, h):
+        return (self.basal_rate / self.decay_rate).unsqueeze(0).repeat(h.shape[0], 1, 1)
 
     def G(self, f):
         # I = 1 so just repeat for num_outputs
