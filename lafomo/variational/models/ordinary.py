@@ -37,7 +37,7 @@ class OrdinaryLFM(VariationalLFM):
         """
         self.nfe = 0
 
-        # Precompute variables
+        # Precompute variables TODO: move to vlfm
         self.Kmm = self.kernel(self.inducing_inputs)
         self.L = torch.cholesky(self.Kmm)
         q_cholS = torch.tril(self.q_cholS)
@@ -51,10 +51,10 @@ class OrdinaryLFM(VariationalLFM):
             return h_samples
 
         h_out = torch.mean(h_samples, dim=1).transpose(0, 1)
-        h_std = torch.std(h_samples, dim=1).transpose(0, 1)
+        h_var = torch.var(h_samples, dim=1).transpose(0, 1)
 
         if compute_var:
-            return self.decode(h_out), h_std
+            return self.decode(h_out), h_var
         return self.decode(h_out)
 
     def decode(self, h_out):

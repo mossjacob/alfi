@@ -70,7 +70,7 @@ class Trainer:
         epoch_loss = 0
         epoch_ll = 0
         epoch_kl = 0
-        output = None
+        y_mean = None
         for i, data in enumerate(self.data_loader):
 
             self.optimizer.zero_grad()
@@ -82,14 +82,15 @@ class Trainer:
 
             # with ef.scan():
             initial_value = self.initial_value(y)
-            output = self.model(t, initial_value, rtol=rtol, atol=atol)
-            output = torch.squeeze(output)
+            y_mean, y_var = self.model(t, initial_value, rtol=rtol, atol=atol, compute_var=True)
+            y_mean = y_mean.squeeze()
+            y_var = y_var.squeeze()
             # Calc loss and backprop gradients
             mult = 1
             if self.num_epochs <= 10:
                 mult = self.num_epochs/10
 
-            ll, kl = self.model.elbo(y, output, mult, data_index=i)
+            ll, kl = self.model.elbo(y, y_mean, y_var, kl_mult=mult)
             total_loss = -ll + kl
 
             total_loss.backward()
@@ -98,7 +99,7 @@ class Trainer:
             epoch_ll += ll.item()
             epoch_kl += kl.item()
 
-        return output, epoch_loss, (-epoch_ll, epoch_kl)
+        return y_mean, epoch_loss, (-epoch_ll, epoch_kl)
 
     def print_extra(self):
         print('')

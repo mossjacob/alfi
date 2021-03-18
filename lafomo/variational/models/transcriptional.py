@@ -45,17 +45,11 @@ class TranscriptionalRegulationLFM(OrdinaryLFM):
     def predict_f(self, t_predict):
         # Sample from the latent distribution
         q_f = self.get_latents(t_predict.reshape(-1))
-        f = q_f.sample([500])  # (S, I, t)
-        # This is a hack to wrap the latent function with the nonlinearity. Note we use the same variance.
-        f = torch.mean(self.G(f), dim=0)[0]
-        return torch.distributions.multivariate_normal.MultivariateNormal(f, scale_tril=q_f.scale_tril)
-
-    def log_likelihood(self, y, h, data_index=0):
-        sq_diff = torch.square(y - h)
-        variance = self.likelihood_variance[data_index]  # add PUMA variance
-        log_lik = -0.5*torch.log(2*3.1415926*variance) - 0.5*sq_diff/variance
-        log_lik = torch.sum(log_lik)
-        return log_lik
+        return q_f
+        # f = q_f.sample([500])  # (S, I, t)
+        # # This is a hack to wrap the latent function with the nonlinearity. Note we use the same variance.
+        # f = torch.mean(self.G(f), dim=0)[0]
+        # return torch.distributions.multivariate_normal.MultivariateNormal(f, scale_tril=q_f.scale_tril)
 
 
 class SingleLinearLFM(TranscriptionalRegulationLFM):
