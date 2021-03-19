@@ -21,7 +21,7 @@ class EMTrainer(Trainer):
         # Initialise trajectory
         self.timepoint_choices = torch.linspace(0, 1, 100, requires_grad=False)
         initial_value = self.initial_value(None)
-        self.previous_trajectory = self.model(self.timepoint_choices, initial_value, rtol=1e-3, atol=1e-4)
+        self.previous_trajectory, _ = self.model(self.timepoint_choices, initial_value, rtol=1e-3, atol=1e-4)
         self.time_assignments_indices = torch.zeros_like(self.model.time_assignments, dtype=torch.long)
 
     def e_step(self, y):
@@ -55,7 +55,6 @@ class EMTrainer(Trainer):
         epoch_loss = 0
         epoch_ll = 0
         epoch_kl = 0
-        output = None
         for i, data in enumerate(self.data_loader):
             self.optimizer.zero_grad()
             y = data.permute(0, 2, 1) # (O, C, 1)
@@ -75,28 +74,31 @@ class EMTrainer(Trainer):
             output = output[:, inv_indices]
             # print(t_sorted, inv_indices.shape)
             '''
-            output = self.model(self.timepoint_choices, initial_value, rtol=rtol, atol=atol)
-            self.previous_trajectory = output
-            output = output[:, self.time_assignments_indices]
-            print(output.shape, self.previous_trajectory.shape)
+            y_mean, y_var = self.model(self.timepoint_choices, initial_value, rtol=rtol, atol=atol)
+
+            self.previous_trajectory = y_mean
+            y_mean = y_mean[:, self.time_assignments_indices]
+            y_var = y_var[:, self.time_assignments_indices]
+            print('ymean, yvar, traj', y_mean.shape, y_var.shape, self.previous_trajectory.shape)
             # output = torch.squeeze(output) # (num_genes, num_cells)
             # print(output.shape, y.shape)
             # Calc loss and backprop gradients
+
             mult = 1
             if self.num_epochs <= 10:
                 mult = self.num_epochs/10
 
             ll, kl = self.model.elbo(y.squeeze(),
-                                     output.squeeze(),
-                                     mult,
-                                     data_index=i)
+                                     y_mean.squeeze(),
+                                     y_var.squeeze(),
+                                     kl_mult=mult)
             total_loss = -ll# + kl
             total_loss.backward()
             self.optimizer.step()
             epoch_loss += total_loss.item()
             epoch_ll += ll.item()
             epoch_kl += kl.item()
-        return output, epoch_loss, (-epoch_ll, epoch_kl)
+        return epoch_loss, (-epoch_ll, epoch_kl)
 
     def after_epoch(self):
         with torch.no_grad():

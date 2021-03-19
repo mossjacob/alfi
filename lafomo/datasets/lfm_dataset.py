@@ -17,15 +17,6 @@ class LFMDataset(Dataset):
         self._num_outputs = value
 
     @property
-    def num_latents(self):
-        """The number of latent GPs (i.e. number of outputs for a multi-output GP)"""
-        return self._num_latents
-
-    @num_latents.setter
-    def num_latents(self, value):
-        self._num_latents = value
-
-    @property
     def data(self):
         """
         List of data points, each a tuple(a, b).

@@ -11,8 +11,8 @@ from lafomo.datasets import LFMDataset
 
 
 class TranscriptionalRegulationLFM(OrdinaryLFM):
-    def __init__(self, options: VariationalConfiguration, kernel, t_inducing, dataset: LFMDataset, **kwargs):
-        super().__init__(options, kernel, t_inducing, dataset, **kwargs)
+    def __init__(self, num_latent: int, config: VariationalConfiguration, kernel, t_inducing, dataset: LFMDataset, **kwargs):
+        super().__init__(num_latent, config, kernel, t_inducing, dataset, **kwargs)
         self.decay_rate = Parameter(0.1 + torch.rand((self.num_outputs, 1), dtype=torch.float64))
         self.basal_rate = Parameter(torch.rand((self.num_outputs, 1), dtype=torch.float64))
         self.sensitivity = Parameter(0.2 + torch.rand((self.num_outputs, 1), dtype=torch.float64))
@@ -83,8 +83,8 @@ class ExponentialLFM(NonLinearLFM):
 
 
 class MultiLFM(TranscriptionalRegulationLFM):
-    def __init__(self, options, kernel, t_inducing, dataset):
-        super().__init__(options, kernel, t_inducing)
+    def __init__(self, num_latents, config, kernel, t_inducing, dataset):
+        super().__init__(num_latents, config, kernel, t_inducing, dataset)
         self.w = Parameter(torch.ones((self.num_outputs, self.num_latents), dtype=torch.float64))
         self.w_0 = Parameter(torch.ones((self.num_outputs, 1), dtype=torch.float64))
 
@@ -100,8 +100,8 @@ class MultiLFM(TranscriptionalRegulationLFM):
 
 
 class PoissonLFM(TranscriptionalRegulationLFM):
-    def __init__(self, options, kernel, t_inducing, dataset: LFMDataset):
-        super().__init__(options, kernel, t_inducing, dataset)
+    def __init__(self, num_latents, config, kernel, t_inducing, dataset: LFMDataset):
+        super().__init__(num_latents, config, kernel, t_inducing, dataset)
 
     """Adds poison to the latent forces"""
     def G(self, λ):

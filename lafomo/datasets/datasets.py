@@ -49,7 +49,7 @@ class P53Data(TranscriptomicTimeSeries):
         num_genes = m_observed.shape[1]
         num_replicates = m_observed.shape[0]
         self.num_outputs = num_genes
-        self.num_latents = 1
+
         # f_df, f_observed = f_observed
         m_observed = torch.tensor(m_observed)
         self.t_observed = torch.linspace(f64(0), f64(12), 7)
@@ -86,7 +86,7 @@ class HafnerData(TranscriptomicTimeSeries):
                 'GLS2','TMEM229B','IKBIP','ERCC5','KIAA1217','DDIT4','DDB2','TP53INP1'
             ])
         np.random.shuffle(target_genes)
-        num_genes = len(target_genes)
+        self.num_outputs = len(target_genes)
         tfs = ['TP53']
         with open(path.join(data_dir, 'GSE100099_RNASeqGEO.tsv'), 'r', 1) as f:
             contents = f.buffer
@@ -112,12 +112,12 @@ class HafnerData(TranscriptomicTimeSeries):
         self.tfs = self.tfs.reshape((1, 2, 13)).swapaxes(0,1)
 
         self.t = torch.linspace(0, 12, 13, dtype=torch.float32)
-        self.m_observed = self.m_observed.reshape(num_genes, 2, 13).transpose(0, 1)
+        self.m_observed = self.m_observed.reshape(self.num_outputs, 2, 13).transpose(0, 1)
 
         if replicate is None:
-            self.data = [(self.t, self.m_observed[r, i]) for r in range(2) for i in range(num_genes)]
+            self.data = [(self.t, self.m_observed[r, i]) for r in range(2) for i in range(self.num_outputs)]
         else:
-            self.data = [(self.t, self.m_observed[replicate, i]) for i in range(num_genes)]
+            self.data = [(self.t, self.m_observed[replicate, i]) for i in range(self.num_outputs)]
 
         self.gene_names = target_genes
 
@@ -157,7 +157,6 @@ class ToySpatialTranscriptomics(LFMDataset):
         data = pd.read_csv(path.join(data_dir, 'demToy1GPmRNA.csv'))
 
         self.num_outputs = 1
-        self.num_latents = 1
         t_observed = torch.tensor(data.values[:, 0:2]).permute(1, 0)
         data = torch.tensor(data.values[:, 3])
         self.data = [(t_observed, data)]

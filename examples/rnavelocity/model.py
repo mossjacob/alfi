@@ -1,14 +1,15 @@
 import torch
 from torch.nn import Parameter
 
-from lafomo.variational.models import VariationalLFM
+from lafomo.variational.models import OrdinaryLFM
 from lafomo.datasets import LFMDataset
 from lafomo.configuration import VariationalConfiguration
 
 
-class RNAVelocityLFM(VariationalLFM):
-    def __init__(self, num_genes, num_latents, t_inducing, dataset: LFMDataset, options: VariationalConfiguration, **kwargs):
-        super().__init__(num_genes*2, num_latents, t_inducing, dataset, options, **kwargs)
+class RNAVelocityLFM(OrdinaryLFM):
+    def __init__(self, num_latents, config: VariationalConfiguration, kernel, t_inducing, dataset: LFMDataset, **kwargs):
+        super().__init__(num_latents, config, kernel, t_inducing, dataset, **kwargs)
+        num_genes = dataset.num_outputs // 2
         self.transcription_rate = Parameter(torch.rand((num_genes, 1), dtype=torch.float64))
         self.splicing_rate = Parameter(torch.rand((num_genes, 1), dtype=torch.float64))
         self.decay_rate = Parameter(0.1 + torch.rand((num_genes, 1), dtype=torch.float64))
@@ -18,8 +19,8 @@ class RNAVelocityLFM(VariationalLFM):
 
     def odefunc(self, t, h):
         """h is of shape (num_samples, num_outputs, 1)"""
-        if (self.nfe % 10) == 0:
-            print(t)
+        # if (self.nfe % 10) == 0:
+        #     print(t)
         self.nfe += 1
         num_samples = h.shape[0]
         num_outputs = h.shape[1]
@@ -28,11 +29,6 @@ class RNAVelocityLFM(VariationalLFM):
         s = h[:, :, 1].unsqueeze(-1)
         du = self.transcription_rate - self.splicing_rate * u
         ds = self.splicing_rate * u - self.decay_rate * s
-
-        # q_f = self.get_latents(t.reshape(-1))
-        # # Reparameterisation trick
-        # f = q_f.rsample([self.num_samples])  # (S, I, t)
-        # f = self.G(f)  # (S, num_outputs, t)
 
         h_t = torch.cat([du, ds], dim=1)
         return h_t

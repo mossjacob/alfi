@@ -30,7 +30,6 @@ class Trainer:
         self.data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
         self.losses = np.empty((0, 2))
         self.give_output = give_output
-        self.output_plots = list()
 
     def initial_value(self, y):
         initial_value = torch.zeros((self.batch_size, 1), dtype=torch.float64)
@@ -39,12 +38,12 @@ class Trainer:
             initial_value = y[0]
         return initial_value.repeat(self.model.options.num_samples, 1, 1)  # Add batch dimension for sampling
 
-    def train(self, epochs=20, report_interval=1, plot_interval=20, rtol=1e-5, atol=1e-6):
+    def train(self, epochs=20, report_interval=1, rtol=1e-5, atol=1e-6):
         losses = list()
         end_epoch = self.num_epochs+epochs
 
         for epoch in range(epochs):
-            output, epoch_loss, split_loss = self.single_epoch(rtol, atol)
+            epoch_loss, split_loss = self.single_epoch(rtol, atol)
 
             if (epoch % report_interval) == 0:
                 print('Epoch %03d/%03d - Loss: %.2f (' % (
@@ -57,9 +56,6 @@ class Trainer:
 
             losses.append(split_loss)
 
-            if plot_interval is not None and (epoch % plot_interval) == 0:
-                self.output_plots.append((epoch, output[0].cpu().detach().numpy()))
-
             self.after_epoch()
             self.num_epochs += 1
 
@@ -70,7 +66,6 @@ class Trainer:
         epoch_loss = 0
         epoch_ll = 0
         epoch_kl = 0
-        y_mean = None
         for i, data in enumerate(self.data_loader):
 
             self.optimizer.zero_grad()
@@ -99,7 +94,7 @@ class Trainer:
             epoch_ll += ll.item()
             epoch_kl += kl.item()
 
-        return y_mean, epoch_loss, (-epoch_ll, epoch_kl)
+        return epoch_loss, (-epoch_ll, epoch_kl)
 
     def print_extra(self):
         print('')

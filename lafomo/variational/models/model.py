@@ -17,39 +17,38 @@ class VariationalLFM(LFM):
 
     Parameters
     ----------
-    num_outputs : int : the number of outputs, size of h vector (for example, the number of genes)
-    num_latents : int : the number of latent functions (for example, the number of TFs)
+    num_latents : int : the number of latent GPs (for example, the number of TFs)
     fixed_variance : tensor : variance if the preprocessing variance is known, otherwise learnt.
-    t_inducing : tensor of shape (..., T_u) : the inducing timepoints.
+    t_inducing : tensor of shape (..., T_u) : the inducing timepoints. Preceding dimensions are for multi-dimensional inputs
     """
     def __init__(self,
-                 options: VariationalConfiguration,
+                 num_latents: int,
+                 config: VariationalConfiguration,
                  kernel: torch.nn.Module,
                  t_inducing,
                  dataset: LFMDataset,
                  dtype=torch.float64):
         super().__init__()
         self.num_outputs = dataset.num_outputs
-        self.num_latents = dataset.num_latents
-        self.options = options
+        self.options = config
         self.num_inducing = t_inducing.shape[-1]
         self.num_observed = dataset[0][0].shape[0]
-        self.inducing_inputs = Parameter(torch.tensor(t_inducing), requires_grad=options.learn_inducing)
+        self.inducing_inputs = Parameter(torch.tensor(t_inducing), requires_grad=config.learn_inducing)
         self.dtype = dtype
         self.kernel = kernel
 
-        q_m = torch.rand((self.num_latents, self.num_inducing, 1), dtype=dtype)
+        q_m = torch.rand((num_latents, self.num_inducing, 1), dtype=dtype)
         q_S = self.kernel(self.inducing_inputs)
         q_cholS = torch.cholesky(q_S)
         self.q_m = Parameter(q_m)
         self.q_cholS = Parameter(q_cholS)
 
-        if options.preprocessing_variance is not None:
-            self.likelihood_variance = Parameter(torch.tensor(options.preprocessing_variance), requires_grad=False)
+        if config.preprocessing_variance is not None:
+            self.likelihood_variance = Parameter(torch.tensor(config.preprocessing_variance), requires_grad=False)
         else:
             self.raw_likelihood_variance = Parameter(torch.ones((self.num_outputs, self.num_observed), dtype=dtype))
 
-        if options.initial_conditions:
+        if config.initial_conditions:
             self.initial_conditions = Parameter(torch.tensor(torch.zeros(self.num_outputs, 1)), requires_grad=True)
 
     @property
@@ -73,7 +72,6 @@ class VariationalLFM(LFM):
         S_Kmm = self.S - self.Kmm  # (I, Tu, Tu)
         AS_KA = torch.matmul(torch.matmul(α, S_Kmm), torch.transpose(α, 1, 2))  # (I, T*, T*)
         S_s = (Kss + AS_KA)  # (I, T*, T*)
-        # print('ss', m_s.shape, S_s.shape)
 
         if S_s.shape[2] > 1:
             if True:
@@ -114,11 +112,12 @@ class VariationalLFM(LFM):
             data_index: in case the likelihood terms rely on the data index, e.g. variance
         """
         sq_diff = torch.square(f_mean - y_true)
+        print(sq_diff.min(), sq_diff.max())
         log_lik = torch.sum(
             - 0.5 * np.log(2 * np.pi) - torch.log(self.likelihood_variance)
             - 0.5 * (sq_diff + f_var) / self.likelihood_variance
         )
-        return log_lik #* self.num_tfs * self.num_observed # TODO: check if we need this multiplier
+        return log_lik
 
     def kl_divergence(self):
         KL = -0.5 * self.num_inducing # CHECK * self.num_latents

@@ -16,6 +16,7 @@ class Pancreas(TranscriptomicTimeSeries):
         u = data.layers['unspliced'].toarray()
         s = data.layers['spliced'].toarray()
 
+        self.num_outputs = 4000
         self.loom = data
         self.gene_names = self.loom.var.index
         self.data = np.concatenate([u, s], axis=1)
@@ -37,6 +38,7 @@ class SingleCellKidney(TranscriptomicTimeSeries):
                  raw_data_dir=None,
                  calc_moments=True):
         super().__init__()
+        self.num_outputs = 2000
         data_path = path.join(data_dir, 'kidney1.pt')
         if path.exists(data_path):
             data = torch.load(data_path)
