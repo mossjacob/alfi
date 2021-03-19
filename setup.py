@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="lafomo",
-    version="0.0.5",
+    version="0.0.6",
     author="Jacob Moss",
     author_email="cob.mossy@gmail.com",
     description="A Latent Force Model library with variational and MCMC support for non-linear functions.",

@@ -25,7 +25,7 @@ class OrdinaryLFM(VariationalLFM):
             h = self.initial_conditions.repeat(h.shape[0], 1, 1)
         return h
 
-    def forward(self, t, h, rtol=1e-4, atol=1e-6, compute_var=False, return_samples=False):
+    def forward(self, t, h, rtol=1e-4, atol=1e-6, return_samples=False):
         """
         t : torch.Tensor
             Shape (num_times)
@@ -48,7 +48,6 @@ class OrdinaryLFM(VariationalLFM):
         h0 = self.initial_state(h)
         step_size = rtol
         t_f = torch.arange(t.min(), t.max()+step_size/3, step_size/3)
-        # print(t_f)
         q_f = self.get_latents(t_f)
         self.f = q_f.rsample([self.options.num_samples]).repeat(1, self.num_outputs, 1)  # (S, I, t)
         # print(self.f.shape)
@@ -65,9 +64,7 @@ class OrdinaryLFM(VariationalLFM):
         h_out = torch.mean(h_samples, dim=1).transpose(0, 1)
         h_var = torch.var(h_samples, dim=1).transpose(0, 1)
 
-        if compute_var:
-            return self.decode(h_out), h_var
-        return self.decode(h_out)
+        return self.decode(h_out), h_var
 
     def decode(self, h_out):
         return h_out

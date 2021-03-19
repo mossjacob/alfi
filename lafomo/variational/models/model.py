@@ -90,10 +90,10 @@ class VariationalLFM(LFM):
         Calls self on input `t_predict`
         """
         initial_value = torch.zeros((self.options.num_samples, self.num_outputs, 1), dtype=self.dtype)
-        outputs, var = self(t_predict.view(-1), initial_value, compute_var=True, **kwargs)
+        mean, var = self(t_predict.view(-1), initial_value, **kwargs)
         var = var.squeeze().detach()
-        outputs = outputs.squeeze().detach()
-        return outputs, var
+        mean = mean.squeeze().detach()
+        return mean, var
 
     def predict_f(self, t_predict):
         """

@@ -82,7 +82,7 @@ class Trainer:
 
             # with ef.scan():
             initial_value = self.initial_value(y)
-            y_mean, y_var = self.model(t, initial_value, rtol=rtol, atol=atol, compute_var=True)
+            y_mean, y_var = self.model(t, initial_value, rtol=rtol, atol=atol)
             y_mean = y_mean.squeeze()
             y_var = y_var.squeeze()
             # Calc loss and backprop gradients

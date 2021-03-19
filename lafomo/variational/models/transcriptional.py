@@ -17,6 +17,9 @@ class TranscriptionalRegulationLFM(OrdinaryLFM):
         self.basal_rate = Parameter(torch.rand((self.num_outputs, 1), dtype=torch.float64))
         self.sensitivity = Parameter(0.2 + torch.rand((self.num_outputs, 1), dtype=torch.float64))
 
+    def initial_state(self, h):
+        return (self.basal_rate / self.decay_rate).unsqueeze(0).repeat(h.shape[0], 1, 1)
+
     def odefunc(self, t, h):
         """h is of shape (num_samples, num_outputs, 1)"""
         self.nfe += 1
@@ -49,20 +52,8 @@ class TranscriptionalRegulationLFM(OrdinaryLFM):
         """
         pass
 
-    def predict_f(self, t_predict):
-        # Sample from the latent distribution
-        q_f = self.get_latents(t_predict.reshape(-1))
-        return q_f
-        # f = q_f.sample([500])  # (S, I, t)
-        # # This is a hack to wrap the latent function with the nonlinearity. Note we use the same variance.
-        # f = torch.mean(self.G(f), dim=0)[0]
-        # return torch.distributions.multivariate_normal.MultivariateNormal(f, scale_tril=q_f.scale_tril)
-
 
 class SingleLinearLFM(TranscriptionalRegulationLFM):
-
-    def initial_state(self, h):
-        return (self.basal_rate / self.decay_rate).unsqueeze(0).repeat(h.shape[0], 1, 1)
 
     def G(self, f):
         # I = 1 so just repeat for num_outputs
@@ -75,8 +66,16 @@ class NonLinearLFM(TranscriptionalRegulationLFM):
         # I = 1 so just repeat for num_outputs
         return softplus(f).repeat(1, self.num_outputs, 1)
 
+    def predict_f(self, t_predict):
+        # Sample from the latent distribution
+        q_f = self.get_latents(t_predict)
+        f = q_f.sample([500])  # (S, I, t)
+        # This is a hack to wrap the latent function with the nonlinearity. Note we use the same variance.
+        f = torch.mean(self.G(f), dim=0)[0]
+        return torch.distributions.multivariate_normal.MultivariateNormal(f, scale_tril=q_f.scale_tril)
 
-class ExponentialLFM(TranscriptionalRegulationLFM):
+
+class ExponentialLFM(NonLinearLFM):
 
     def G(self, f):
         # I = 1 so just repeat for num_outputs
