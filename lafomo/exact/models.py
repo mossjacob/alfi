@@ -65,13 +65,22 @@ class AnalyticalLFM(LFM, gpytorch.models.ExactGP):
 
         Kxf = self.covar_module.K_xf(self.train_t, pred_t).type(torch.float64)
         KfxKxx = torch.matmul(torch.transpose(Kxf, 0, 1), K_inv)
-        mu = torch.matmul(KfxKxx, self.train_y).view(-1)
+        mu = torch.matmul(KfxKxx, self.train_y).view(-1).unsqueeze(0)
         if compute_var:
             #Kff-KfxKxxKxf
             Kff = self.covar_module.K_ff(pred_t, pred_t)  # (100, 500)
             var = Kff - torch.matmul(KfxKxx, Kxf)
-            var = torch.diagonal(var, dim1=0, dim2=1).view(-1)
-            print(var)
-            return torch.distributions.Normal(mu.unsqueeze(0), var.unsqueeze(0))
+            # var = torch.diagonal(var, dim1=0, dim2=1).view(-1)
+            var = var.unsqueeze(0)
+            print(var.shape, var.min())
+            from matplotlib import pyplot as plt
+            plt.figure()
+            plt.imshow(var[0].detach())
+            plt.colorbar()
+            var += 1e-2*torch.eye(var.shape[-1])
+            print(mu.shape, var.shape)
+            print(torch.diagonal(var, dim1=1, dim2=2).min())
+            print(torch.cholesky(var + 1e-2 * torch.eye(80)))
+            return torch.distributions.MultivariateNormal(mu, var)
 
         return

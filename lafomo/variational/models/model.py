@@ -2,7 +2,8 @@ import torch
 from torch.nn.parameter import Parameter
 from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.normal import Normal
-from numpy import pi
+
+import numpy as np
 
 from lafomo.utilities.torch import softplus, inv_softplus
 from lafomo import LFM
@@ -101,17 +102,22 @@ class VariationalLFM(LFM):
         q_f = self.get_latents(t_predict)
         return q_f
 
-    def log_likelihood(self, y_true, y_mean, y_var):
+    def log_likelihood(self, y_true, f_mean, f_var):
         """
+        Computes the expected log density of the data given a Gaussian
+        distribution for the function values, q(y^hat) = N(y_mean, y_var)
+        Returns p(y|y^hat) = ∫ log(p(y=Y|y)) q(y) dy.
+
         Parameters:
             y: target
             h: predicted
             data_index: in case the likelihood terms rely on the data index, e.g. variance
         """
-        sq_diff = torch.square(y_mean - y_true)
-        variance = self.likelihood_variance + y_var
-        log_lik = -0.5*torch.log(2 * pi * variance) - 0.5 * sq_diff/variance
-        log_lik = torch.sum(log_lik)
+        sq_diff = torch.square(f_mean - y_true)
+        log_lik = torch.sum(
+            - 0.5 * np.log(2 * np.pi) - torch.log(self.likelihood_variance)
+            - 0.5 * (sq_diff + f_var) / self.likelihood_variance
+        )
         return log_lik #* self.num_tfs * self.num_observed # TODO: check if we need this multiplier
 
     def kl_divergence(self):
@@ -144,5 +150,3 @@ class VariationalLFM(LFM):
 
     def elbo(self, y_true, y_mean, y_var, kl_mult=1):
         return self.log_likelihood(y_true, y_mean, y_var), kl_mult * self.kl_divergence()
-
-

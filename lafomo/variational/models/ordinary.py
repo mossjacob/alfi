@@ -18,6 +18,7 @@ class OrdinaryLFM(VariationalLFM):
     def __init__(self, options: VariationalConfiguration, kernel, t_inducing, dataset: LFMDataset, dtype=torch.float64):
         super().__init__(options, kernel, t_inducing, dataset, dtype)
         self.nfe = 0
+        self.f = None
 
     def initial_state(self, h):
         if self.options.initial_conditions:
@@ -45,8 +46,19 @@ class OrdinaryLFM(VariationalLFM):
 
         # Integrate forward from the initial positions h0.
         h0 = self.initial_state(h)
-        h_samples = odeint(self.odefunc, h0, t, method='dopri5', rtol=rtol, atol=atol)  # (T, S, num_outputs, 1)
+        step_size = rtol
+        t_f = torch.arange(t.min(), t.max()+step_size/3, step_size/3)
+        # print(t_f)
+        q_f = self.get_latents(t_f)
+        self.f = q_f.rsample([self.options.num_samples]).repeat(1, self.num_outputs, 1)  # (S, I, t)
+        # print(self.f.shape)
+        self.t_index = 0
+        self.last_t = self.f.min()-1
+        h_samples = odeint(self.odefunc, h0, t, method='rk4', options=dict(step_size=step_size))#, rtol=rtol, atol=atol)  # (T, S, num_outputs, 1)
 
+        self.f = None
+        # self.t_index = None
+        # self.last_t = None
         if return_samples:
             return h_samples
 
