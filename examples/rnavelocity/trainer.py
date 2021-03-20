@@ -10,22 +10,22 @@ class EMTrainer(Trainer):
 
     Parameters
     ----------
-    model: .
+    de_model: .
     optimizer:
     dataset: Dataset where t_observed (T,), m_observed (J, T).
     inducing timepoints.
     give_output: whether the trainer should give the first output (y_0) as initial value to the model `forward()`
     """
-    def __init__(self, model, optimizer: torch.optim.Optimizer, dataset, batch_size=1, give_output=False):
-        super().__init__(model, optimizer, dataset, batch_size, give_output)
+    def __init__(self, de_model, optimizer: torch.optim.Optimizer, dataset, batch_size=1, give_output=False):
+        super().__init__(de_model, optimizer, dataset, batch_size, give_output)
         # Initialise trajectory
         self.timepoint_choices = torch.linspace(0, 1, 100, requires_grad=False)
         initial_value = self.initial_value(None)
-        self.previous_trajectory, _ = self.model(self.timepoint_choices, initial_value, rtol=1e-3, atol=1e-4)
-        self.time_assignments_indices = torch.zeros_like(self.model.time_assignments, dtype=torch.long)
+        self.previous_trajectory, _ = self.de_model(self.timepoint_choices, initial_value, rtol=1e-3, atol=1e-4)
+        self.time_assignments_indices = torch.zeros_like(self.de_model.time_assignments, dtype=torch.long)
 
     def e_step(self, y):
-        num_outputs = self.model.num_outputs
+        num_outputs = self.de_model.num_outputs
         # sorted_times, sort_indices = torch.sort(self.model.time_assignments, dim=0)
         # trajectory = self.model(sorted_times, self.initial_value(None), rtol=1e-2, atol=1e-3)
 
@@ -48,7 +48,7 @@ class EMTrainer(Trainer):
             # print(residual.shape)
             # print(residual[:5])
             # print('done', batch)
-            self.model.time_assignments[from_index:to_index] = self.timepoint_choices[residual]
+            self.de_model.time_assignments[from_index:to_index] = self.timepoint_choices[residual]
             self.time_assignments_indices[from_index:to_index] = residual
 
     def single_epoch(self, rtol, atol):
@@ -67,14 +67,14 @@ class EMTrainer(Trainer):
             ### M-step ###
             initial_value = self.initial_value(None)
             # TODO try to do it for only the time assignments
-            t_sorted, inv_indices = torch.unique(self.model.time_assignments, sorted=True, return_inverse=True)
+            t_sorted, inv_indices = torch.unique(self.de_model.time_assignments, sorted=True, return_inverse=True)
             print('num t:', t_sorted.shape)
             '''
             output = self.model(t_sorted, initial_value, rtol=rtol, atol=atol)
             output = output[:, inv_indices]
             # print(t_sorted, inv_indices.shape)
             '''
-            y_mean, y_var = self.model(self.timepoint_choices, initial_value, rtol=rtol, atol=atol)
+            y_mean, y_var = self.de_model(self.timepoint_choices, initial_value, rtol=rtol, atol=atol)
 
             self.previous_trajectory = y_mean
             y_mean = y_mean[:, self.time_assignments_indices]
@@ -88,10 +88,10 @@ class EMTrainer(Trainer):
             if self.num_epochs <= 10:
                 mult = self.num_epochs/10
 
-            ll, kl = self.model.elbo(y.squeeze(),
-                                     y_mean.squeeze(),
-                                     y_var.squeeze(),
-                                     kl_mult=mult)
+            ll, kl = self.de_model.elbo(y.squeeze(),
+                                        y_mean.squeeze(),
+                                        y_var.squeeze(),
+                                        kl_mult=mult)
             total_loss = -ll# + kl
             total_loss.backward()
             self.optimizer.step()
@@ -103,6 +103,6 @@ class EMTrainer(Trainer):
     def after_epoch(self):
         with torch.no_grad():
             # TODO can we replace these with parameter transforms like we did with lengthscale
-            self.model.transcription_rate.clamp_(0, 20)
-            self.model.splicing_rate.clamp_(0, 20)
-            self.model.decay_rate.clamp_(0, 20)
+            self.de_model.transcription_rate.clamp_(0, 20)
+            self.de_model.splicing_rate.clamp_(0, 20)
+            self.de_model.decay_rate.clamp_(0, 20)
