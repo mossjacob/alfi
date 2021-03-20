@@ -22,26 +22,14 @@ class VariationalLFM(LFM):
     t_inducing : tensor of shape (..., T_u) : the inducing timepoints. Preceding dimensions are for multi-dimensional inputs
     """
     def __init__(self,
-                 num_latents: int,
                  config: VariationalConfiguration,
-                 kernel: torch.nn.Module,
-                 t_inducing,
                  dataset: LFMDataset,
                  dtype=torch.float64):
         super().__init__()
         self.num_outputs = dataset.num_outputs
         self.options = config
-        self.num_inducing = t_inducing.shape[-1]
         self.num_observed = dataset[0][0].shape[-1]
-        self.inducing_inputs = Parameter(torch.tensor(t_inducing), requires_grad=config.learn_inducing)
         self.dtype = dtype
-        self.kernel = kernel
-
-        q_m = torch.rand((num_latents, self.num_inducing, 1), dtype=dtype)
-        q_S = self.kernel(self.inducing_inputs)
-        q_cholS = torch.cholesky(q_S)
-        self.q_m = Parameter(q_m)
-        self.q_cholS = Parameter(q_cholS)
 
         if config.preprocessing_variance is not None:
             self.likelihood_variance = Parameter(torch.tensor(config.preprocessing_variance), requires_grad=False)

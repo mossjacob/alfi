@@ -14,17 +14,17 @@ class Trainer:
 
     Parameters
     ----------
-    model: .
+    de_model: .
     optimizer:
     dataset: Dataset where t_observed (T,), m_observed (J, T).
     inducing timepoints.
     give_output: whether the trainer should give the first output (y_0) as initial value to the model `forward()`
     """
-    def __init__(self, model: VariationalLFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=1, give_output=False):
+    def __init__(self, de_model: VariationalLFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=1, give_output=False):
         self.num_epochs = 0
         self.kl_mult = 0
         self.optimizer = optimizer
-        self.model = model
+        self.de_model = de_model
         self.t_observed = dataset.data[0][0].view(-1)
         self.batch_size = batch_size
         self.data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
@@ -36,7 +36,7 @@ class Trainer:
         initial_value = initial_value.cuda() if is_cuda() else initial_value
         if self.give_output:
             initial_value = y[0]
-        return initial_value.repeat(self.model.options.num_samples, 1, 1)  # Add batch dimension for sampling
+        return initial_value.repeat(self.de_model.options.num_samples, 1, 1)  # Add batch dimension for sampling
 
     def train(self, epochs=20, report_interval=1, rtol=1e-5, atol=1e-6):
         losses = list()
@@ -51,7 +51,7 @@ class Trainer:
                 for loss in split_loss:
                     print('%.2f  ' % loss, end='')
 
-                print(f') λ: {str(self.model.kernel)}', end='')
+                print(f') λ: {str(self.de_model.kernel)}', end='')
                 self.print_extra()
 
             losses.append(split_loss)
@@ -77,7 +77,7 @@ class Trainer:
 
             # with ef.scan():
             initial_value = self.initial_value(y)
-            y_mean, y_var = self.model(t, initial_value, rtol=rtol, atol=atol)
+            y_mean, y_var = self.de_model(t, initial_value, rtol=rtol, atol=atol)
             y_mean = y_mean.squeeze()
             y_var = y_var.squeeze()
             # Calc loss and backprop gradients
@@ -85,7 +85,7 @@ class Trainer:
             if self.num_epochs <= 10:
                 mult = self.num_epochs/10
 
-            ll, kl = self.model.elbo(y, y_mean, y_var, kl_mult=mult)
+            ll, kl = self.de_model.elbo(y, y_mean, y_var, kl_mult=mult)
             total_loss = -ll + kl
 
             total_loss.backward()
@@ -109,10 +109,10 @@ class TranscriptionalTrainer(Trainer):
     Parameters:
         batch_size: in the case of the transcriptional regulation model, we train the entire gene set as a batch
     """
-    def __init__(self, model: VariationalLFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=None):
+    def __init__(self, de_model: VariationalLFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=None):
         if batch_size is None:
-            batch_size = model.num_outputs
-        super(TranscriptionalTrainer, self).__init__(model, optimizer, dataset, batch_size=batch_size)
+            batch_size = de_model.num_outputs
+        super(TranscriptionalTrainer, self).__init__(de_model, optimizer, dataset, batch_size=batch_size)
         self.basalrates = list()
         self.decayrates = list()
         self.lengthscales = list()
@@ -122,26 +122,26 @@ class TranscriptionalTrainer(Trainer):
 
     def print_extra(self):
         print(' b: %.2f d %.2f s: %.2f' % (
-            self.model.basal_rate[0].item(),
-            self.model.decay_rate[0].item(),
-            self.model.sensitivity[0].item()
+            self.de_model.basal_rate[0].item(),
+            self.de_model.decay_rate[0].item(),
+            self.de_model.sensitivity[0].item()
         ))
 
     def after_epoch(self):
-        self.basalrates.append(self.model.basal_rate.detach().clone().numpy())
-        self.decayrates.append(self.model.decay_rate.detach().clone().numpy())
-        self.sensitivities.append(self.model.sensitivity.detach().clone().numpy())
-        self.lengthscales.append(self.model.kernel.lengthscale.detach().clone().numpy())
-        self.cholS.append(self.model.q_cholS.detach().clone())
-        self.mus.append(self.model.q_m.detach().clone())
+        self.basalrates.append(self.de_model.basal_rate.detach().clone().numpy())
+        self.decayrates.append(self.de_model.decay_rate.detach().clone().numpy())
+        self.sensitivities.append(self.de_model.sensitivity.detach().clone().numpy())
+        self.lengthscales.append(self.de_model.kernel.lengthscale.detach().clone().numpy())
+        self.cholS.append(self.de_model.q_cholS.detach().clone())
+        self.mus.append(self.de_model.q_m.detach().clone())
         with torch.no_grad():
             # TODO can we replace these with parameter transforms like we did with lengthscale
-            self.model.sensitivity.clamp_(0, 20)
-            self.model.basal_rate.clamp_(0, 20)
-            self.model.decay_rate.clamp_(0, 20)
+            self.de_model.sensitivity.clamp_(0, 20)
+            self.de_model.basal_rate.clamp_(0, 20)
+            self.de_model.decay_rate.clamp_(0, 20)
             self.extra_constraints()
             # self.model.inducing_inputs.clamp_(0, 1)
-            self.model.q_m[0, 0] = 0.
+            self.de_model.q_m[0, 0] = 0.
 
     def extra_constraints(self):
         pass
@@ -149,5 +149,5 @@ class TranscriptionalTrainer(Trainer):
 
 class P53ConstrainedTrainer(TranscriptionalTrainer):
     def extra_constraints(self):
-        self.model.sensitivity[3] = np.float64(1.)
-        self.model.decay_rate[3] = np.float64(0.8)
+        self.de_model.sensitivity[3] = np.float64(1.)
+        self.de_model.decay_rate[3] = np.float64(0.8)

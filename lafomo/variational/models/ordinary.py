@@ -15,8 +15,8 @@ class OrdinaryLFM(VariationalLFM):
     may call `get_latents` to get the values of the latent function at arbitrary time `t`.
     """
 
-    def __init__(self, num_latent, config: VariationalConfiguration, kernel, t_inducing, dataset: LFMDataset, dtype=torch.float64):
-        super().__init__(num_latent, config, kernel, t_inducing, dataset, dtype)
+    def __init__(self, config: VariationalConfiguration, kernel, t_inducing, dataset: LFMDataset, dtype=torch.float64):
+        super().__init__(config, kernel, t_inducing, dataset, dtype)
         self.nfe = 0
         self.f = None
 
