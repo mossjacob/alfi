@@ -1,11 +1,11 @@
 from lafomo.variational.models import VariationalLFM
 import torch
 import numpy as np
+import gpytorch
+from torch.utils.data.dataloader import DataLoader
 
 from lafomo.utilities.torch import is_cuda
 from lafomo.datasets import LFMDataset
-import lafomo.variational.models as models
-from torch.utils.data.dataloader import DataLoader
 
 
 class Trainer:
@@ -20,11 +20,16 @@ class Trainer:
     inducing timepoints.
     give_output: whether the trainer should give the first output (y_0) as initial value to the model `forward()`
     """
-    def __init__(self, de_model: VariationalLFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=1, give_output=False):
+    def __init__(self,
+                 gp_model: gpytorch.models.GP,
+                 de_model: VariationalLFM,
+                 optimizer: torch.optim.Optimizer,
+                 dataset: LFMDataset, batch_size=1, give_output=False):
+        self.gp_model = gp_model
+        self.de_model = de_model
         self.num_epochs = 0
         self.kl_mult = 0
         self.optimizer = optimizer
-        self.de_model = de_model
         self.t_observed = dataset.data[0][0].view(-1)
         self.batch_size = batch_size
         self.data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
@@ -51,7 +56,7 @@ class Trainer:
                 for loss in split_loss:
                     print('%.2f  ' % loss, end='')
 
-                print(f') λ: {str(self.de_model.kernel)}', end='')
+                print(f') λ: {self.gp_model.covar_module.lengthscale.item()}', end='')
                 self.print_extra()
 
             losses.append(split_loss)
