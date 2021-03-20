@@ -139,7 +139,7 @@ class ToyTimeSeries(TranscriptomicTimeSeries):
 
         self.gene_names = np.arange(self.num_genes)
         self.m_observed = torch.tensor(m_nodelay).unsqueeze(0)
-        self.t = torch.linspace(f64(0), f64(1), num_times, dtype=torch.float64).reshape((-1, 1))
+        self.t = torch.linspace(f64(0), f64(1), num_times, dtype=torch.float64)
         self.data = [(self.t, self.m_observed[0, i]) for i in range(self.num_genes)]
 
     def __getitem__(self, index):

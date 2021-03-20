@@ -32,7 +32,7 @@ class VariationalLFM(LFM):
         self.num_outputs = dataset.num_outputs
         self.options = config
         self.num_inducing = t_inducing.shape[-1]
-        self.num_observed = dataset[0][0].shape[0]
+        self.num_observed = dataset[0][0].shape[-1]
         self.inducing_inputs = Parameter(torch.tensor(t_inducing), requires_grad=config.learn_inducing)
         self.dtype = dtype
         self.kernel = kernel
@@ -103,16 +103,16 @@ class VariationalLFM(LFM):
     def log_likelihood(self, y_true, f_mean, f_var):
         """
         Computes the expected log density of the data given a Gaussian
-        distribution for the function values, q(y^hat) = N(y_mean, y_var)
-        Returns p(y|y^hat) = ∫ log(p(y=Y|y)) q(y) dy.
+        distribution for the function values, q(f) = N(f_mean, f_var)
+        Returns p(y|f) = ∫ log(p(y=Y|f)) q(f) df.
 
         Parameters:
             y: target
-            h: predicted
-            data_index: in case the likelihood terms rely on the data index, e.g. variance
+            f_mean: predicted mean
+            f_var: predicted variance
         """
         sq_diff = torch.square(f_mean - y_true)
-        print(sq_diff.min(), sq_diff.max())
+        print('sq_diff.max = ', sq_diff.max())
         log_lik = torch.sum(
             - 0.5 * np.log(2 * np.pi) - torch.log(self.likelihood_variance)
             - 0.5 * (sq_diff + f_var) / self.likelihood_variance
@@ -147,5 +147,5 @@ class VariationalLFM(LFM):
         ##
         return KL
 
-    def elbo(self, y_true, y_mean, y_var, kl_mult=1):
-        return self.log_likelihood(y_true, y_mean, y_var), kl_mult * self.kl_divergence()
+    def elbo(self, y_true, f_mean, f_var, kl_mult=1):
+        return self.log_likelihood(y_true, f_mean, f_var), kl_mult * self.kl_divergence()
