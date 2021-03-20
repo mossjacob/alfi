@@ -49,7 +49,7 @@ class OrdinaryLFM(VariationalLFM):
         step_size = rtol
         t_f = torch.arange(t.min(), t.max()+step_size/3, step_size/3)
         q_f = self.get_latents(t_f)
-        self.f = q_f.rsample([self.options.num_samples]).repeat(1, self.num_outputs, 1)  # (S, I, t)
+        self.f = self.G(q_f.rsample([self.options.num_samples]))
         # print(self.f.shape)
         self.t_index = 0
         self.last_t = self.f.min()-1
@@ -76,3 +76,7 @@ class OrdinaryLFM(VariationalLFM):
             h: shape (num_samples, num_outputs, 1)
         """
         pass
+
+    @abstractmethod
+    def G(self, f):
+        return f.repeat(1, self.num_outputs, 1)  # (S, I, t)

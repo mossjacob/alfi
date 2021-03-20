@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 
 import torch
 from torch.nn.parameter import Parameter
@@ -10,7 +10,7 @@ from lafomo.utilities.torch import softplus
 from lafomo.datasets import LFMDataset
 
 
-class TranscriptionalRegulationLFM(OrdinaryLFM):
+class TranscriptionalRegulationLFM(OrdinaryLFM, ABC):
     def __init__(self, num_latent: int, config: VariationalConfiguration, kernel, t_inducing, dataset: LFMDataset, **kwargs):
         super().__init__(num_latent, config, kernel, t_inducing, dataset, **kwargs)
         self.decay_rate = Parameter(0.1 + torch.rand((self.num_outputs, 1), dtype=torch.float64))
@@ -42,15 +42,6 @@ class TranscriptionalRegulationLFM(OrdinaryLFM):
             self.t_index += 1
         self.last_t = t
         return h
-
-
-    @abstractmethod
-    def G(self, f):
-        """
-        Parameters:
-            f: (I, T)
-        """
-        pass
 
 
 class SingleLinearLFM(TranscriptionalRegulationLFM):
