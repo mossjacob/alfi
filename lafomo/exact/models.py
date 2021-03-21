@@ -43,7 +43,7 @@ class AnalyticalLFM(LFM, gpytorch.models.ExactGP):
         covar_x = self.covar_module(x)
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
-    def predict_m(self, pred_t, compute_var=True):
+    def predict_m(self, pred_t) -> torch.distributions.MultivariateNormal:
         Kxx = self.covar_module(self.train_t, self.train_t)
         K_inv = torch.inverse(Kxx.evaluate())
         pred_t_blocked = pred_t.repeat(self.num_outputs)
@@ -51,36 +51,33 @@ class AnalyticalLFM(LFM, gpytorch.models.ExactGP):
         K_xstarx = torch.transpose(K_xxstar, 0, 1).type(torch.float64)
         K_xstarxK_inv = torch.matmul(K_xstarx, K_inv)
         KxstarxKinvY = torch.matmul(K_xstarxK_inv, self.train_y)
-        mu = KxstarxKinvY.view(self.num_outputs, pred_t.shape[0])
-        if compute_var:
-            K_xstarxstar = self.covar_module(pred_t_blocked, pred_t_blocked).evaluate()
-            var = K_xstarxstar - torch.matmul(K_xstarxK_inv, torch.transpose(K_xstarx, 0, 1))
-            var = torch.diagonal(var, dim1=0, dim2=1).view(self.num_outputs, pred_t.shape[0])
-            return mu, var
-        return mu
+        mean = KxstarxKinvY.view(self.num_outputs, pred_t.shape[0])
 
-    def predict_f(self, pred_t, compute_var=True):
+        K_xstarxstar = self.covar_module(pred_t_blocked, pred_t_blocked).evaluate()
+        var = K_xstarxstar - torch.matmul(K_xstarxK_inv, torch.transpose(K_xstarx, 0, 1))
+        var = torch.diagonal(var, dim1=0, dim2=1).view(self.num_outputs, pred_t.shape[0])
+        return torch.distributions.MultivariateNormal(mean, var)
+
+    def predict_f(self, pred_t) -> torch.distributions.MultivariateNormal:
         Kxx = self.covar_module(self.train_t, self.train_t)
         K_inv = torch.inverse(Kxx.evaluate())
 
         Kxf = self.covar_module.K_xf(self.train_t, pred_t).type(torch.float64)
         KfxKxx = torch.matmul(torch.transpose(Kxf, 0, 1), K_inv)
         mu = torch.matmul(KfxKxx, self.train_y).view(-1).unsqueeze(0)
-        if compute_var:
-            #Kff-KfxKxxKxf
-            Kff = self.covar_module.K_ff(pred_t, pred_t)  # (100, 500)
-            var = Kff - torch.matmul(KfxKxx, Kxf)
-            # var = torch.diagonal(var, dim1=0, dim2=1).view(-1)
-            var = var.unsqueeze(0)
-            print(var.shape, var.min())
-            from matplotlib import pyplot as plt
-            plt.figure()
-            plt.imshow(var[0].detach())
-            plt.colorbar()
-            var += 1e-2*torch.eye(var.shape[-1])
-            print(mu.shape, var.shape)
-            print(torch.diagonal(var, dim1=1, dim2=2).min())
-            print(torch.cholesky(var + 1e-2 * torch.eye(80)))
-            return torch.distributions.MultivariateNormal(mu, var)
 
-        return
+        #Kff-KfxKxxKxf
+        Kff = self.covar_module.K_ff(pred_t, pred_t)  # (100, 500)
+        var = Kff - torch.matmul(KfxKxx, Kxf)
+        # var = torch.diagonal(var, dim1=0, dim2=1).view(-1)
+        var = var.unsqueeze(0)
+        print(var.shape, var.min())
+        from matplotlib import pyplot as plt
+        plt.figure()
+        plt.imshow(var[0].detach())
+        plt.colorbar()
+        var += 1e-2*torch.eye(var.shape[-1])
+        print(mu.shape, var.shape)
+        print(torch.diagonal(var, dim1=1, dim2=2).min())
+        print(torch.cholesky(var + 1e-2 * torch.eye(80)))
+        return torch.distributions.MultivariateNormal(mu, var)

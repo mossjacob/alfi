@@ -1,3 +1,5 @@
+from typing import Iterator
+
 import torch
 from torch.nn.parameter import Parameter
 from torch.distributions.multivariate_normal import MultivariateNormal
@@ -5,6 +7,8 @@ from torch.distributions.normal import Normal
 
 import numpy as np
 from gpytorch.models import GP
+from gpytorch.likelihoods import MultitaskGaussianLikelihood
+from gpytorch.mlls import VariationalELBO
 
 from lafomo.utilities.torch import softplus, inv_softplus
 from lafomo import LFM
@@ -22,120 +26,57 @@ class VariationalLFM(LFM):
     fixed_variance : tensor : variance if the preprocessing variance is known, otherwise learnt.
     t_inducing : tensor of shape (..., T_u) : the inducing timepoints. Preceding dimensions are for multi-dimensional inputs
     """
-    def __init__(self, gp_model: GP,
+    def __init__(self,
+                 gp_model: GP,
                  config: VariationalConfiguration,
                  dataset: LFMDataset,
                  dtype=torch.float64):
         super().__init__()
         self.gp_model = gp_model
         self.num_outputs = dataset.num_outputs
+        self.likelihood = MultitaskGaussianLikelihood(num_tasks=self.num_outputs)
+        num_training_points = 12  # TODO num_data refers to the number of training datapoints
+
+        self.loss_fn = VariationalELBO(self.likelihood, gp_model, num_training_points, combine_terms=False)
         self.config = config
         self.num_observed = dataset[0][0].shape[-1]
         self.dtype = dtype
 
-        if config.preprocessing_variance is not None:
-            self.likelihood_variance = Parameter(torch.tensor(config.preprocessing_variance), requires_grad=False)
-        else:
-            self.raw_likelihood_variance = Parameter(torch.ones((self.num_outputs, self.num_observed), dtype=dtype))
+        # if config.preprocessing_variance is not None:
+        #     self.likelihood_variance = Parameter(torch.tensor(config.preprocessing_variance), requires_grad=False)
+        # else:
+        #     self.raw_likelihood_variance = Parameter(torch.ones((self.num_outputs, self.num_observed), dtype=dtype))
 
         if config.initial_conditions:
             self.initial_conditions = Parameter(torch.tensor(torch.zeros(self.num_outputs, 1)), requires_grad=True)
 
-    @property
-    def likelihood_variance(self):
-        return softplus(self.raw_likelihood_variance)
+    def train(self, mode: bool = True):
+        self.gp_model.train(mode)
+        self.likelihood.train(mode)
 
-    @likelihood_variance.setter
-    def likelihood_variance(self, value):
-        self.raw_likelihood_variance = inv_softplus(value)
+    def eval(self):
+        self.gp_model.eval()
+        self.likelihood.eval()
 
-    def get_latents(self, t):
-        """
-        Parameters:
-            t: shape (T*,)
-        """
-        Ksm = self.kernel(t, self.inducing_inputs)  # (I, T*, Tu)
-        α = torch.cholesky_solve(Ksm.permute([0, 2, 1]), self.L, upper=False).permute([0, 2, 1])  # (I, T*, Tu)
-        m_s = torch.matmul(α, self.q_m)  # (I, T*, 1)
-        m_s = torch.squeeze(m_s, 2)
-        Kss = self.kernel(t)  # (I, T*, T*) this is always scale=1
-        S_Kmm = self.S - self.Kmm  # (I, Tu, Tu)
-        AS_KA = torch.matmul(torch.matmul(α, S_Kmm), torch.transpose(α, 1, 2))  # (I, T*, T*)
-        S_s = (Kss + AS_KA)  # (I, T*, T*)
+    def parameters(self, recurse: bool = True) -> Iterator[Parameter]:
+        return [
+            *self.gp_model.parameters(recurse),
+            *super().parameters(recurse)
+        ]
 
-        if S_s.shape[2] > 1:
-            if True:
-                jitter = 1e-5 * torch.eye(S_s.shape[1], dtype=S_s.dtype)
-                S_s = S_s + jitter
-            q_f = MultivariateNormal(m_s, S_s)
-        else:
-            q_f = Normal(m_s, S_s.squeeze(2))
-
-        return q_f
-
-    def predict_m(self, t_predict, **kwargs):
+    def predict_m(self, t_predict, **kwargs) -> torch.distributions.MultivariateNormal:
         """
         Calls self on input `t_predict`
         """
-        initial_value = torch.zeros((self.options.num_samples, self.num_outputs, 1), dtype=self.dtype)
-        mean, var = self(t_predict.view(-1), initial_value, **kwargs)
-        var = var.squeeze().detach()
-        mean = mean.squeeze().detach()
-        return mean, var
+        return self.likelihood(self(t_predict.view(-1), **kwargs))
 
-    def predict_f(self, t_predict):
+    def predict_f(self, t_predict) -> torch.distributions.MultivariateNormal:
         """
         Returns the latents
         """
-        q_f = self.get_latents(t_predict)
+        self.eval()
+        with torch.no_grad():
+            q_f = self.gp_model(t_predict)
+        self.train()
         return q_f
 
-    def log_likelihood(self, y_true, f_mean, f_var):
-        """
-        Computes the expected log density of the data given a Gaussian
-        distribution for the function values, q(f) = N(f_mean, f_var)
-        Returns p(y|f) = ∫ log(p(y=Y|f)) q(f) df.
-
-        Parameters:
-            y: target
-            f_mean: predicted mean
-            f_var: predicted variance
-        """
-        sq_diff = torch.square(f_mean - y_true)
-        print('sq_diff.max = ', sq_diff.max())
-        log_lik = torch.sum(
-            - 0.5 * np.log(2 * np.pi) - torch.log(self.likelihood_variance)
-            - 0.5 * (sq_diff + f_var) / self.likelihood_variance
-        )
-        return log_lik
-
-    def kl_divergence(self):
-        KL = -0.5 * self.num_inducing # CHECK * self.num_latents
-
-        # log(det(S)): Uses that sqrt(det(X)) = det(X^(1/2)) and that det of triangular matrix
-        # is the product of the diagonal entries (i.e. sum of their logarithm).
-        q_cholS = torch.tril(self.q_cholS)
-
-        logdetS = torch.sum(torch.log(torch.diagonal(q_cholS, dim1=1, dim2=2)**2))  # log(det(S))
-        logdetK = torch.sum(torch.log(torch.diagonal(self.L, dim1=1, dim2=2)**2))   # log(det(Kmm))
-
-        trKS = torch.cholesky_solve(self.S, self.L, upper=False)  # tr(inv_Kmm * S):
-        trKS = torch.sum(torch.diagonal(trKS, dim1=1, dim2=2))
-
-        Kinv_m = torch.cholesky_solve(self.q_m, self.L, upper=False)  # m^T Kuu^(-1) m: cholesky_solve(b, chol)
-        m_Kinv_m = torch.matmul(torch.transpose(self.q_m, 1, 2), Kinv_m)  # (1,1,1)
-        m_Kinv_m = torch.squeeze(m_Kinv_m)
-        KL += 0.5 * (logdetK - logdetS + trKS + m_Kinv_m)
-        KL = torch.sum(KL)
-        ## Use this code to check:
-        # print('kl', KL)
-        # plt.imshow(self.S[0].detach())
-        # p = MultivariateNormal(torch.zeros((1, self.num_inducing), dtype=torch.float64), self.Kmm)
-        # q = MultivariateNormal(torch.squeeze(self.q_m, 2), self.S)
-        # KL2 = torch.distributions.kl_divergence(q, p)
-        # print('kl2', KL2)
-        ##
-        return KL
-
-    def elbo(self, y_true, f_mean, f_var, kl_mult=1):
-        return self.log_likelihood(y_true, f_mean, f_var), kl_mult * self.kl_divergence()

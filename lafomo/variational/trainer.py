@@ -21,12 +21,10 @@ class Trainer:
     give_output: whether the trainer should give the first output (y_0) as initial value to the model `forward()`
     """
     def __init__(self,
-                 gp_model: gpytorch.models.GP,
-                 de_model: VariationalLFM,
+                 lfm: VariationalLFM,
                  optimizer: torch.optim.Optimizer,
                  dataset: LFMDataset, batch_size=1, give_output=False):
-        self.gp_model = gp_model
-        self.de_model = de_model
+        self.lfm = lfm
         self.num_epochs = 0
         self.kl_mult = 0
         self.optimizer = optimizer
@@ -41,7 +39,7 @@ class Trainer:
         initial_value = initial_value.cuda() if is_cuda() else initial_value
         if self.give_output:
             initial_value = y[0]
-        return initial_value.repeat(self.de_model.config.num_samples, 1, 1)  # Add batch dimension for sampling
+        return initial_value.repeat(self.lfm.config.num_samples, 1, 1)  # Add batch dimension for sampling
 
     def train(self, epochs=20, report_interval=1, rtol=1e-5, atol=1e-6):
         losses = list()
@@ -56,7 +54,7 @@ class Trainer:
                 for loss in split_loss:
                     print('%.2f  ' % loss, end='')
 
-                print(f') λ: {self.gp_model.covar_module.lengthscale.item()}', end='')
+                print(f') λ: {self.lfm.gp_model.covar_module.lengthscale.item()}', end='')
                 self.print_extra()
 
             losses.append(split_loss)
@@ -82,7 +80,7 @@ class Trainer:
 
             # with ef.scan():
             initial_value = self.initial_value(y)
-            y_mean, y_var = self.de_model(t, initial_value, rtol=rtol, atol=atol)
+            y_mean, y_var = self.lfm(t, initial_value, rtol=rtol, atol=atol)
             y_mean = y_mean.squeeze()
             y_var = y_var.squeeze()
             # Calc loss and backprop gradients
@@ -90,7 +88,7 @@ class Trainer:
             if self.num_epochs <= 10:
                 mult = self.num_epochs/10
 
-            ll, kl = self.de_model.elbo(y, y_mean, y_var, kl_mult=mult)
+            ll, kl = self.lfm.elbo(y, y_mean, y_var, kl_mult=mult)
             total_loss = -ll + kl
 
             total_loss.backward()
@@ -127,26 +125,26 @@ class TranscriptionalTrainer(Trainer):
 
     def print_extra(self):
         print(' b: %.2f d %.2f s: %.2f' % (
-            self.de_model.basal_rate[0].item(),
-            self.de_model.decay_rate[0].item(),
-            self.de_model.sensitivity[0].item()
+            self.lfm.basal_rate[0].item(),
+            self.lfm.decay_rate[0].item(),
+            self.lfm.sensitivity[0].item()
         ))
 
     def after_epoch(self):
-        self.basalrates.append(self.de_model.basal_rate.detach().clone().numpy())
-        self.decayrates.append(self.de_model.decay_rate.detach().clone().numpy())
-        self.sensitivities.append(self.de_model.sensitivity.detach().clone().numpy())
-        self.lengthscales.append(self.de_model.kernel.lengthscale.detach().clone().numpy())
-        self.cholS.append(self.de_model.q_cholS.detach().clone())
-        self.mus.append(self.de_model.q_m.detach().clone())
+        self.basalrates.append(self.lfm.basal_rate.detach().clone().numpy())
+        self.decayrates.append(self.lfm.decay_rate.detach().clone().numpy())
+        self.sensitivities.append(self.lfm.sensitivity.detach().clone().numpy())
+        self.lengthscales.append(self.lfm.kernel.lengthscale.detach().clone().numpy())
+        self.cholS.append(self.lfm.q_cholS.detach().clone())
+        self.mus.append(self.lfm.q_m.detach().clone())
         with torch.no_grad():
             # TODO can we replace these with parameter transforms like we did with lengthscale
-            self.de_model.sensitivity.clamp_(0, 20)
-            self.de_model.basal_rate.clamp_(0, 20)
-            self.de_model.decay_rate.clamp_(0, 20)
+            self.lfm.sensitivity.clamp_(0, 20)
+            self.lfm.basal_rate.clamp_(0, 20)
+            self.lfm.decay_rate.clamp_(0, 20)
             self.extra_constraints()
             # self.model.inducing_inputs.clamp_(0, 1)
-            self.de_model.q_m[0, 0] = 0.
+            self.lfm.q_m[0, 0] = 0.
 
     def extra_constraints(self):
         pass
@@ -154,5 +152,5 @@ class TranscriptionalTrainer(Trainer):
 
 class P53ConstrainedTrainer(TranscriptionalTrainer):
     def extra_constraints(self):
-        self.de_model.sensitivity[3] = np.float64(1.)
-        self.de_model.decay_rate[3] = np.float64(0.8)
+        self.lfm.sensitivity[3] = np.float64(1.)
+        self.lfm.decay_rate[3] = np.float64(0.8)

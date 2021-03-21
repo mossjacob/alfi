@@ -32,9 +32,10 @@ class Plotter:
             y_scatter: tensor (J, T)
             model_kwargs: dictionary of keyword arguments to send to the model predict_m function
         """
-        mu, var = self.model.predict_m(t_predict, **model_kwargs)
-        mu = mu.detach()
-        std = torch.sqrt(var).detach()
+        q_m = self.model.predict_m(t_predict, **model_kwargs)
+        mu = q_m.mean.detach().transpose(0, 1)  # (T, J)
+        std = q_m.variance.detach().transpose(0, 1).sqrt()
+        print(mu.shape)
         mu = mu.view(self.num_outputs, self.num_replicates, -1).transpose(0, 1)
         std = std.view(self.num_outputs, self.num_replicates, -1).transpose(0, 1)
         num_plots = min(max_plots, self.num_outputs)
@@ -51,19 +52,19 @@ class Plotter:
             if ylim is None:
                 plt.ylim(-0.2, max(mu[replicate, i]) * 1.2)
         plt.tight_layout()
-        return mu, var
+        return q_m
 
     def plot_latents(self, t_predict, ylim=None, num_samples=7, plot_barenco=False, plot_inducing=False):
         q_f = self.model.predict_f(t_predict.reshape(-1))
-        mean = q_f.mean.detach().numpy()  # (T)
+        mean = q_f.mean.detach().transpose(0, 1)  # (T)
+        std = q_f.variance.detach().sqrt().transpose(0, 1)  # (T)
         plt.figure(figsize=(5, 3*mean.shape[0]))
         for i in range(mean.shape[0]):
             plt.subplot(mean.shape[0], 1, i+1)
-            std = torch.sqrt(q_f.variance)[i].detach().numpy()
             plt.plot(t_predict, mean[i], color='gray')
-            plt.fill_between(t_predict, mean[i] + 2 * std, mean[i] - 2 * std, color='orangered', alpha=0.5)
+            plt.fill_between(t_predict, mean[i] + 2 * std[i], mean[i] - 2 * std[i], color='orangered', alpha=0.5)
             for _ in range(num_samples):
-                plt.plot(t_predict, q_f.sample().detach()[i], alpha=0.3, color='gray')
+                plt.plot(t_predict, q_f.sample().detach().transpose(0, 1)[i], alpha=0.3, color='gray')
 
             if plot_barenco:
                 self._plot_barenco(mean[i])
