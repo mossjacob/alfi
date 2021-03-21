@@ -3,7 +3,8 @@ import gpytorch
 from gpytorch.mlls import ExactMarginalLogLikelihood
 
 from .lfm import LFM
-from lafomo.exact.transcriptional import SIMMean, SIMKernel
+from lafomo.kernels import SIMKernel
+from lafomo.means import SIMMean
 from lafomo.utilities.data import flatten_dataset, LFMDataset
 
 
