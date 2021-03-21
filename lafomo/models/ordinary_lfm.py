@@ -4,8 +4,8 @@ import torch
 import gpytorch
 from torchdiffeq import odeint
 
+from .variational_lfm import VariationalLFM
 from lafomo.configuration import VariationalConfiguration
-from lafomo.variational.models import VariationalLFM
 from lafomo.utilities.torch import is_cuda
 
 class OrdinaryLFM(VariationalLFM):
@@ -85,6 +85,5 @@ class OrdinaryLFM(VariationalLFM):
         """
         pass
 
-    @abstractmethod
     def G(self, f):
         return f.repeat(1, self.num_outputs, 1)  # (S, I, t)

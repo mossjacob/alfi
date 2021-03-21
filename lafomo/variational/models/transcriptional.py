@@ -8,39 +8,6 @@ from lafomo.configuration import VariationalConfiguration
 from lafomo.utilities.torch import softplus
 from lafomo.datasets import LFMDataset
 
-class TranscriptionalRegulationLFM(OrdinaryLFM):
-    def __init__(self, gp_model, config: VariationalConfiguration, dataset):
-        super().__init__(gp_model, config, dataset)
-        self.decay_rate = Parameter(0.1 + torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64))
-        self.basal_rate = Parameter(torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64))
-        self.sensitivity = Parameter(0.2 + torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64))
-
-    def initial_state(self):
-        return self.basal_rate / self.decay_rate
-
-    def odefunc(self, t, h):
-        """h is of shape (num_samples, num_outputs, 1)"""
-        self.nfe += 1
-        # if (self.nfe % 100) == 0:
-        #     print(t)
-
-        decay = self.decay_rate * h
-
-        f = self.f[:, :, self.t_index].unsqueeze(2)
-
-        h = self.basal_rate + self.sensitivity * f - decay
-        if t > self.last_t:
-            self.t_index += 1
-        self.last_t = t
-        return h
-
-
-class SingleLinearLFM(TranscriptionalRegulationLFM):
-
-    def G(self, f):
-        # I = 1 so just repeat for num_outputs
-        return f.repeat(1, self.num_outputs, 1)
-
 
 class NonLinearLFM(TranscriptionalRegulationLFM):
 

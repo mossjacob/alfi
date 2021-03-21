@@ -1,4 +1,4 @@
-from lafomo.variational.models import VariationalLFM
+from lafomo.models import LFM
 import torch
 import numpy as np
 import gpytorch
@@ -21,7 +21,7 @@ class Trainer:
     give_output: whether the trainer should give the first output (y_0) as initial value to the model `forward()`
     """
     def __init__(self,
-                 lfm: VariationalLFM,
+                 lfm: LFM,
                  optimizer: torch.optim.Optimizer,
                  dataset: LFMDataset, batch_size=1, give_output=False):
         self.lfm = lfm
@@ -42,6 +42,8 @@ class Trainer:
         return initial_value.repeat(self.lfm.config.num_samples, 1, 1)  # Add batch dimension for sampling
 
     def train(self, epochs=20, report_interval=1, rtol=1e-5, atol=1e-6):
+        self.lfm.train()
+
         losses = list()
         end_epoch = self.num_epochs+epochs
 
@@ -70,13 +72,13 @@ class Trainer:
         epoch_ll = 0
         epoch_kl = 0
         for i, data in enumerate(self.data_loader):
-
             self.optimizer.zero_grad()
             t, y = data
             t = t.cuda() if is_cuda() else t
             y = y.cuda() if is_cuda() else y
             # Assume that the batch of t s are the same
             t, y = t[0].view(-1), y
+
 
             # with ef.scan():
             initial_value = self.initial_value(y)
@@ -106,29 +108,84 @@ class Trainer:
         pass
 
 
-class TranscriptionalTrainer(Trainer):
+class ExactTrainer(Trainer):
+    def single_epoch(self, **kwargs):
+        epoch_loss = 0
+
+        self.optimizer.zero_grad()
+        # Output from model
+        output = self.model(self.model.train_t)
+        # print(output.mean.shape)
+        # plt.imshow(output.covariance_matrix.detach())
+        # plt.colorbar()
+        # Calc loss and backprop gradients
+        loss = -self.mll(output, self.model.train_y.squeeze())
+        loss.backward()
+        self.optimizer.step()
+        epoch_loss += loss.item()
+
+        return epoch_loss, None
+
+    def print_extra(self):
+        print('')
+        self.model.covar_module.lengthscale.item(),
+        self.model.likelihood.noise.item()
+
+    def after_epoch(self):
+        with torch.no_grad():
+            sens = self.model.sensitivity
+            sens[3] = np.float64(1.)
+            deca = self.model.decay_rate
+            deca[3] = np.float64(0.8)
+            self.model.sensitivity = sens
+            self.model.decay_rate = deca
+
+
+class VariationalTrainer(Trainer):
     """
-    TranscriptionalTrainer
     Parameters:
         batch_size: in the case of the transcriptional regulation model, we train the entire gene set as a batch
     """
-    def __init__(self, de_model: VariationalLFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size=None):
-        if batch_size is None:
-            batch_size = de_model.num_outputs
-        super(TranscriptionalTrainer, self).__init__(de_model, optimizer, dataset, batch_size=batch_size)
+    def __init__(self, lfm, optimizer: torch.optim.Optimizer, dataset):
+        super().__init__(lfm, optimizer, dataset, batch_size=lfm.num_outputs)
+
+    def single_epoch(self, rtol, atol):
+        data = next(iter(self.data_loader))
+
+        self.optimizer.zero_grad()
+        t, y = data
+        t = t.cuda() if is_cuda() else t
+        y = y.cuda() if is_cuda() else y
+        # Assume that the batch of t s are the same
+        t, y = t[0].view(-1), y
+
+        output = self.lfm(t, step_size=1e-1)
+
+        # print('gout', g_output.event_shape, g_output.batch_shape)
+        #  log_likelihood - kl_divergence + log_prior - added_loss
+        # print(y.shape)
+        log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y.permute(1, 0))
+
+        loss = - (log_likelihood - kl_divergence)
+
+        loss.backward()
+        self.optimizer.step()
+
+        return loss, (-log_likelihood, kl_divergence)
+
+
+class TranscriptionalTrainer(VariationalTrainer):
+    """
+    TranscriptionalTrainer
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.basalrates = list()
         self.decayrates = list()
         self.lengthscales = list()
         self.sensitivities = list()
         self.mus = list()
         self.cholS = list()
-
-    def print_extra(self):
-        print(' b: %.2f d %.2f s: %.2f' % (
-            self.lfm.basal_rate[0].item(),
-            self.lfm.decay_rate[0].item(),
-            self.lfm.sensitivity[0].item()
-        ))
 
     def after_epoch(self):
         self.basalrates.append(self.lfm.basal_rate.detach().clone().numpy())
@@ -144,7 +201,7 @@ class TranscriptionalTrainer(Trainer):
             self.lfm.decay_rate.clamp_(0, 20)
             self.extra_constraints()
             # self.model.inducing_inputs.clamp_(0, 1)
-            self.lfm.q_m[0, 0] = 0.
+            # self.lfm.q_m[0, 0] = 0.
 
     def extra_constraints(self):
         pass
