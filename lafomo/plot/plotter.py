@@ -131,7 +131,7 @@ class Plotter:
         datas = [np.array(trainer.basalrates)[:,:,0],
                  np.array(trainer.decayrates)[:,:,0],
                  np.array(trainer.sensitivities)[:,:,0],
-                 np.array(trainer.lengthscales)]
+                 np.array(trainer.lengthscales)[:, 0, 0]]
 
         plt.figure(figsize=(5, 6))
         for i, (title, data) in enumerate(zip(titles, datas)):
