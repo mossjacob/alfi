@@ -4,6 +4,7 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.normal import Normal
 
 import numpy as np
+from gpytorch.models import GP
 
 from lafomo.utilities.torch import softplus, inv_softplus
 from lafomo import LFM
@@ -21,13 +22,14 @@ class VariationalLFM(LFM):
     fixed_variance : tensor : variance if the preprocessing variance is known, otherwise learnt.
     t_inducing : tensor of shape (..., T_u) : the inducing timepoints. Preceding dimensions are for multi-dimensional inputs
     """
-    def __init__(self,
+    def __init__(self, gp_model: GP,
                  config: VariationalConfiguration,
                  dataset: LFMDataset,
                  dtype=torch.float64):
         super().__init__()
+        self.gp_model = gp_model
         self.num_outputs = dataset.num_outputs
-        self.options = config
+        self.config = config
         self.num_observed = dataset[0][0].shape[-1]
         self.dtype = dtype
 

@@ -41,7 +41,7 @@ class Trainer:
         initial_value = initial_value.cuda() if is_cuda() else initial_value
         if self.give_output:
             initial_value = y[0]
-        return initial_value.repeat(self.de_model.options.num_samples, 1, 1)  # Add batch dimension for sampling
+        return initial_value.repeat(self.de_model.config.num_samples, 1, 1)  # Add batch dimension for sampling
 
     def train(self, epochs=20, report_interval=1, rtol=1e-5, atol=1e-6):
         losses = list()

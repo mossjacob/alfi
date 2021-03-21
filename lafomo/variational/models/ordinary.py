@@ -21,7 +21,7 @@ class OrdinaryLFM(VariationalLFM):
         self.f = None
 
     def initial_state(self, h):
-        if self.options.initial_conditions:
+        if self.config.initial_conditions:
             h = self.initial_conditions.repeat(h.shape[0], 1, 1)
         return h
 
@@ -49,7 +49,7 @@ class OrdinaryLFM(VariationalLFM):
         step_size = rtol
         t_f = torch.arange(t.min(), t.max()+step_size/3, step_size/3)
         q_f = self.get_latents(t_f)
-        self.f = self.G(q_f.rsample([self.options.num_samples]))
+        self.f = self.G(q_f.rsample([self.config.num_samples]))
         # print(self.f.shape)
         self.t_index = 0
         self.last_t = self.f.min()-1
