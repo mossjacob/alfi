@@ -3,7 +3,7 @@ import numpy as np
 import torch
 
 from lafomo.datasets import scaled_barenco_data
-from lafomo.models import OrdinaryLFM
+from lafomo.models import VariationalLFM
 
 plt.style.use('ggplot')
 
@@ -18,7 +18,7 @@ class Plotter:
         self.output_names = output_names
         self.num_outputs = self.output_names.shape[0]
         self.num_replicates = self.model.num_outputs // self.num_outputs
-        self.variational = isinstance(self.model, OrdinaryLFM)
+        self.variational = isinstance(self.model, VariationalLFM)
 
     def _plot_barenco(self, mean):
         barenco_f, _ = scaled_barenco_data(mean)
@@ -69,7 +69,7 @@ class Plotter:
             if plot_barenco:
                 self._plot_barenco(mean[i])
             if self.variational:
-                inducing_points = self.model.inducing_inputs.detach()
+                inducing_points = self.model.inducing_points.detach()[0].squeeze()
                 plt.scatter(inducing_points, np.zeros_like(inducing_points), marker='_', c='black', linewidths=4)
             if self.variational and plot_inducing:
                 q_u = self.model.get_latents(self.model.inducing_inputs)

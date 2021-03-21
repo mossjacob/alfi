@@ -7,7 +7,7 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.normal import Normal
 
 import numpy as np
-from gpytorch.models import GP
+from gpytorch.models import ApproximateGP
 from gpytorch.likelihoods import MultitaskGaussianLikelihood
 from gpytorch.mlls import VariationalELBO
 
@@ -28,7 +28,7 @@ class VariationalLFM(LFM, ABC):
     t_inducing : tensor of shape (..., T_u) : the inducing timepoints. Preceding dimensions are for multi-dimensional inputs
     """
     def __init__(self,
-                 gp_model: GP,
+                 gp_model: ApproximateGP,
                  config: VariationalConfiguration,
                  dataset: LFMDataset,
                  dtype=torch.float64):
@@ -36,6 +36,11 @@ class VariationalLFM(LFM, ABC):
         self.gp_model = gp_model
         self.num_outputs = dataset.num_outputs
         self.likelihood = MultitaskGaussianLikelihood(num_tasks=self.num_outputs)
+        try:
+            self.inducing_points = self.gp_model.get_inducing_points()
+        except AttributeError:
+            raise AttributeError('The GP model must define a function `get_inducing_points`.')
+
         num_training_points = 12  # TODO num_data refers to the number of training datapoints
 
         self.loss_fn = VariationalELBO(self.likelihood, gp_model, num_training_points, combine_terms=False)

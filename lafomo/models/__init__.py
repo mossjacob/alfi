@@ -2,6 +2,7 @@ from .lfm import LFM
 from .exact_lfm import ExactLFM
 from .variational_lfm import VariationalLFM
 from .ordinary_lfm import OrdinaryLFM
+from .approximate_gp import MultiOutputGP
 
 
 modules = [
@@ -9,8 +10,7 @@ modules = [
     'ExactLFM',
     'VariationalLFM',
     'OrdinaryLFM',
-    'PartialLFM',
-    'ReactionDiffusion',
+    'MultiOutputGP',
 ]
 
 try:
