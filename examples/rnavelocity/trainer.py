@@ -1,7 +1,10 @@
 import torch
+from gpytorch.distributions import MultivariateNormal, MultitaskMultivariateNormal
 
-from lafomo.variational.trainer import Trainer
+from lafomo.trainer import Trainer
 from lafomo.utilities.torch import ceil, is_cuda
+from lafomo.models import LFM
+from lafomo.datasets import LFMDataset
 
 
 class EMTrainer(Trainer):
@@ -16,12 +19,12 @@ class EMTrainer(Trainer):
     inducing timepoints.
     give_output: whether the trainer should give the first output (y_0) as initial value to the model `forward()`
     """
-    def __init__(self, de_model, optimizer: torch.optim.Optimizer, dataset, batch_size=1, give_output=False):
-        super().__init__(de_model, optimizer, dataset, batch_size, give_output)
+    def __init__(self, lfm: LFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size: int):
+        super().__init__(lfm, optimizer, dataset, batch_size=batch_size)
         # Initialise trajectory
         self.timepoint_choices = torch.linspace(0, 1, 100, requires_grad=False)
         initial_value = self.initial_value(None)
-        self.previous_trajectory, _ = self.lfm(self.timepoint_choices, initial_value, rtol=1e-3, atol=1e-4)
+        self.previous_trajectory = self.lfm(self.timepoint_choices, step_size=1e-2)
         self.time_assignments_indices = torch.zeros_like(self.lfm.time_assignments, dtype=torch.long)
 
     def e_step(self, y):
@@ -30,8 +33,9 @@ class EMTrainer(Trainer):
         # trajectory = self.model(sorted_times, self.initial_value(None), rtol=1e-2, atol=1e-3)
 
         # optimizer = torch.optim.LBFGS([model.time_assignments])
-        u = self.previous_trajectory[:num_outputs//2]  # (num_genes, 100, 1)
-        s = self.previous_trajectory[num_outputs//2:]  # (num_genes, 100, 1)
+        traj = self.previous_trajectory.mean.transpose(0, 1)
+        u = traj[:num_outputs//2].unsqueeze(2)  # (num_genes, 100, 1)
+        s = traj[num_outputs//2:].unsqueeze(2)  # (num_genes, 100, 1)
         u_y = y[:num_outputs//2]  # (num_genes, num_cells)
         s_y = y[num_outputs//2:]  # (num_genes, num_cells)
 
@@ -51,13 +55,13 @@ class EMTrainer(Trainer):
             self.lfm.time_assignments[from_index:to_index] = self.timepoint_choices[residual]
             self.time_assignments_indices[from_index:to_index] = residual
 
-    def single_epoch(self, rtol, atol):
+    def single_epoch(self, step_size=1e-1):
         epoch_loss = 0
         epoch_ll = 0
         epoch_kl = 0
         for i, data in enumerate(self.data_loader):
             self.optimizer.zero_grad()
-            y = data.permute(0, 2, 1) # (O, C, 1)
+            y = data.permute(0, 2, 1)  # (O, C, 1)
             y = y.cuda() if is_cuda() else y
             ### E-step ###
             # assign timepoints $t_i$ to each cell by minimising its distance to the trajectory
@@ -65,7 +69,6 @@ class EMTrainer(Trainer):
             print('estep done')
 
             ### M-step ###
-            initial_value = self.initial_value(None)
             # TODO try to do it for only the time assignments
             t_sorted, inv_indices = torch.unique(self.lfm.time_assignments, sorted=True, return_inverse=True)
             print('num t:', t_sorted.shape)
@@ -74,30 +77,26 @@ class EMTrainer(Trainer):
             output = output[:, inv_indices]
             # print(t_sorted, inv_indices.shape)
             '''
-            y_mean, y_var = self.lfm(self.timepoint_choices, initial_value, rtol=rtol, atol=atol)
+            output = self.lfm(self.timepoint_choices, step_size=step_size)
+            self.previous_trajectory = output
 
-            self.previous_trajectory = y_mean
-            y_mean = y_mean[:, self.time_assignments_indices]
-            y_var = y_var[:, self.time_assignments_indices]
-            print('ymean, yvar, traj', y_mean.shape, y_var.shape, self.previous_trajectory.shape)
-            # output = torch.squeeze(output) # (num_genes, num_cells)
-            # print(output.shape, y.shape)
+            f_mean = output.mean.transpose(0, 1)[:, self.time_assignments_indices]
+            f_var = output.variance.transpose(0, 1)[:, self.time_assignments_indices]
+            print(f_mean.shape, f_var.shape)
+            f_covar = torch.diag_embed(f_var)
+            batch_mvn = MultivariateNormal(f_mean, f_covar)
+            output = MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)
+
             # Calc loss and backprop gradients
-
-            mult = 1
-            if self.num_epochs <= 10:
-                mult = self.num_epochs/10
-
-            ll, kl = self.lfm.elbo(y.squeeze(),
-                                   y_mean.squeeze(),
-                                   y_var.squeeze(),
-                                   kl_mult=mult)
-            total_loss = -ll# + kl
+            y_target = y.squeeze(-1).permute(1, 0)
+            log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target)
+            total_loss = -log_likelihood + kl_divergence
             total_loss.backward()
             self.optimizer.step()
+
             epoch_loss += total_loss.item()
-            epoch_ll += ll.item()
-            epoch_kl += kl.item()
+            epoch_ll += log_likelihood.item()
+            epoch_kl += kl_divergence.item()
         return epoch_loss, (-epoch_ll, epoch_kl)
 
     def after_epoch(self):
