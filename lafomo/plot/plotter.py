@@ -35,7 +35,6 @@ class Plotter:
         q_m = self.model.predict_m(t_predict, **model_kwargs)
         mu = q_m.mean.detach().transpose(0, 1)  # (T, J)
         std = q_m.variance.detach().transpose(0, 1).sqrt()
-        print(mu.shape)
         mu = mu.view(self.num_outputs, self.num_replicates, -1).transpose(0, 1)
         std = std.view(self.num_outputs, self.num_replicates, -1).transpose(0, 1)
         num_plots = min(max_plots, self.num_outputs)

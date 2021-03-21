@@ -41,14 +41,14 @@ class Trainer:
             initial_value = y[0]
         return initial_value.repeat(self.lfm.config.num_samples, 1, 1)  # Add batch dimension for sampling
 
-    def train(self, epochs=20, report_interval=1, rtol=1e-5, atol=1e-6):
+    def train(self, epochs=20, report_interval=1, **kwargs):
         self.lfm.train()
 
         losses = list()
         end_epoch = self.num_epochs+epochs
 
         for epoch in range(epochs):
-            epoch_loss, split_loss = self.single_epoch(rtol, atol)
+            epoch_loss, split_loss = self.single_epoch(**kwargs)
 
             if (epoch % report_interval) == 0:
                 print('Epoch %03d/%03d - Loss: %.2f (' % (
@@ -56,7 +56,11 @@ class Trainer:
                 for loss in split_loss:
                     print('%.2f  ' % loss, end='')
 
-                print(f') λ: {self.lfm.gp_model.covar_module.lengthscale.item()}', end='')
+                if isinstance(self.lfm, gpytorch.models.GP):
+                    kernel = self.lfm.covar_module
+                else:
+                    kernel = self.lfm.gp_model.covar_module
+                print(f') λ: {kernel.lengthscale[0].item()}', end='')
                 self.print_extra()
 
             losses.append(split_loss)
@@ -67,39 +71,8 @@ class Trainer:
         losses = np.array(losses)
         self.losses = np.concatenate([self.losses, losses], axis=0)
 
-    def single_epoch(self, rtol, atol):
-        epoch_loss = 0
-        epoch_ll = 0
-        epoch_kl = 0
-        for i, data in enumerate(self.data_loader):
-            self.optimizer.zero_grad()
-            t, y = data
-            t = t.cuda() if is_cuda() else t
-            y = y.cuda() if is_cuda() else y
-            # Assume that the batch of t s are the same
-            t, y = t[0].view(-1), y
-
-
-            # with ef.scan():
-            initial_value = self.initial_value(y)
-            y_mean, y_var = self.lfm(t, initial_value, rtol=rtol, atol=atol)
-            y_mean = y_mean.squeeze()
-            y_var = y_var.squeeze()
-            # Calc loss and backprop gradients
-            mult = 1
-            if self.num_epochs <= 10:
-                mult = self.num_epochs/10
-
-            ll, kl = self.lfm.elbo(y, y_mean, y_var, kl_mult=mult)
-            total_loss = -ll + kl
-
-            total_loss.backward()
-            self.optimizer.step()
-            epoch_loss += total_loss.item()
-            epoch_ll += ll.item()
-            epoch_kl += kl.item()
-
-        return epoch_loss, (-epoch_ll, epoch_kl)
+    def single_epoch(self, **kwargs):
+        raise NotImplementedError
 
     def print_extra(self):
         print('')
@@ -109,36 +82,41 @@ class Trainer:
 
 
 class ExactTrainer(Trainer):
+    def __init__(self, *args, loss_fn):
+        super().__init__(*args)
+        self.loss_fn = loss_fn
+        self.losses = np.empty((0, 1))
+
     def single_epoch(self, **kwargs):
         epoch_loss = 0
 
         self.optimizer.zero_grad()
         # Output from model
-        output = self.model(self.model.train_t)
+        output = self.lfm(self.lfm.train_t)
         # print(output.mean.shape)
         # plt.imshow(output.covariance_matrix.detach())
         # plt.colorbar()
         # Calc loss and backprop gradients
-        loss = -self.mll(output, self.model.train_y.squeeze())
+        loss = -self.loss_fn(output, self.lfm.train_y.squeeze())
         loss.backward()
         self.optimizer.step()
         epoch_loss += loss.item()
 
-        return epoch_loss, None
+        return epoch_loss, [epoch_loss]
 
     def print_extra(self):
         print('')
-        self.model.covar_module.lengthscale.item(),
-        self.model.likelihood.noise.item()
+        self.lfm.covar_module.lengthscale.item(),
+        self.lfm.likelihood.noise.item()
 
     def after_epoch(self):
         with torch.no_grad():
-            sens = self.model.sensitivity
+            sens = self.lfm.sensitivity
             sens[3] = np.float64(1.)
-            deca = self.model.decay_rate
+            deca = self.lfm.decay_rate
             deca[3] = np.float64(0.8)
-            self.model.sensitivity = sens
-            self.model.decay_rate = deca
+            self.lfm.sensitivity = sens
+            self.lfm.decay_rate = deca
 
 
 class VariationalTrainer(Trainer):
@@ -149,7 +127,7 @@ class VariationalTrainer(Trainer):
     def __init__(self, lfm, optimizer: torch.optim.Optimizer, dataset):
         super().__init__(lfm, optimizer, dataset, batch_size=lfm.num_outputs)
 
-    def single_epoch(self, rtol, atol):
+    def single_epoch(self, step_size=1e-1):
         data = next(iter(self.data_loader))
 
         self.optimizer.zero_grad()
@@ -159,7 +137,7 @@ class VariationalTrainer(Trainer):
         # Assume that the batch of t s are the same
         t, y = t[0].view(-1), y
 
-        output = self.lfm(t, step_size=1e-1)
+        output = self.lfm(t, step_size=step_size)
 
         # print('gout', g_output.event_shape, g_output.batch_shape)
         #  log_likelihood - kl_divergence + log_prior - added_loss

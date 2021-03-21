@@ -8,6 +8,7 @@ from .variational_lfm import VariationalLFM
 from lafomo.configuration import VariationalConfiguration
 from lafomo.utilities.torch import is_cuda
 
+
 class OrdinaryLFM(VariationalLFM):
     """
     Variational approximation for an LFM based on an ordinary differential equation (ODE).
@@ -22,7 +23,7 @@ class OrdinaryLFM(VariationalLFM):
     def initial_state(self):
         initial_state = torch.zeros(torch.Size([self.num_outputs, 1]), dtype=torch.float64)
         initial_state = initial_state.cuda() if is_cuda() else initial_state
-        return initial_state.repeat(self.config.num_samples, 1, 1)  # Add batch dimension for sampling
+        return initial_state #initial_state.repeat(self.config.num_samples, 1, 1)  # Add batch dimension for sampling
         # if self.config.initial_conditions: TODO:
         #     h = self.initial_conditions.repeat(h.shape[0], 1, 1)
 
@@ -66,9 +67,7 @@ class OrdinaryLFM(VariationalLFM):
         h_var = torch.var(h_samples, dim=1).squeeze(-1).permute(1, 0) + 1e-7
 
         h_out = self.decode(h_out)
-        # print('h_out', h_out.shape, h_var.shape)
         # TODO: make distribution something less constraining
-        # print(h_var.min(), h_var)
         h_covar = torch.diag_embed(h_var)
 
         batch_mvn = gpytorch.distributions.MultivariateNormal(h_out, h_covar)
