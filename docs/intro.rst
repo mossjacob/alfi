@@ -29,13 +29,17 @@ Dependencies:
 
 * `GPyTorch <https://gpytorch.ai/>`_
 
-Linear ODEs can have exact solutions for the GP covariance. Building blocks for such models are located in the :class:`lafomo.exact` module. In addition, LaFoMo has a full implementation of the model by `Lawrence et al. <http://papers.nips.cc/paper/3119-modelling-transcriptional-regulation-using-gaussian-processes.pdf>`_ [1] using these building blocks in :class:`lafomo.exact.models.AnalyticalLFM`.
+Linear ODEs can have exact solutions for the GP covariance. LaFoMo has a full implementation of the model by `Lawrence et al. <http://papers.nips.cc/paper/3119-modelling-transcriptional-regulation-using-gaussian-processes.pdf>`_ [1] using the :class:`lafomo.models.ExactLFM` class. See the `notebook here <notebooks/linear/exact.html>`_ for the example implementation.
 
 
 Non-linear ODE
 """"""""""""""
 
-For non-linear ODEs which result in non-Gaussian likelihoods, we have two devoted modules. For variational inference, the :class:`lafomo.variational` module implements the method of `Hensman et al. <http://proceedings.mlr.press/v38/hensman15.pdf>`_ [3]. See :class:`lafomo.variational.models.TranscriptionalRegulationLFM` for an example implementation of a non-linear version of the *Lawrence et al.* [1] model.
+Dependencies:
+
+* `GPyTorch <https://gpytorch.ai/>`_
+
+For non-linear ODEs which result in non-Gaussian likelihoods, we have two devoted modules. For variational inference, the :class:`lafomo.VariationalLFM` superclass is the main building block for such models. The implementation of the GP uses the method of `Hensman et al. <http://proceedings.mlr.press/v38/hensman15.pdf>`_ [3]. See the `notebook here <notebooks/linear/variational.html>`_ for a linear implementation, and `here <notebooks/nonlinear/variational.html>`_ for an implementation of a non-linear version of the *Lawrence et al.* [1] model.
 
 The :class:`lafomo.mcmc` module implements several MCMC samplers suited for LFMs, such as the :class:`lafomo.mcmc.samplers.LatentGPSampler` which jointly samples the posterior GP in addition to the covariance kernel parameters. In addition, LaFoMo has a full implementation of such a non-linear LFM based on `Titsias et al. <https://bmcsystbiol.biomedcentral.com/articles/10.1186/1752-0509-6-53>`_ [2]: :class:`lafomo.mcmc.modules.TranscriptionRegulationLFM`  .
 
@@ -44,6 +48,8 @@ Non-linear PDE
 """"""""""""""
 
 Dependencies:
+
+* `GPyTorch <https://gpytorch.ai/>`_
 
 * `FEniCS <https://fenicsproject.org/download/>`_ (this only tested on MacOS/Linux),
 
