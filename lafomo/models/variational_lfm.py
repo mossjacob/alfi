@@ -41,7 +41,7 @@ class VariationalLFM(LFM, ABC):
         except AttributeError:
             raise AttributeError('The GP model must define a function `get_inducing_points`.')
 
-        num_training_points = 12  # TODO num_data refers to the number of training datapoints
+        num_training_points = self.inducing_points.numel()  # TODO num_data refers to the number of training datapoints
 
         self.loss_fn = VariationalELBO(self.likelihood, gp_model, num_training_points, combine_terms=False)
         self.config = config

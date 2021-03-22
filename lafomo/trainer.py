@@ -60,7 +60,7 @@ class Trainer:
                     kernel = self.lfm.covar_module
                 else:
                     kernel = self.lfm.gp_model.covar_module
-                print(f') λ: {kernel.lengthscale[0].item()}', end='')
+                print(f') λ: {str(kernel.lengthscale[0].detach().numpy())}', end='')
                 self.print_extra()
 
             losses.append(split_loss)

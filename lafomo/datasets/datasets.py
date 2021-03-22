@@ -155,7 +155,7 @@ class ToySpatialTranscriptomics(LFMDataset):
     """
     def __init__(self, data_dir='../data/'):
         data = pd.read_csv(path.join(data_dir, 'demToy1GPmRNA.csv'))
-
+        self.orig_data = data
         self.num_outputs = 1
         t_observed = torch.tensor(data.values[:, 0:2]).permute(1, 0)
         data = torch.tensor(data.values[:, 3])
