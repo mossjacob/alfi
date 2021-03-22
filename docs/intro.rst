@@ -57,7 +57,7 @@ Dependencies:
 
 
 
-Citing GPflow
+Citing LaFoMo
 -------------
 
 To cite LaFoMo, please reference the `arxiv paper <https://arxiv.org/abs/2010.02555>`_. Sample BibTeX is given below:
@@ -90,4 +90,4 @@ Proceedings of AISTATS 18, 2015.
 Acknowledgements
 ----------------
 
-Jacob Moss is supported by a GSK grant.
+Jacob Moss is supported by a GlaxoSmithKline grant.

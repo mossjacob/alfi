@@ -6,7 +6,7 @@ from gpytorch.variational import CholeskyVariationalDistribution, VariationalStr
 
 
 class MultiOutputGP(ApproximateGP):
-    def __init__(self, inducing_points, num_latents, use_ard=True, initial_lengthscale=None):
+    def __init__(self, inducing_points, num_latents, use_ard=True, initial_lengthscale=None, lengthscale_constraint=None):
         # We have to mark the CholeskyVariationalDistribution as batch
         # so that we learn a variational distribution for each task
         variational_distribution = CholeskyVariationalDistribution(
@@ -28,7 +28,12 @@ class MultiOutputGP(ApproximateGP):
         if use_ard:
             ard_dims = inducing_points.shape[-1]
         self.mean_module = gpytorch.means.ZeroMean(batch_shape=torch.Size([num_latents]))
-        self.covar_module = gpytorch.kernels.RBFKernel(batch_shape=torch.Size([num_latents]), ard_num_dims=ard_dims)
+        self.covar_module = gpytorch.kernels.RBFKernel(
+            batch_shape=torch.Size([num_latents]),
+            ard_num_dims=ard_dims,
+            lengthscale_constraint=lengthscale_constraint
+        )
+        self.covar_module.lengthscale = initial_lengthscale
 
     def get_inducing_points(self):
         return self.variational_strategy.base_variational_strategy.inducing_points

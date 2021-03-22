@@ -46,7 +46,8 @@ inducing_points = torch.linspace(0, 12, num_inducing)
 inducing_points = inducing_points.unsqueeze(-1).repeat(1, 1, 2)  # (I x m x 1)
 print(inducing_points.shape)
 
-gp_model = MultiOutputGP(inducing_points, 1, use_ard=True)
+from gpytorch.constraints import Interval
+gp_model = MultiOutputGP(inducing_points, 1, use_ard=True, lengthscale_constraint=Interval(0, 0.4))
 gp_model.double()
 
 # Now let's see some samples from the GP
@@ -256,6 +257,6 @@ if __name__ == '__main__':
         optimizer = torch.optim.Adam(lfm.parameters(), lr=0.07)
         trainer = PDETrainer(lfm, optimizer, dataset)
 
-    trainer.train(1)
+    trainer.train(40)
     lfm.save('test')
 
