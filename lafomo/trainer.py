@@ -14,7 +14,7 @@ class Trainer:
 
     Parameters
     ----------
-    de_model: .
+    lfm: .
     optimizer:
     dataset: Dataset where t_observed (T,), m_observed (J, T).
     inducing timepoints.
