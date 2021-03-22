@@ -3,7 +3,7 @@ import numpy as np
 import torch
 
 from lafomo.datasets import scaled_barenco_data
-from lafomo.variational.models import OrdinaryLFM
+from lafomo.models import VariationalLFM
 
 plt.style.use('ggplot')
 
@@ -18,7 +18,7 @@ class Plotter:
         self.output_names = output_names
         self.num_outputs = self.output_names.shape[0]
         self.num_replicates = self.model.num_outputs // self.num_outputs
-        self.variational = isinstance(self.model, OrdinaryLFM)
+        self.variational = isinstance(self.model, VariationalLFM)
 
     def _plot_barenco(self, mean):
         barenco_f, _ = scaled_barenco_data(mean)
@@ -32,9 +32,9 @@ class Plotter:
             y_scatter: tensor (J, T)
             model_kwargs: dictionary of keyword arguments to send to the model predict_m function
         """
-        mu, var = self.model.predict_m(t_predict, **model_kwargs)
-        mu = mu.detach()
-        std = torch.sqrt(var).detach()
+        q_m = self.model.predict_m(t_predict, **model_kwargs)
+        mu = q_m.mean.detach().transpose(0, 1)  # (T, J)
+        std = q_m.variance.detach().transpose(0, 1).sqrt()
         mu = mu.view(self.num_outputs, self.num_replicates, -1).transpose(0, 1)
         std = std.view(self.num_outputs, self.num_replicates, -1).transpose(0, 1)
         num_plots = min(max_plots, self.num_outputs)
@@ -51,24 +51,24 @@ class Plotter:
             if ylim is None:
                 plt.ylim(-0.2, max(mu[replicate, i]) * 1.2)
         plt.tight_layout()
-        return mu, var
+        return q_m
 
     def plot_latents(self, t_predict, ylim=None, num_samples=7, plot_barenco=False, plot_inducing=False):
         q_f = self.model.predict_f(t_predict.reshape(-1))
-        mean = q_f.mean.detach().numpy()  # (T)
+        mean = q_f.mean.detach().transpose(0, 1)  # (T)
+        std = q_f.variance.detach().sqrt().transpose(0, 1)  # (T)
         plt.figure(figsize=(5, 3*mean.shape[0]))
         for i in range(mean.shape[0]):
             plt.subplot(mean.shape[0], 1, i+1)
-            std = torch.sqrt(q_f.variance)[i].detach().numpy()
             plt.plot(t_predict, mean[i], color='gray')
-            plt.fill_between(t_predict, mean[i] + 2 * std, mean[i] - 2 * std, color='orangered', alpha=0.5)
+            plt.fill_between(t_predict, mean[i] + 2 * std[i], mean[i] - 2 * std[i], color='orangered', alpha=0.5)
             for _ in range(num_samples):
-                plt.plot(t_predict, q_f.sample().detach()[i], alpha=0.3, color='gray')
+                plt.plot(t_predict, q_f.sample().detach().transpose(0, 1)[i], alpha=0.3, color='gray')
 
             if plot_barenco:
                 self._plot_barenco(mean[i])
             if self.variational:
-                inducing_points = self.model.inducing_inputs.detach()
+                inducing_points = self.model.inducing_points.detach()[0].squeeze()
                 plt.scatter(inducing_points, np.zeros_like(inducing_points), marker='_', c='black', linewidths=4)
             if self.variational and plot_inducing:
                 q_u = self.model.get_latents(self.model.inducing_inputs)
@@ -130,7 +130,7 @@ class Plotter:
         datas = [np.array(trainer.basalrates)[:,:,0],
                  np.array(trainer.decayrates)[:,:,0],
                  np.array(trainer.sensitivities)[:,:,0],
-                 np.array(trainer.lengthscales)]
+                 np.array(trainer.lengthscales)[:, 0, 0]]
 
         plt.figure(figsize=(5, 6))
         for i, (title, data) in enumerate(zip(titles, datas)):

@@ -43,3 +43,7 @@ class ReactionDiffusion(torch_fenics.FEniCSModule):
         # Declare templates for the inputs to Poisson.solve
         return Function(self.V), Function(self.V), \
                Constant(0), Constant(0), Constant(0)
+
+
+class PartialLFM():
+    pass

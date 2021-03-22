@@ -15,7 +15,7 @@ For analytical Latent Force Models, have a look at these notebooks carrying out 
    :maxdepth: 1
    :glob:
 
-   notebooks/exact/*
+   notebooks/linear/*
 
 Non-linear LFMs
 ---------------

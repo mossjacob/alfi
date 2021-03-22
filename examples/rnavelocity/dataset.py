@@ -13,8 +13,9 @@ class Pancreas(TranscriptomicTimeSeries):
         data = scv.datasets.pancreas()
         scv.pp.filter_and_normalize(data, min_shared_counts=20, n_top_genes=2000)
         scv.pp.moments(data, n_neighbors=30, n_pcs=30)
-        u = data.layers['unspliced'].toarray()
-        s = data.layers['spliced'].toarray()
+        u = data.layers['unspliced'].toarray()[:10]
+        s = data.layers['spliced'].toarray()[:10]
+        print(u.shape, s.shape)
 
         self.num_outputs = 4000
         self.loom = data

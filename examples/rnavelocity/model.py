@@ -1,18 +1,18 @@
 import torch
 from torch.nn import Parameter
 
-from lafomo.variational.models import OrdinaryLFM
+from lafomo.models import OrdinaryLFM
 from lafomo.datasets import LFMDataset
 from lafomo.configuration import VariationalConfiguration
 
 
 class RNAVelocityLFM(OrdinaryLFM):
-    def __init__(self, num_latents, config: VariationalConfiguration, kernel, t_inducing, dataset: LFMDataset, **kwargs):
-        super().__init__(num_latents, config, kernel, t_inducing, dataset, **kwargs)
+    def __init__(self, gp_model, config: VariationalConfiguration, dataset: LFMDataset, **kwargs):
+        super().__init__(gp_model, config, dataset, **kwargs)
         num_genes = dataset.num_outputs // 2
-        self.transcription_rate = Parameter(torch.rand((num_genes, 1), dtype=torch.float64))
-        self.splicing_rate = Parameter(torch.rand((num_genes, 1), dtype=torch.float64))
-        self.decay_rate = Parameter(0.1 + torch.rand((num_genes, 1), dtype=torch.float64))
+        self.transcription_rate = Parameter(3 * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64))
+        self.splicing_rate = Parameter(3 * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64))
+        self.decay_rate = Parameter(1 * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64))
         self.num_cells = dataset[0][0].shape[0]
         ### Initialise random time assignments
         self.time_assignments = torch.rand(self.num_cells, requires_grad=False)
@@ -27,10 +27,18 @@ class RNAVelocityLFM(OrdinaryLFM):
         h = h.view(num_samples, num_outputs//2, 2)
         u = h[:, :, 0].unsqueeze(-1)
         s = h[:, :, 1].unsqueeze(-1)
-        du = self.transcription_rate - self.splicing_rate * u
+
+        f = self.f[:, :, self.t_index].unsqueeze(2)
+
+        du = f - self.splicing_rate * u
         ds = self.splicing_rate * u - self.decay_rate * s
 
         h_t = torch.cat([du, ds], dim=1)
+
+        if t > self.last_t:
+            self.t_index += 1
+        self.last_t = t
+
         return h_t
 
     def G(self, f):
@@ -38,7 +46,8 @@ class RNAVelocityLFM(OrdinaryLFM):
         Parameters:
             f: (I, T)
         """
-        return f
+        # nn linear
+        return f.repeat(1, self.num_outputs//2//10, 1)  # (S, I, t)
 
     def predict_f(self, t_predict):
         # Sample from the latent distribution

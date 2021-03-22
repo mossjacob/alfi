@@ -1,6 +1,7 @@
 import torch
 
-from lafomo.exact import AnalyticalLFM, Trainer
+from lafomo.models import ExactLFM
+from lafomo.trainer import ExactTrainer
 from lafomo.datasets import P53Data
 from lafomo.plot.plotter import Plotter
 
@@ -9,9 +10,9 @@ from matplotlib import pyplot as plt
 
 if __name__ == '__main__':
     dataset = P53Data(data_dir='../../data', replicate=0)
-    model = AnalyticalLFM(dataset, dataset.variance.reshape(-1))
+    model = ExactLFM(dataset, dataset.variance.reshape(-1))
     optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
-    trainer = Trainer(model, optimizer)
+    trainer = ExactTrainer(model, optimizer, dataset)
     plotter = Plotter(model, dataset.gene_names)
 
     trainer.train(epochs=100)
