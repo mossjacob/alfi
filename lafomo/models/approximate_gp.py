@@ -33,7 +33,8 @@ class MultiOutputGP(ApproximateGP):
             ard_num_dims=ard_dims,
             lengthscale_constraint=lengthscale_constraint
         )
-        self.covar_module.lengthscale = initial_lengthscale
+        if initial_lengthscale is not None:
+            self.covar_module.lengthscale = initial_lengthscale
 
     def get_inducing_points(self):
         return self.variational_strategy.base_variational_strategy.inducing_points
