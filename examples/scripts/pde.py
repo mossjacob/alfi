@@ -34,7 +34,7 @@ def scatter_output(ax, tx, output, title=None):
 
 config = VariationalConfiguration(
     initial_conditions=False,
-    num_samples=25, learn_inducing=False
+    num_samples=50, learn_inducing=False
 )
 
 dataset = ToySpatialTranscriptomics(data_dir='./data/')
@@ -47,7 +47,9 @@ inducing_points = inducing_points.unsqueeze(-1).repeat(1, 1, 2)  # (I x m x 1)
 print(inducing_points.shape)
 
 from gpytorch.constraints import Interval
-gp_model = MultiOutputGP(inducing_points, 1, use_ard=True, lengthscale_constraint=Interval(0, 0.4))
+
+gp_kwargs = dict(use_ard=True, use_scale=False, lengthscale_constraint=Interval(0, 0.3))
+gp_model = MultiOutputGP(inducing_points, 1, **gp_kwargs)
 gp_model.double()
 
 # Now let's see some samples from the GP
@@ -55,13 +57,8 @@ data = next(iter(dataset))
 tx, y_target = data
 print(tx.dtype)
 
-gp_model.covar_module.lengthscale = 0.3
+gp_model.covar_module.lengthscale = 0.3*0.3 * 2
 
-out = gp_model(tx.transpose(0, 1))
-
-print(out.mean.shape)
-plt.imshow(out.mean.squeeze().detach().view(41, 41))
-#%%
 
 from torch.nn import Parameter
 from gpytorch.models import ApproximateGP
@@ -250,7 +247,7 @@ if __name__ == '__main__':
         lfm = PartialLFM.load('test',
                               gp_cls=MultiOutputGP,
                               gp_args=[inducing_points, 1],
-                              gp_kwargs=dict(use_ard=True, lengthscale_constraint=Interval(0, 0.3)),
+                              gp_kwargs=gp_kwargs,
                               lfm_args=[config, dataset])
 
         optimizer = torch.optim.Adam(lfm.parameters(), lr=0.07)

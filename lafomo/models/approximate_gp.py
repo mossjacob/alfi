@@ -2,11 +2,16 @@ import torch
 import gpytorch
 
 from gpytorch.models import ApproximateGP
-from gpytorch.variational import CholeskyVariationalDistribution, VariationalStrategy
+from gpytorch.variational import CholeskyVariationalDistribution, VariationalStrategy, IndependentMultitaskVariationalStrategy
 
 
 class MultiOutputGP(ApproximateGP):
-    def __init__(self, inducing_points, num_latents, use_ard=True, initial_lengthscale=None, lengthscale_constraint=None):
+    def __init__(self,
+                 inducing_points,
+                 num_latents, use_scale=False,
+                 use_ard=True,
+                 initial_lengthscale=None,
+                 lengthscale_constraint=None):
         # We have to mark the CholeskyVariationalDistribution as batch
         # so that we learn a variational distribution for each task
         variational_distribution = CholeskyVariationalDistribution(
@@ -15,7 +20,7 @@ class MultiOutputGP(ApproximateGP):
 
         # We have to wrap the VariationalStrategy in a MultitaskVariationalStrategy
         # so that the output will be a MultitaskMultivariateNormal rather than a batch output
-        variational_strategy = gpytorch.variational.IndependentMultitaskVariationalStrategy(
+        variational_strategy = IndependentMultitaskVariationalStrategy(
             VariationalStrategy(
                 self, inducing_points, variational_distribution, learn_inducing_locations=False
             ), num_tasks=num_latents
@@ -33,6 +38,11 @@ class MultiOutputGP(ApproximateGP):
             ard_num_dims=ard_dims,
             lengthscale_constraint=lengthscale_constraint
         )
+        if use_scale:
+            self.covar_module = gpytorch.kernels.ScaleKernel(
+                self.covar_module,
+                batch_shape=torch.Size([num_latents])
+            )
         if initial_lengthscale is not None:
             self.covar_module.lengthscale = initial_lengthscale
 
