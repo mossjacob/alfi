@@ -53,8 +53,7 @@ class Trainer:
             if (epoch % report_interval) == 0:
                 print('Epoch %03d/%03d - Loss: %.2f (' % (
                     self.num_epochs + 1, end_epoch, epoch_loss), end='')
-                for loss in split_loss:
-                    print('%.2f  ' % loss, end='')
+                print(' '.join(map(lambda l: '%.2f' % l, split_loss)), end='')
 
                 if isinstance(self.lfm, gpytorch.models.GP):
                     kernel = self.lfm.covar_module
@@ -149,7 +148,7 @@ class VariationalTrainer(Trainer):
         loss.backward()
         self.optimizer.step()
 
-        return loss, (-log_likelihood, kl_divergence)
+        return loss, (-log_likelihood.detach(), kl_divergence.detach())
 
 
 class TranscriptionalTrainer(VariationalTrainer):

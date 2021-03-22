@@ -170,8 +170,6 @@ class PartialLFM(VariationalLFM):
     def G(self, u):
         return u
 
-#%%
-
 
 from lafomo.trainer import VariationalTrainer
 from lafomo.utilities.torch import is_cuda
@@ -220,9 +218,9 @@ class PDETrainer(VariationalTrainer):
         return epoch_loss, (-epoch_ll, epoch_kl)
 
     def print_extra(self):
-        print(' s:', model.sensitivity[0].item(),
-              'dif:', model.diffusion[0].item(),
-              'dec:', model.decay[0].item())
+        print(' s:', self.lfm.sensitivity[0].item(),
+              'dif:', self.lfm.diffusion[0].item(),
+              'dec:', self.lfm.decay[0].item())
 
 
 t_inducing = torch.linspace(0, 1, 40, dtype=torch.float64).view(1, -1).repeat(2, 1)
@@ -231,9 +229,9 @@ num_latents = 1
 
 # kernel = SpatioTemporalRBF(num_latents, initial_lengthscale=0.3/2)
 
-model = PartialLFM(gp_model, config, dataset)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.07)
-trainer = PDETrainer(model, optimizer, dataset)
+lfm = PartialLFM(gp_model, config, dataset)
+optimizer = torch.optim.Adam(lfm.parameters(), lr=0.07)
+trainer = PDETrainer(lfm, optimizer, dataset)
 
 #%%
 
@@ -245,6 +243,19 @@ print(df)
 print(df['t'].values)
 
 #%%
+from os import path
 if __name__ == '__main__':
-    trainer.train(30)
+    if path.exists('./lfm-test.pt'):
+        print('present')
+        lfm = PartialLFM.load('test',
+                              gp_cls=MultiOutputGP,
+                              gp_args=[inducing_points, 1],
+                              gp_kwargs=dict(use_ard=True),
+                              lfm_args=[config, dataset])
+
+        optimizer = torch.optim.Adam(lfm.parameters(), lr=0.07)
+        trainer = PDETrainer(lfm, optimizer, dataset)
+
+    trainer.train(1)
+    lfm.save('test')
 

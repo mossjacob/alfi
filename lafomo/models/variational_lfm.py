@@ -89,3 +89,22 @@ class VariationalLFM(LFM, ABC):
         self.train()
         return q_f
 
+    def save(self, filepath):
+        torch.save(self.gp_model.state_dict(), 'gp-'+filepath+'.pt')
+        torch.save(self.state_dict(), 'lfm-'+filepath+'.pt')
+
+    @classmethod
+    def load(cls,
+             filepath,
+             gp_cls,
+             gp_args=[], gp_kwargs={},
+             lfm_args=[], lfm_kwargs={}):
+        gp_state_dict = torch.load('gp-'+filepath+'.pt')
+        gp_model = gp_cls(*gp_args, **gp_kwargs)
+        gp_model.load_state_dict(gp_state_dict)
+        gp_model.double()
+
+        lfm_state_dict = torch.load('lfm-'+filepath+'.pt')
+        lfm = cls(gp_model, *lfm_args, **lfm_kwargs)
+        lfm.load_state_dict(lfm_state_dict)
+        return lfm
