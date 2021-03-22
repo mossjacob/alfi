@@ -135,7 +135,8 @@ class PartialLFM(VariationalLFM):
             # y_prev shape (N, 21)
             t_index += 1
             outputs.append(y_prev)
-        outputs = torch.stack(outputs).permute(1, 0, 2)
+
+        outputs = torch.stack(outputs).permute(1, 2, 0)
 
         print('out', outputs.shape)
 
