@@ -193,8 +193,7 @@ class PDETrainer(VariationalTrainer):
             tx = tx[0]
 
             output = self.lfm(tx, step_size=step_size)
-
-            print(output.variance, output.mean.shape, output.variance.shape)
+            print(output.variance.max(), output.mean.shape, output.variance.shape)
             f_mean = output.mean.reshape(1, -1)
 
             fig, axes = plt.subplots(ncols=2)
@@ -251,7 +250,7 @@ if __name__ == '__main__':
         lfm = PartialLFM.load('test',
                               gp_cls=MultiOutputGP,
                               gp_args=[inducing_points, 1],
-                              gp_kwargs=dict(use_ard=True),
+                              gp_kwargs=dict(use_ard=True, lengthscale_constraint=Interval(0, 0.3)),
                               lfm_args=[config, dataset])
 
         optimizer = torch.optim.Adam(lfm.parameters(), lr=0.07)
