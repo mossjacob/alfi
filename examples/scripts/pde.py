@@ -20,11 +20,6 @@ matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 
 
-def plot_output(ax, output, title=None):
-    ax.set_title(title)
-    ax.plot(output)
-    ax.set_xlabel('distance')
-    ax.set_ylabel('y')
 def scatter_output(ax, tx, output, title=None):
     ax.set_title(title)
     ax.scatter(tx[0], tx[1], c=output)
@@ -34,7 +29,7 @@ def scatter_output(ax, tx, output, title=None):
 
 config = VariationalConfiguration(
     initial_conditions=False,
-    num_samples=50, learn_inducing=False
+    num_samples=50
 )
 
 dataset = ToySpatialTranscriptomics(data_dir='./data/')
@@ -42,7 +37,7 @@ df = dataset.orig_data
 
 #%%
 num_inducing = 1100
-inducing_points = 12*torch.rand((1, num_inducing, 2)) # (I x m x 1)
+inducing_points = torch.rand((1, num_inducing, 2)) # (I x m x 1)
 
 print(inducing_points.shape)
 
@@ -186,6 +181,7 @@ class PDETrainer(VariationalTrainer):
         fig, axes = plt.subplots(ncols=2)
         scatter_output(axes[0], data_input, f_mean.detach(), 'Prediction')
         scatter_output(axes[1], data_input, y_target, 'Actual')
+        plt.savefig('./out' + str(datetime.now().timestamp()) + '.png')
 
     def print_extra(self):
         print(' s:', self.lfm.sensitivity[0].item(),
