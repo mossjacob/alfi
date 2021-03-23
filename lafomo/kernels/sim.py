@@ -106,10 +106,10 @@ class SIMKernel(gpytorch.kernels.Kernel):
                      k * hori_block_size:(k + 1) * hori_block_size] = kxx
 
         if hori_block_size == vert_block_size:
-            noise = self.noise.view(-1, 1).repeat(1, hori_block_size).view(-1)
-            noise = torch.diag(noise)
+            # noise = self.noise.view(-1, 1).repeat(1, hori_block_size).view(-1)
+            # noise = torch.diag(noise)
             jitter = 1e-4 * torch.eye(K_xx.shape[0], dtype=torch.float64)
-            K_xx += noise + jitter
+            K_xx += jitter
             if K_xx.shape[0] == self.variance.shape[0]:
                 K_xx += self.variance
         return K_xx

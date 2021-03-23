@@ -13,9 +13,8 @@ class ExactLFM(LFM, gpytorch.models.ExactGP):
     def __init__(self, dataset: LFMDataset, variance):
         train_t, train_y = flatten_dataset(dataset)
         super().__init__(train_t, train_y, likelihood=gpytorch.likelihoods.GaussianLikelihood())
-        # self.gp_model = self
+
         self.num_outputs = dataset.num_outputs
-        self.block_size = int(train_t.shape[0] / self.num_outputs)
         self.train_t = train_t.view(-1, 1)
         self.train_y = train_y.view(-1, 1)
         self.covar_module = SIMKernel(self.num_outputs, torch.tensor(variance, requires_grad=False))
@@ -41,10 +40,6 @@ class ExactLFM(LFM, gpytorch.models.ExactGP):
     @decay_rate.setter
     def decay_rate(self, val):
         self.covar_module.decay = val
-
-    # def train(self, mode: bool = True):
-    #     super().train(mode)
-    #     self.likelihood.train()
 
     def forward(self, x):
         mean_x = self.mean_module(x)
@@ -82,15 +77,10 @@ class ExactLFM(LFM, gpytorch.models.ExactGP):
         var = Kff - torch.matmul(KfxKxx, Kxf)
         # var = torch.diagonal(var, dim1=0, dim2=1).view(-1)
         var = var.unsqueeze(0)
-        print(var.shape, var.min())
-        from matplotlib import pyplot as plt
-        plt.figure()
-        plt.imshow(var[0].detach())
-        plt.colorbar()
-        var += 1e-2*torch.eye(var.shape[-1])
-        print(mean.shape, var.shape)
-        print(torch.diagonal(var, dim1=1, dim2=2).min())
-        # print(torch.cholesky(var + 1e-2 * torch.eye(80)))
+        var += 1e-3*torch.eye(var.shape[-1])
+        # For some reason a full covariance doesn't work, for now just take the variance: (TODO)
+        var = torch.diagonal(var, dim1=1, dim2=2)
+        var = torch.diag_embed(var)
 
         batch_mvn = gpytorch.distributions.MultivariateNormal(mean, var)
         print(batch_mvn)
