@@ -4,6 +4,7 @@ from torch.nn import Parameter
 from gpytorch.models import ApproximateGP
 from gpytorch.distributions import MultivariateNormal, MultitaskMultivariateNormal
 from torch_fenics import FEniCSModule
+from typing import Iterator
 
 from lafomo.datasets import LFMDataset
 from lafomo.models import VariationalLFM
@@ -26,6 +27,10 @@ class PartialLFM(VariationalLFM):
         self.mesh_cells = fenics_model.mesh_cells
         self.fenics_module = fenics_model
         self.fenics_parameters = fenics_parameters
+        name = 0
+        for parameter in self.fenics_parameters:
+            self.register_parameter(name='fenics' + str(name), param=parameter)
+            name += 1
 
     def forward(self, tx, step_size=1e-1, return_samples=False):
         """

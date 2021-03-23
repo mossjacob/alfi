@@ -23,7 +23,6 @@ class ReactionDiffusion(torch_fenics.FEniCSModule):
         y = TrialFunction(self.V)
         self.v = TestFunction(self.V)
 
-
     def solve(self, y_prev, u, sensitivity, decay, diffusion):
         # Construct bilinear form (Arity = 2 (for both Trial and Test function))
         y = TrialFunction(self.V)
