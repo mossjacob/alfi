@@ -127,29 +127,37 @@ class VariationalTrainer(Trainer):
         super().__init__(lfm, optimizer, dataset, batch_size=lfm.num_outputs)
 
     def single_epoch(self, step_size=1e-1):
-        data = next(iter(self.data_loader))
+        epoch_loss = 0
+        epoch_ll = 0
+        epoch_kl = 0
+        for i, data in enumerate(self.data_loader):
+            self.optimizer.zero_grad()
+            data_input, y = data
+            data_input = data_input.cuda() if is_cuda() else data_input
+            y = y.cuda() if is_cuda() else y
+            # Assume that the batch of t s are the same
+            data_input, y = data_input[0], y
 
-        self.optimizer.zero_grad()
-        t, y = data
-        t = t.cuda() if is_cuda() else t
-        y = y.cuda() if is_cuda() else y
-        # Assume that the batch of t s are the same
-        t, y = t[0].view(-1), y
+            output = self.lfm(data_input, step_size=step_size)
+            self.debug_out(data_input, y, output)
+            # print('gout', g_output.event_shape, g_output.batch_shape)
+            #  log_likelihood - kl_divergence + log_prior - added_loss
+            # print(y.shape)
+            log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y.permute(1, 0))
 
-        output = self.lfm(t, step_size=step_size)
+            loss = - (log_likelihood - kl_divergence)
 
-        # print('gout', g_output.event_shape, g_output.batch_shape)
-        #  log_likelihood - kl_divergence + log_prior - added_loss
-        # print(y.shape)
-        log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y.permute(1, 0))
+            loss.backward()
+            self.optimizer.step()
 
-        loss = - (log_likelihood - kl_divergence)
+            epoch_loss += loss.item()
+            epoch_ll += log_likelihood.item()
+            epoch_kl += kl_divergence.item()
 
-        loss.backward()
-        self.optimizer.step()
+        return epoch_loss, (-epoch_ll, epoch_kl)
 
-        return loss, (-log_likelihood.detach(), kl_divergence.detach())
-
+    def debug_out(self, data_input, y_target, output):
+        pass
 
 class TranscriptionalTrainer(VariationalTrainer):
     """
