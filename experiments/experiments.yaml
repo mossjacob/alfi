@@ -1,0 +1,36 @@
+
+p53:
+  methods:
+    exact:
+      epochs: 150
+    variational:
+      epochs: 300
+    mcmc:
+      epochs: 2000
+
+hafner:
+  num_latents: 1
+  methods:
+    variational:
+      epochs: 300
+    mcmc:
+      epochs: 2000
+
+artificial:
+  num_latents: 3
+  methods:
+    variational:
+      epochs: 300
+    mcmc:
+      epochs: 2000
+
+toy_spatiotemporal:
+  num_latents: 1
+  methods:
+    partial:
+      epochs: 100
+
+mnist:
+  methods:
+    variational:
+      epochs: 300
