@@ -1,11 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
+import seaborn as sns
 
 from lafomo.datasets import scaled_barenco_data
 from lafomo.models import VariationalLFM
 
-plt.style.use('ggplot')
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['font.serif'] = 'CMU Serif'
+sns.set(font="CMU Serif")
 
 
 class Plotter:
@@ -13,12 +15,22 @@ class Plotter:
     This Plotter is designed for gp models.
     """
 
-    def __init__(self, model, output_names):
+    def __init__(self, model, output_names, style='seaborn'):
         self.model = model
         self.output_names = output_names
         self.num_outputs = self.output_names.shape[0]
         self.num_replicates = self.model.num_outputs // self.num_outputs
         self.variational = isinstance(self.model, VariationalLFM)
+        palette = sns.color_palette('colorblind')
+        self.shade_color = palette[0]
+        self.line_color = palette[0]
+        self.scatter_color = palette[3]
+        self.bar1_color = palette[3]
+        self.bar2_color = palette[2]
+        plt.style.use(style)
+        sns.set(font="CMU Serif")
+        plt.rcParams['font.family'] = 'serif'
+        plt.rcParams['font.serif'] = 'CMU Serif'
 
     def _plot_barenco(self, mean):
         barenco_f, _ = scaled_barenco_data(mean)
@@ -42,11 +54,14 @@ class Plotter:
         for i in range(num_plots):
             plt.subplot(num_plots, 3, i + 1)
             plt.title(self.output_names[i])
-            plt.plot(t_predict, mu[replicate, i].detach())
-            plt.fill_between(t_predict, mu[replicate, i] + 2*std[replicate, i], mu[replicate, i] - 2*std[replicate, i], alpha=0.4)
+            plt.plot(t_predict, mu[replicate, i].detach(), color=self.line_color)
+            plt.fill_between(t_predict,
+                             mu[replicate, i] + 2*std[replicate, i],
+                             mu[replicate, i] - 2*std[replicate, i],
+                             color=self.shade_color, alpha=0.3)
 
             if t_scatter is not None:
-                plt.scatter(t_scatter, y_scatter[replicate, i])
+                plt.scatter(t_scatter, y_scatter[replicate, i], color=self.scatter_color, marker='x')
 
             if ylim is None:
                 plt.ylim(-0.2, max(mu[replicate, i]) * 1.2)
@@ -60,26 +75,19 @@ class Plotter:
         plt.figure(figsize=(5, 3*mean.shape[0]))
         for i in range(mean.shape[0]):
             plt.subplot(mean.shape[0], 1, i+1)
-            plt.plot(t_predict, mean[i], color='gray')
-            plt.fill_between(t_predict, mean[i] + 2 * std[i], mean[i] - 2 * std[i], color='orangered', alpha=0.5)
+            plt.plot(t_predict, mean[i], color=self.line_color)
+            plt.fill_between(t_predict,
+                             mean[i] + 2 * std[i],
+                             mean[i] - 2 * std[i],
+                             color=self.shade_color, alpha=0.3)
             for _ in range(num_samples):
-                plt.plot(t_predict, q_f.sample().detach().transpose(0, 1)[i], alpha=0.3, color='gray')
+                plt.plot(t_predict, q_f.sample().detach().transpose(0, 1)[i], alpha=0.3, color=self.line_color)
 
             if plot_barenco:
                 self._plot_barenco(mean[i])
             if self.variational:
                 inducing_points = self.model.inducing_points.detach()[0].squeeze()
                 plt.scatter(inducing_points, np.zeros_like(inducing_points), marker='_', c='black', linewidths=4)
-            if self.variational and plot_inducing:
-                q_u = self.model.get_latents(self.model.inducing_inputs)
-                mean_u = self.model.G(q_u.mean).detach().numpy()
-                std_u = torch.sqrt(q_u.variance[0]).detach().numpy()
-                plt.scatter(self.t_inducing, mean_u, marker='o', color='brown')
-                S = torch.matmul(self.model.q_cholS, self.model.q_cholS.transpose(1, 2))
-                std_u = torch.sqrt(torch.diagonal(S[0])).detach()
-                u = torch.squeeze(self.model.q_m[i].detach())
-                plt.plot(self.t_inducing, u)
-                plt.fill_between(self.t_inducing.view(-1), u + std_u, u - std_u, color='green', alpha=0.5)
 
             if ylim is None:
                 plt.ylim(min(mean[i])-0.3, max(mean[i])+0.3)
@@ -107,8 +115,8 @@ class Plotter:
         for A, B, var, label in zip(data, barenco_data, vars, labels):
             plt.subplot(plotnum)
             plotnum += 1
-            plt.bar(np.arange(5) - 0.2, A, width=0.4, tick_label=self.output_names)
-            plt.bar(np.arange(5) + 0.2, B, width=0.4, color='blue', align='center')
+            plt.bar(np.arange(5) - 0.2, A, width=0.4, tick_label=self.output_names, color=self.bar1_color)
+            plt.bar(np.arange(5) + 0.2, B, width=0.4, color=self.bar2_color, align='center')
 
             plt.title(label)
             plt.xticks(rotation=45)

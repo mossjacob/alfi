@@ -1,11 +1,13 @@
+from dataclasses import dataclass, field
 from matplotlib import pyplot as plt
+from matplotlib.animation import FuncAnimation
+
 import numpy as np
 import arviz
-from dataclasses import dataclass, field
-from matplotlib.animation import FuncAnimation
 import networkx as nx
 import tensorflow as tf
 import random
+import seaborn as sns
 
 from lafomo.datasets import scaled_barenco_data
 
@@ -24,11 +26,11 @@ class PlotOptions:
     ylabel:         str = ''
     protein_present:bool = True
     model_label:    str = 'Model'
-    kernel_names:   list = field(default_factory=lambda:['Param 1', 'Param 2']) 
+    kernel_names:   list = field(default_factory=lambda: ['Param 1', 'Param 2'])
 
 
 class Plotter:
-    def __init__(self, data, options: PlotOptions):
+    def __init__(self, data, options: PlotOptions, style='seaborn'):
         self.opt = options
         if self.opt.gene_names is None:
             self.opt.gene_names = np.array([f'Gene {j}' for j in range(data.m_obs.shape[1])])
@@ -40,6 +42,16 @@ class Plotter:
         self.t_discretised = data.t_discretised.numpy()
         self.t = data.t_observed
         self.common_ind = data.common_indices.numpy()
+        palette = sns.color_palette('colorblind')
+        self.shade_color = palette[0]
+        self.line_color = palette[0]
+        self.scatter_color = palette[3]
+        self.bar1_color = palette[3]
+        self.bar2_color = palette[2]
+        plt.style.use(style)
+        sns.set(font="CMU Serif")
+        plt.rcParams['font.family'] = 'serif'
+        plt.rcParams['font.serif'] = 'CMU Serif'
 
     def plot_kinetics(self, results, kinetic_params, true_k=None, true_hpds=None, title='', xlabels=None):
         """
@@ -86,14 +98,14 @@ class Plotter:
         for k in range(var_samples.shape[2]):
             plt.subplot(plotnum)
             plotnum += 1
-            plt.bar(np.arange(num)-width, var[:, k], width=2*width, tick_label=labels, color='chocolate', label=self.opt.model_label)
+            plt.bar(np.arange(num)-width, var[:, k], width=2*width, tick_label=labels, color=self.bar1_color, label=self.opt.model_label)
             plt.errorbar(np.arange(num)-width, var[:, k], hpds[:, k].swapaxes(0,1), fmt='none', capsize=5, color='black')
             plt.xlim(-1, num)
             plt.xticks(rotation=rotation)
             if titles is not None:
                 plt.title(titles[k])
             if true_var is not None:
-                plt.bar(np.arange(num)+width, true_var[:, k], width=2*width, color='slategrey', align='center', label=self.opt.true_label)
+                plt.bar(np.arange(num)+width, true_var[:, k], width=2*width, color=self.bar2_color, align='center', label=self.opt.true_label)
                 if true_hpds is not None:
                     plt.errorbar(np.arange(num)+width, true_var[:, k], true_hpds[:, k].swapaxes(0,1), fmt='none', capsize=5, color='black')
                 plt.legend()
@@ -114,8 +126,10 @@ class Plotter:
             plt.legend()
         plt.tight_layout()
 
-    def plot_samples(self, samples, titles, num_samples, color='grey', scatters=None, 
-                     scatter_args={}, legend=True, margined=False, sample_gap=2):
+    def plot_samples(self, samples, titles, num_samples, scatters=None,
+                     scatter_args=None, legend=True, margined=False, sample_gap=2):
+        if scatter_args is None:
+            scatter_args = dict()
         num_components = samples[0].shape[0]
         subplot_shape = ((num_components+2)//3, 3)
         if self.opt.for_report:
@@ -126,7 +140,7 @@ class Plotter:
             ax = plt.subplot(subplot_shape[0], subplot_shape[1], 1+j)
             plt.title(titles[j])
             if scatters is not None:
-                plt.scatter(self.t_discretised[self.common_ind], scatters[j], marker='x', label='Observed', **scatter_args)
+                plt.scatter(self.t_discretised[self.common_ind], scatters[j], marker='x', label='Observed', color=self.scatter_color, **scatter_args)
             # plt.errorbar([n*10+n for n in range(7)], Y[j], 2*np.sqrt(Y_var[j]), fmt='none', capsize=5)
 
             for s in range(1, sample_gap*num_samples, sample_gap):
@@ -134,13 +148,12 @@ class Plotter:
                 if s == 1:
                     kwargs = {'label':'Samples'}
 
-                plt.plot(self.t_discretised, samples[-s,j,:], color=color, alpha=0.5, **kwargs)
+                plt.plot(self.t_discretised, samples[-s, j, :], color=self.line_color, alpha=0.5, **kwargs)
             if j % subplot_shape[1] == 0:
                 plt.ylabel(self.opt.ylabel)
 
-
             # HPD:
-            bounds = arviz.hdi(samples[-self.opt.num_hpd:,j,:], 0.95)
+            bounds = arviz.hdi(np.expand_dims(samples[-self.opt.num_hpd:,j,:], 0), 0.95)
             plt.fill_between(self.t_discretised, bounds[:, 0], bounds[:, 1], color='grey', alpha=0.3, label='95% credibility interval')
 
             plt.xticks(self.t)
@@ -177,7 +190,7 @@ class Plotter:
         if self.opt.for_report and num_tfs == 1:
             figsize=(6, 4)
         plt.figure(figsize=figsize)
-        scatter_args = {'s': 60, 'linewidth': 2, 'color': 'tab:blue'}
+        scatter_args = {'s': 60, 'linewidth': 2}
         self.plot_samples(f_samples, self.opt.tf_names, self.opt.num_plot_tfs, 
                           scatters=self.data.f_obs[replicate] if self.opt.tf_present else None,
                           scatter_args=scatter_args, margined=True, sample_gap=sample_gap)
@@ -280,9 +293,8 @@ class Plotter:
                                     frames=samples.shape[0]//interval, interval=50, blit=True)
         return anim.to_html5_video()
 
-    def plot_grn(self, results, use_basal=True, use_sensitivities=True, log=False):
+    def plot_grn(self, results, kinetic_params, use_basal=True, use_sensitivities=True):
         G = nx.DiGraph()
-        pos=nx.spring_layout(G, seed=42)
         random.seed(42)
         np.random.seed(42)
         nodes, node_colors, sizes, edges, colors = list(), list(), list(), list(), list()
@@ -296,23 +308,25 @@ class Plotter:
             nodes.append(self.opt.gene_names[j])
             node_colors.append('chocolate')
 
-        k = np.mean(results.k[-self.opt.num_kinetic_avg:], axis=0)
-        b = k[:, 1]
-        s = k[:, 3]
-        w = np.mean(results.weights[0][-100:], axis=0)
-        if log:
-            w = np.exp(w)
+        kinetics = np.stack([results[k] for k in kinetic_params]).transpose((1, 2, 0, 3)).squeeze(-1)
+        mean_kinetics = np.mean(kinetics[-self.opt.num_kinetic_avg:], axis=0)
+
+        b = mean_kinetics[:, 0]
+        s = mean_kinetics[:, 2]
+        if not use_sensitivities:
+            w = np.mean(results.weights[0][-100:], axis=0)
+            w_min = tf.math.reduce_min(w).numpy()
+            w_diff = tf.math.reduce_max(w).numpy() - w_min
+
         s_min = np.min(s)
         s_diff = max(s) - s_min
         b_min = np.min(b)
         b_diff = max(b) - b_min
-        w_min = tf.math.reduce_min(w).numpy()
-        diff = tf.math.reduce_max(w).numpy() - w_min
 
         for j in range(self.num_outputs):
             for i in range(self.num_tfs):
                 edge = (self.opt.tf_names[i], self.opt.gene_names[j])
-                weight = (s[j]-s_min) / s_diff if use_sensitivities else (w[j, i]-w_min) / diff
+                weight = (s[j]-s_min) / s_diff if use_sensitivities else (w[j, i]-w_min) / w_diff
                 colors.append(f'{1-weight}')
                 edges.append(edge)
             if use_basal:
@@ -321,5 +335,5 @@ class Plotter:
         G.add_edges_from(edges)
         node_size = sizes if use_basal else 1000
         pos = nx.spring_layout(G, seed=42)
-        pos = nx.nx_pydot.graphviz_layout(G, prog='dot')
+        # pos = nx.nx_pydot.graphviz_layout(G, prog='dot')
         nx.draw(G, pos=pos, edge_color=colors, node_color=node_colors, node_size=node_size, with_labels=True)
