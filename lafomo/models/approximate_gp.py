@@ -11,18 +11,18 @@ class MultiOutputGP(ApproximateGP):
                  num_latents, use_scale=False,
                  use_ard=True,
                  initial_lengthscale=None,
-                 lengthscale_constraint=None):
-        # We have to mark the CholeskyVariationalDistribution as batch
-        # so that we learn a variational distribution for each task
+                 lengthscale_constraint=None,
+                 learn_inducing_locations=False):
+        # The variational dist batch shape means we learn a different variational dist for each latent
         variational_distribution = CholeskyVariationalDistribution(
             inducing_points.size(-2), batch_shape=torch.Size([num_latents])
         )
 
-        # We have to wrap the VariationalStrategy in a MultitaskVariationalStrategy
-        # so that the output will be a MultitaskMultivariateNormal rather than a batch output
+        # Wrap the VariationalStrategy in a MultiTask to make output MultitaskMultivariateNormal
+        # rather than a batch MVN
         variational_strategy = IndependentMultitaskVariationalStrategy(
             VariationalStrategy(
-                self, inducing_points, variational_distribution, learn_inducing_locations=False
+                self, inducing_points, variational_distribution, learn_inducing_locations=learn_inducing_locations
             ), num_tasks=num_latents
         )
 

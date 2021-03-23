@@ -41,14 +41,17 @@ dataset = ToySpatialTranscriptomics(data_dir='./data/')
 df = dataset.orig_data
 
 #%%
-num_inducing = 41
-inducing_points = torch.linspace(0, 12, num_inducing)
-inducing_points = inducing_points.unsqueeze(-1).repeat(1, 1, 2)  # (I x m x 1)
+num_inducing = 1100
+inducing_points = 12*torch.rand((1, num_inducing, 2)) # (I x m x 1)
+
 print(inducing_points.shape)
 
 from gpytorch.constraints import Interval
 
-gp_kwargs = dict(use_ard=True, use_scale=False, lengthscale_constraint=Interval(0, 0.3))
+gp_kwargs = dict(use_ard=True,
+                 use_scale=False,
+                 lengthscale_constraint=Interval(0.1, 0.3),
+                 learn_inducing_locations=True)
 gp_model = MultiOutputGP(inducing_points, 1, **gp_kwargs)
 gp_model.double()
 
@@ -175,44 +178,14 @@ from datetime import datetime
 
 class PDETrainer(VariationalTrainer):
 
-    def single_epoch(self, step_size=1e-1):
-        epoch_loss = 0
-        epoch_ll = 0
-        epoch_kl = 0
-        for i, data in enumerate(self.data_loader):
-            self.optimizer.zero_grad()
+    def debug_out(self, data_input, y_target, output):
 
+        print(output.variance.max(), output.mean.shape, output.variance.shape)
+        f_mean = output.mean.reshape(1, -1)
 
-            tx, y_target = data
-            tx = tx.cuda() if is_cuda() else tx
-            y_target = y_target.cuda() if is_cuda() else y_target
-            # Assume that the batch of t s are the same
-            tx = tx[0]
-
-            output = self.lfm(tx, step_size=step_size)
-            print(output.variance.max(), output.mean.shape, output.variance.shape)
-            f_mean = output.mean.reshape(1, -1)
-
-            fig, axes = plt.subplots(ncols=2)
-            print(y_target.shape)
-            scatter_output(axes[0], tx, f_mean.detach(), 'Prediction')
-            scatter_output(axes[1], tx, y_target, 'Actual')
-            plt.savefig('./out'+str(datetime.now().timestamp())+'.png')
-            # Calc loss and backprop gradients
-            print(output.mean.shape, y_target.permute(1, 0).shape)
-            log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target.permute(1, 0))
-
-            loss = - (log_likelihood - kl_divergence)
-
-            loss.backward()
-
-            self.optimizer.step()
-
-            epoch_loss += loss.item()
-            epoch_ll += log_likelihood.item()
-            epoch_kl += kl_divergence.item()
-
-        return epoch_loss, (-epoch_ll, epoch_kl)
+        fig, axes = plt.subplots(ncols=2)
+        scatter_output(axes[0], data_input, f_mean.detach(), 'Prediction')
+        scatter_output(axes[1], data_input, y_target, 'Actual')
 
     def print_extra(self):
         print(' s:', self.lfm.sensitivity[0].item(),
