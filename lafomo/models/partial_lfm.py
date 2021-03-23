@@ -1,49 +1,87 @@
-from fenics import *
-from fenics_adjoint import *
+import torch
 
-import torch_fenics
+from torch.nn import Parameter
+from gpytorch.models import ApproximateGP
+from gpytorch.distributions import MultivariateNormal, MultitaskMultivariateNormal
+from torch_fenics import FEniCSModule
+
+from lafomo.datasets import LFMDataset
+from lafomo.models import VariationalLFM
+from lafomo.configuration import VariationalConfiguration
 
 
-class ReactionDiffusion(torch_fenics.FEniCSModule):
-    def __init__(self, dt, mesh_cells):
+class PartialLFM(VariationalLFM):
+    def __init__(self,
+                 num_outputs,
+                 gp_model: ApproximateGP,
+                 fenics_model: FEniCSModule,
+                 fenics_parameters: list,
+                 config: VariationalConfiguration,
+                 dtype=torch.float64):
+        super().__init__(num_outputs, gp_model, config, dtype)
+        if self.config.initial_conditions:
+            raise Exception('Initial conditions are not implemented for PartialLFM.')
+
+        self.time_steps = fenics_model.time_steps
+        self.mesh_cells = fenics_model.mesh_cells
+        self.fenics_module = fenics_model
+        self.fenics_parameters = fenics_parameters
+
+    def forward(self, tx, step_size=1e-1, return_samples=False):
         """
-        Parameters:
-            dt: scalar float
-            mesh_cells: Number of cells in the spatial mesh
+        tx : torch.Tensor
+            Shape (2, num_times)
+        h : torch.Tensor the initial state of the ODE
+            Shape (num_genes, 1)
+        Returns
+        -------
+        Returns evolved h across times t.
+        Shape (num_genes, num_points).
         """
-        super().__init__()
-        self.dt = dt
-        # Create function space
-        mesh = UnitIntervalMesh(mesh_cells)
-        self.V = FunctionSpace(mesh, 'P', 1)
+        self.nfe = 0
 
-        # Create trial and test functions
-        y = TrialFunction(self.V)
-        self.v = TestFunction(self.V)
+        # Get GP outputs
+        q_u = self.gp_model(tx.transpose(0, 1))
+        u = q_u.rsample(torch.Size([self.config.num_samples])).permute(0, 2, 1)
+        print(u.shape)
+        u = self.G(u)  # (S, num_outputs, t)
+        # u = torch.tensor(df['U']).unsqueeze(0).repeat(self.config.num_samples, 1, 1)
 
+        outputs = self.solve_pde(u)
 
-    def solve(self, y_prev, u, sensitivity, decay, diffusion):
-        # Construct bilinear form (Arity = 2 (for both Trial and Test function))
-        y = TrialFunction(self.V)
-        self.a = (1 + self.dt * decay) * y * self.v * dx + self.dt * diffusion * inner(grad(y), grad(self.v)) * dx
+        if return_samples:
+            return outputs
 
-        # Construct linear form
-        L = (y_prev + self.dt * sensitivity * u) * self.v * dx
+        f_mean = outputs.mean(dim=0).view(1, -1)  # shape (batch, times, distance)
+        # h_var = torch.var(h_samples, dim=1).squeeze(-1).permute(1, 0) + 1e-7
+        f_var = outputs.var(dim=0).view(1, -1) + 1e-7
+        print(f_mean.shape, f_var.shape)
+        # TODO: make distribution something less constraining
+        f_covar = torch.diag_embed(f_var)
+        print(f_covar.shape)
+        batch_mvn = MultivariateNormal(f_mean, f_covar)
+        return MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)
 
-        # Construct boundary condition
-        bc = DirichletBC(self.V, Constant(0), 'on_boundary')
+    def solve_pde(self, u):
+        # Integrate forward from the initial positions h0.
+        outputs = list()
+        y_prev = torch.zeros((self.config.num_samples, self.mesh_cells + 1), requires_grad=False, dtype=torch.float64)
+        t_index = 0
 
-        # Solve the Poisson equation
-        y = Function(self.V)
-        solve(self.a == L, y, bc)
+        # t = df['t'].values[:41]
+        for n in range(self.time_steps + 1):
+            u_n = u[:,0,t_index::41]  # (S, t)
 
-        return y
+            params = [param.repeat(self.config.num_samples, 1) for param in self.fenics_parameters]
 
-    def input_templates(self):
-        # Declare templates for the inputs to Poisson.solve
-        return Function(self.V), Function(self.V), \
-               Constant(0), Constant(0), Constant(0)
+            y_prev = self.fenics_module(y_prev, u_n, *params)
 
+            # y_prev shape (N, 21)
+            t_index += 1
+            outputs.append(y_prev)
 
-class PartialLFM():
-    pass
+        outputs = torch.stack(outputs).permute(1, 2, 0)
+        return outputs
+
+    def G(self, u):
+        return u

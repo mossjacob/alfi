@@ -23,10 +23,9 @@ except ImportError:
 
 
 if fenics_present:
-    from .partial_lfm import PartialLFM, ReactionDiffusion
+    from .partial_lfm import PartialLFM
     modules.extend([
         'PartialLFM',
-        'ReactionDiffusion'
     ])
 
 

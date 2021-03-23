@@ -14,7 +14,6 @@ from gpytorch.mlls import VariationalELBO
 from .lfm import LFM
 from lafomo.utilities.torch import softplus, inv_softplus
 from lafomo.configuration import VariationalConfiguration
-from lafomo.datasets import LFMDataset
 
 
 class VariationalLFM(LFM, ABC):
@@ -23,18 +22,18 @@ class VariationalLFM(LFM, ABC):
 
     Parameters
     ----------
-    num_latents : int : the number of latent GPs (for example, the number of TFs)
+    num_outputs : int : the number of outputs (for example, the number of genes)
     fixed_variance : tensor : variance if the preprocessing variance is known, otherwise learnt.
     t_inducing : tensor of shape (..., T_u) : the inducing timepoints. Preceding dimensions are for multi-dimensional inputs
     """
     def __init__(self,
+                 num_outputs: int,
                  gp_model: ApproximateGP,
                  config: VariationalConfiguration,
-                 dataset: LFMDataset,
                  dtype=torch.float64):
         super().__init__()
         self.gp_model = gp_model
-        self.num_outputs = dataset.num_outputs
+        self.num_outputs = num_outputs
         self.likelihood = MultitaskGaussianLikelihood(num_tasks=self.num_outputs)
         try:
             self.inducing_points = self.gp_model.get_inducing_points()
@@ -45,7 +44,6 @@ class VariationalLFM(LFM, ABC):
 
         self.loss_fn = VariationalELBO(self.likelihood, gp_model, num_training_points, combine_terms=False)
         self.config = config
-        self.num_observed = dataset[0][0].shape[-1]
         self.dtype = dtype
 
         # if config.preprocessing_variance is not None:

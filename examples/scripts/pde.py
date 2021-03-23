@@ -46,7 +46,7 @@ from gpytorch.constraints import Interval
 gp_kwargs = dict(use_ard=True,
                  use_scale=False,
                  lengthscale_constraint=Interval(0.1, 0.3),
-                 learn_inducing_locations=True)
+                 learn_inducing_locations=False)
 gp_model = MultiOutputGP(inducing_points, 1, **gp_kwargs)
 gp_model.double()
 
@@ -189,7 +189,6 @@ class PDETrainer(VariationalTrainer):
               'dec:', self.lfm.decay[0].item())
 
 
-t_inducing = torch.linspace(0, 1, 40, dtype=torch.float64).view(1, -1).repeat(2, 1)
 
 num_latents = 1
 
