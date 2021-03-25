@@ -174,13 +174,13 @@ class TranscriptionalTrainer(VariationalTrainer):
     def after_epoch(self):
         self.basalrates.append(self.lfm.basal_rate.detach().clone().numpy())
         self.decayrates.append(self.lfm.decay_rate.detach().clone().numpy())
-        self.sensitivities.append(self.lfm.sensitivity.detach().clone().numpy())
+        # self.sensitivities.append(self.lfm.sensitivity.detach().clone().numpy())
         self.lengthscales.append(self.lfm.gp_model.covar_module.lengthscale.detach().clone().numpy())
         # self.cholS.append(self.lfm.q_cholS.detach().clone())
         # self.mus.append(self.lfm.q_m.detach().clone())
         with torch.no_grad():
             # TODO can we replace these with parameter transforms like we did with lengthscale
-            self.lfm.sensitivity.clamp_(0, 20)
+            # self.lfm.sensitivity.clamp_(0, 20)
             self.lfm.basal_rate.clamp_(0, 20)
             self.lfm.decay_rate.clamp_(0, 20)
             self.extra_constraints()

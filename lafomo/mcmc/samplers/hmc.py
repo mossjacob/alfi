@@ -18,7 +18,7 @@ class HMCSampler(tfp.mcmc.NoUTurnSampler, ParamGroupMixin):
         param_kwargs = {}
         for i, param in enumerate(self.param_group):
             val = self.transforms[i](args[i])
-
+            # tf.print(args[i], val)
             # Prepare likelihood params
             param_kwargs[param.name] = val
 
@@ -27,4 +27,6 @@ class HMCSampler(tfp.mcmc.NoUTurnSampler, ParamGroupMixin):
 
         # Add likelihood:
         new_prob += tf.reduce_sum(self.likelihood_fn(**param_kwargs))
+        # tf.print(self.param_group[0].name, self.transforms[0](args[0]), new_prob)
+
         return new_prob

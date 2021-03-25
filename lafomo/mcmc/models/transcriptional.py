@@ -31,27 +31,27 @@ class TranscriptionRegulationLFM(MCMCLFM):
         self.subsamplers = list()
         self.dtype = 'float64'
         # Kinetics
-        if options.kinetic_exponential:
-            kinetic_transform = lambda x: tf.exp(logit(x))
-        else:
-            kinetic_transform = logit
+        # if options.kinetic_exponential:
+        #     kinetic_transform = lambda x: tf.exp(logit(x))
+        # else:
+        kinetic_transform = logit
 
         basal_rate = Parameter(
             'basal',
             LogisticNormal(0.01, 30),
-            0.8 * tf.ones((self.num_outputs, 1), dtype=self.dtype),
+            tf.random.uniform((self.num_outputs, 1), 0.75, 0.85, dtype=self.dtype),
             transform=kinetic_transform
         )
         sensitivity = Parameter(
             'sensitivity',
             LogisticNormal(0.01, 30),
-            0.8 * tf.ones((self.num_outputs, 1), dtype=self.dtype),
+            tf.random.uniform((self.num_outputs, 1), 0.75, 0.85, dtype=self.dtype),
             transform=kinetic_transform
         )
         decay_rate = Parameter(
             'decay',
             LogisticNormal(0.01, 30),
-            0.8 * tf.ones((self.num_outputs, 1), dtype=self.dtype),
+            tf.random.uniform((self.num_outputs, 1), 0.75, 0.85, dtype=self.dtype),
             transform=kinetic_transform
         )
         kinetics = [basal_rate, decay_rate, sensitivity]
@@ -61,7 +61,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
             self.initial_conditions = Parameter(
                 'initial',
                 LogisticNormal(0.01, 30),
-                0.8 * tf.ones((self.num_outputs, 1), dtype=self.dtype),
+                tf.random.uniform((self.num_outputs, 1), 0.75, 0.85, dtype=self.dtype),
                 transform=kinetic_transform
             )
             kinetics.append(self.initial_conditions)
@@ -122,7 +122,7 @@ class TranscriptionRegulationLFM(MCMCLFM):
         if not options.preprocessing_variance:
             def f_sq_diff_fn():
                 f_pred = inverse_positivity(self.parameter_state['latent'][0])
-                sq_diff = tfm.square(self.data.f_obs - tf.transpose(tf.gather(tf.transpose(f_pred),self.data.common_indices)))
+                sq_diff = tfm.square(self.data.f_obs - tf.gather(f_pred, self.data.common_indices, axis=2))
                 return tf.reduce_sum(sq_diff, axis=0)
             σ2_f = Parameter('σ2_f',
                              tfd.InverseGamma(f64(0.01), f64(0.01)),
@@ -133,16 +133,16 @@ class TranscriptionRegulationLFM(MCMCLFM):
         if not options.preprocessing_variance:
             def m_sq_diff_fn():
                 m_pred = self.predict_m(**self.parameter_state)
-                sq_diff = tfm.square(self.data.m_obs - tf.transpose(tf.gather(tf.transpose(m_pred), self.data.common_indices)))
+                sq_diff = tfm.square(self.data.m_obs - tf.gather(m_pred, self.data.common_indices, axis=2))
                 return tf.reduce_sum(sq_diff, axis=0)
             σ2_m = Parameter('σ2_m', tfd.InverseGamma(f64(0.01), f64(0.01)),
                              1e-3 * tf.ones((self.num_outputs, 1), dtype=self.dtype))
             σ2_m_sampler = GibbsSampler(σ2_m, m_sq_diff_fn, self.N_p)
         else:
-            σ2_m = Parameter('σ2_m', LogisticNormal(f64(1e-5), f64(1e-2)),
-                             1e-3 * tf.ones((self.num_outputs, 1), dtype=self.dtype),
+            σ2_m = Parameter('σ2_m', LogisticNormal(f64(1e-5), f64(1)),
+                             0.7 * tf.ones((self.num_outputs, 1), dtype=self.dtype),
                              transform=logit)
-            σ2_m_sampler = HMCSampler(self.likelihood, [self.σ2_m], logistic_step_size)
+            σ2_m_sampler = HMCSampler(self.likelihood, [σ2_m], logistic_step_size)
 
         self.subsamplers.append(σ2_m_sampler)
 
@@ -184,7 +184,13 @@ class TranscriptionRegulationLFM(MCMCLFM):
     def predict_m(self,
                   initial, basal, decay, sensitivity,
                   protein_decay, latent, **optional_parameters):
-
+        # tf.print(initial, basal, decay, sensitivity)
+        if self.options.kinetic_exponential:
+            initial = tf.exp(initial)
+            basal = tf.exp(basal)
+            decay = tf.exp(decay)
+            sensitivity = tf.exp(sensitivity)
+        # tf.print('p', initial, basal, decay, sensitivity)
         t_discretised = self.data.t_discretised
         fbar = latent[0]
         p_i = inverse_positivity(fbar)
@@ -216,13 +222,15 @@ class TranscriptionRegulationLFM(MCMCLFM):
     @tf.function
     def _genes(self, σ2_m=None, **parameter_state):
         m_pred = self.predict_m(σ2_m=σ2_m, **parameter_state)
-        sq_diff = tfm.square(self.data.m_obs - tf.transpose(tf.gather(tf.transpose(m_pred), self.data.common_indices)))
+        # tf.print('paramstate', parameter_state)
+        sq_diff = tfm.square(self.data.m_obs - tf.gather(m_pred, self.data.common_indices, axis=2))
 
         variance = tf.reshape(σ2_m, (-1, 1))
+        # tf.print(variance)
         if self.preprocessing_variance:
-            variance = logit(variance) + self.data.σ2_m_pre  # add PUMA variance
+            variance = variance + self.data.σ2_m_pre  # add PUMA variance
         log_lik = -0.5 * tfm.log(2 * PI * variance) - 0.5 * sq_diff / variance
-        log_lik = tf.reduce_sum(log_lik)
+        log_lik = tf.reduce_mean(log_lik)
         return log_lik
 
     @tf.function  # (experimental_compile=True)
@@ -241,7 +249,11 @@ class TranscriptionRegulationLFM(MCMCLFM):
         Computes log-likelihood of the transcription factors.
         """
         parameter_state = {**self.parameter_state, **parameters}
-
+        # tf.print(
+        #     'param', parameters['latent'],
+        #     'self', self.parameter_state['latent'],
+        #     'state', parameter_state['latent']
+        #  )
         σ2_f = parameter_state['σ2_f']
         latent = parameter_state['latent']
 
@@ -278,10 +290,10 @@ class TranscriptionRegulationLFM(MCMCLFM):
             for j, param in enumerate(subsampler.param_group):
                 samples = group_samples[j]
                 if type(samples) is list:
-                    samples = [s.numpy() for s in samples]
+                    samples = [s.numpy()[-burnin:] for s in samples]
                 else:
-                    samples = samples.numpy()
-                results[param.name] = samples
+                    samples = samples.numpy()[-burnin:]
+                results[param.name] = param.transform(samples)
 
         return results
 
@@ -293,8 +305,6 @@ class TranscriptionRegulationLFM(MCMCLFM):
                 parameter_state[key] = [result[0][-1]]
             else:
                 parameter_state[key] = result[-1]
-        # delay = results.delay[-i] if self.options.delays else None
-        # k_fbar = results.k_fbar[-i] if self.options.translation else None
         return self.predict_m(**parameter_state)
 
     def save(self, name):

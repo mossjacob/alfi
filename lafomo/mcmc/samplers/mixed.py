@@ -26,11 +26,7 @@ class MixedSampler(tfp.mcmc.TransitionKernel):
         self.initial_state = list()
         self.ordered_param_names = list()
         self.param_transforms = dict()
-        for subsampler in self.subsamplers:
-            param_state = [param.transform(param.value) for param in subsampler.param_group]
-            self.initial_state.append(param_state)
-            self.ordered_param_names.append([param.name for param in subsampler.param_group])
-            self.param_transforms.update({param.name: param.transform for param in subsampler.param_group})
+
         super().__init__()
 
     def before_iteration(self, current_state):
@@ -47,11 +43,31 @@ class MixedSampler(tfp.mcmc.TransitionKernel):
 
             self.iteration_callback(parameter_state)
 
+    def initialise_state(self):
+        if self.samples is None:
+            for subsampler in self.subsamplers:
+                param_state = [(param.value) for param in subsampler.param_group]
+                self.initial_state.append(param_state)
+                self.ordered_param_names.append([param.name for param in subsampler.param_group])
+                self.param_transforms.update({param.name: param.transform for param in subsampler.param_group})
+        else:
+            new_state = list()
+            for sample_group in self.samples:
+                new_group = list()
+                for element in sample_group:
+                    if type(element) is list:
+                        new_group.append([e[-1] for e in element])
+                    else:
+                        new_group.append(element[-1])
+                new_state.append(new_group)
+            self.initial_state = new_state
+
     def sample(self, T=2000, store_every=10, burn_in=1000, report_every=100, skip=None, num_chains=4,
                profile=False):
         print('----- Sampling Begins -----')
-        current_state = self.initial_state
         self.T = T
+        self.initialise_state()
+        current_state = self.initial_state
 
         def trace_fn(a, previous_kernel_results):
             return previous_kernel_results.is_accepted
@@ -77,25 +93,24 @@ class MixedSampler(tfp.mcmc.TransitionKernel):
         if profile:
             tf.profiler.experimental.stop()
 
-        if self.samples is not None:
-            for index, sampler in enumerate(self.subsamplers):
-                param_samples = samples[index]
-                if type(param_samples[0]) is list:
-                    param_samples = param_samples[0]
-                    for i in range(len(param_samples)):
-                        self.samples[index][0][i] = tf.concat([self.samples[index][i], param_samples[i]], axis=0)
-                else:
-                    for i in range(len(param_samples)):
-                        self.samples[index][i] = tf.concat([self.samples[index][i], param_samples[i]], axis=0)
-
-                # param_samples = [[param_samples[i][-1] for i in range(len(param_samples))]]
-                # param.value = param_samples[-1]
-        else:
-            self.samples = samples
+        # if self.samples is not None:
+        #     for index, sampler in enumerate(self.subsamplers):
+        #         param_samples = samples[index]
+        #         if type(param_samples[0]) is list:
+        #             param_samples = param_samples[0]
+        #             for i in range(len(param_samples)):
+        #                 self.samples[index][0][i] = tf.concat([self.samples[index][i], param_samples[i]], axis=0)
+        #         else:
+        #             for i in range(len(param_samples)):
+        #                 self.samples[index][i] = tf.concat([self.samples[index][i], param_samples[i]], axis=0)
+        #
+        #         # param_samples = [[param_samples[i][-1] for i in range(len(param_samples))]]
+        #         # param.value = param_samples[-1]
+        # else:
+        self.samples = samples
         self.is_accepted = is_accepted
         print()
         print('----- Finished -----')
-        return samples, is_accepted
 
     def one_step(self, current_state, previous_kernel_results):
         # if previous_kernel_results.iteration % 10:
@@ -114,16 +129,17 @@ class MixedSampler(tfp.mcmc.TransitionKernel):
                 inner_results.append(previous_kernel_results.inner_results[i])
                 continue
 
-            # tgt_prob = self.subsamplers[i].target_log_prob_fn_fn(current_state)(*wrapped_state_i)
-            # if hasattr(previous_kernel_results.inner_results[i], 'accepted_results'):
-            #
-            #     propres = previous_kernel_results.inner_results[i].accepted_results._replace(
-            #         target_log_prob=tgt_prob)
-            #     previous_kernel_results.inner_results[i] = previous_kernel_results.inner_results[i]._replace(
-            #         proposed_results=propres)
-            # else:
-            #     previous_kernel_results.inner_results[i] = previous_kernel_results.inner_results[i]._replace(
-            #         target_log_prob=tgt_prob)
+            if hasattr(self.subsamplers[i], 'target_log_prob_fn'):
+                tgt_prob = self.subsamplers[i].target_log_prob_fn(*current_state[i])
+                if hasattr(previous_kernel_results.inner_results[i], 'accepted_results'):
+                    propres = previous_kernel_results.inner_results[i].accepted_results._replace(
+                        target_log_prob=tgt_prob)
+                    previous_kernel_results.inner_results[i] = previous_kernel_results.inner_results[i]._replace(
+                        proposed_results=propres)
+                else:
+
+                    previous_kernel_results.inner_results[i] = previous_kernel_results.inner_results[i]._replace(
+                        target_log_prob=tgt_prob)
 
             try:
                 # state_chained = tf.expand_dims(current_state[i], 0)

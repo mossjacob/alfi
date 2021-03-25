@@ -32,8 +32,8 @@ class GPKernelSelector():
             'rbf': [tfd.Uniform(f64(1), f64(20)), tfd.Uniform(f64(min_dist**2), f64(10))],
             'mlp': [tfd.Uniform(f64(3.5), f64(10)), tfd.InverseGamma(f64(0.01), f64(0.01))],
         }
-        v_prop = lambda v: tfd.TruncatedNormal(v, 0.007, low=0, high=100)
-        l2_prop = lambda l2: tfd.TruncatedNormal(l2, 0.007, low=0, high=100)
+        v_prop = lambda v: tfd.TruncatedNormal(v, 0.01, low=0, high=100)
+        l2_prop = lambda l2: tfd.TruncatedNormal(l2, 0.01, low=0, high=100)
         proposals = [v_prop, l2_prop]
         self._proposals = {
             'rbf': proposals,

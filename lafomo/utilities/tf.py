@@ -106,9 +106,9 @@ class ArrayList:
         return data
 
 class LogisticNormal():
-    def __init__(self, a, b, loc=f64(0), scale=f64(1.5), allow_nan_stats=True):
-        self.a = a
-        self.b = b
+    def __init__(self, a, b, loc=f64(0), scale=f64(1.5), allow_nan_stats=True, dtype='float64'):
+        self.a = f64(a)
+        self.b = f64(b)
         self.dist = tfd.LogitNormal(loc, scale, allow_nan_stats=allow_nan_stats)
 #         super().__init__(loc, scale, allow_nan_stats=allow_nan_stats)
     def log_prob(self, x):
