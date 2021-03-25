@@ -64,7 +64,10 @@ class Plotter:
                 plt.scatter(t_scatter, y_scatter[replicate, i], color=self.scatter_color, marker='x')
 
             if ylim is None:
-                plt.ylim(-0.2, max(mu[replicate, i]) * 1.2)
+                lb = min(mu[replicate, i])
+                lb -= 0.2 * lb
+                ub = max(mu[replicate, i]) * 1.2
+                plt.ylim(lb, ub)
         plt.tight_layout()
         return q_m
 
@@ -95,6 +98,7 @@ class Plotter:
                 plt.ylim(ylim)
 
         plt.title('Latent')
+        return q_f
 
     def plot_kinetics(self):
         plt.figure(figsize=(8, 4))

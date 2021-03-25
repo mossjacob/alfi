@@ -7,14 +7,14 @@ from lafomo.datasets import TranscriptomicTimeSeries
 
 
 class Pancreas(TranscriptomicTimeSeries):
-    def __init__(self):
+    def __init__(self, max_cells=10000):
         super().__init__()
         import scvelo as scv
         data = scv.datasets.pancreas()
         scv.pp.filter_and_normalize(data, min_shared_counts=20, n_top_genes=2000)
         scv.pp.moments(data, n_neighbors=30, n_pcs=30)
-        u = data.layers['unspliced'].toarray()[:10]
-        s = data.layers['spliced'].toarray()[:10]
+        u = data.layers['unspliced'].toarray()[:max_cells]
+        s = data.layers['spliced'].toarray()[:max_cells]
         print(u.shape, s.shape)
 
         self.num_outputs = 4000

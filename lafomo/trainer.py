@@ -59,7 +59,7 @@ class Trainer:
                     kernel = self.lfm.covar_module
                 else:
                     kernel = self.lfm.gp_model.covar_module
-                print(f') λ: {str(kernel.lengthscale[0].detach().numpy())}', end='')
+                print(f') λ: {str(kernel.lengthscale.view(-1).detach().numpy())}', end='')
                 self.print_extra()
 
             losses.append(split_loss)
@@ -156,6 +156,7 @@ class VariationalTrainer(Trainer):
 
     def debug_out(self, data_input, y_target, output):
         pass
+
 
 class TranscriptionalTrainer(VariationalTrainer):
     """

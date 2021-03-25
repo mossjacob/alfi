@@ -17,7 +17,7 @@ class PlotOptions:
     num_plot_genes: int = 20
     num_plot_tfs:   int = 20
     gene_names:     np.array = None
-    tf_names:       list = None
+    tf_names:       np.array = None
     num_kinetic_avg:int = 50
     num_hpd:        int = 100
     true_label:     str = 'True'
@@ -182,7 +182,7 @@ class Plotter:
         self.plot_samples(m_preds, names, self.opt.num_plot_genes, 
                           scatters=scatters, legend=not self.opt.for_report)
 
-    def plot_latents(self, f_samples, replicate=0, scale_observed=False, plot_barenco=False, sample_gap=2):
+    def plot_latents(self, f_samples, replicate=0, plot_barenco=False, sample_gap=2):
         f_samples = f_samples[:, replicate]
         num_tfs = self.data.f_obs.shape[1]
         width = 6*min(num_tfs, 3)

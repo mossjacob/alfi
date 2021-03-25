@@ -43,7 +43,6 @@ class OrdinaryLFM(VariationalLFM):
         # Get GP outputs
         t_f = torch.arange(t.min(), t.max()+step_size/3, step_size/3)
         q_f = self.gp_model(t_f)
-
         # Integrate forward from the initial positions h0.
         h0 = self.initial_state()
         h0 = h0.unsqueeze(0).repeat(self.config.num_samples, 1, 1)
@@ -65,7 +64,6 @@ class OrdinaryLFM(VariationalLFM):
         h_mean = self.decode(h_mean)
         # TODO: make distribution something less constraining
         h_covar = torch.diag_embed(h_var)
-        # print(h_mean.shape, h_covar.shape)
 
         batch_mvn = gpytorch.distributions.MultivariateNormal(h_mean, h_covar)
         return gpytorch.distributions.MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)

@@ -2,18 +2,17 @@ import torch
 from torch.nn import Parameter
 
 from lafomo.models import OrdinaryLFM
-from lafomo.datasets import LFMDataset
 from lafomo.configuration import VariationalConfiguration
 
 
 class RNAVelocityLFM(OrdinaryLFM):
-    def __init__(self, gp_model, config: VariationalConfiguration, dataset: LFMDataset, **kwargs):
-        super().__init__(gp_model, config, dataset, **kwargs)
-        num_genes = dataset.num_outputs // 2
+    def __init__(self, num_cells, num_outputs, gp_model, config: VariationalConfiguration, **kwargs):
+        super().__init__(num_outputs, gp_model, config, **kwargs)
+        num_genes = num_outputs // 2
         self.transcription_rate = Parameter(3 * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64))
         self.splicing_rate = Parameter(3 * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64))
         self.decay_rate = Parameter(1 * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64))
-        self.num_cells = dataset[0][0].shape[0]
+        self.num_cells = num_cells
         ### Initialise random time assignments
         self.time_assignments = torch.rand(self.num_cells, requires_grad=False)
 

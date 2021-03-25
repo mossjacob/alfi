@@ -85,7 +85,7 @@ class HafnerData(TranscriptomicTimeSeries):
                 'TYMSOS','TMEM198B','TIGAR','ASTN2','ANKRA2','RRM2B','TAP1','TP53I3','PNRC1',
                 'GLS2','TMEM229B','IKBIP','ERCC5','KIAA1217','DDIT4','DDB2','TP53INP1'
             ])
-        np.random.shuffle(target_genes)
+        # np.random.shuffle(target_genes)
         self.num_outputs = len(target_genes)
         tfs = ['TP53']
         with open(path.join(data_dir, 'GSE100099_RNASeqGEO.tsv'), 'r', 1) as f:
