@@ -7,25 +7,46 @@ from lafomo.datasets import TranscriptomicTimeSeries
 
 
 class Pancreas(TranscriptomicTimeSeries):
-    def __init__(self, max_cells=10000):
+    def __init__(self, max_cells=10000, data_dir='./', calc_moments=True):
         super().__init__()
-        import scvelo as scv
-        data = scv.datasets.pancreas()
-        scv.pp.filter_and_normalize(data, min_shared_counts=20, n_top_genes=2000)
-        scv.pp.moments(data, n_neighbors=30, n_pcs=30)
-        u = data.layers['unspliced'].toarray()[:max_cells]
-        s = data.layers['spliced'].toarray()[:max_cells]
-        print(u.shape, s.shape)
-
         self.num_outputs = 4000
-        self.loom = data
-        self.gene_names = self.loom.var.index
-        self.data = np.concatenate([u, s], axis=1)
-        num_cells = self.data.shape[0]
-        self.data = torch.tensor(self.data.swapaxes(0, 1).reshape(4000, 1, num_cells))
-        self.m_observed = self.data.permute(1, 0, 2)
 
-        self.data = list(self.data)
+        data_path = path.join(data_dir, 'pancreas.pt')
+        if path.exists(data_path):
+            data = torch.load(data_path)
+            self.m_observed = data['m_observed']
+            self.data = data['data']
+            self.gene_names = data['gene_names']
+            self.loom = data['loom']
+        else:
+            import scvelo as scv
+            data = scv.datasets.pancreas()
+            scv.pp.filter_and_normalize(data, min_shared_counts=20, n_top_genes=2000)
+            scv.pp.moments(data, n_neighbors=30, n_pcs=30)
+            u = data.layers['unspliced'].toarray()[:max_cells]
+            s = data.layers['spliced'].toarray()[:max_cells]
+            if calc_moments:
+                scv.pp.moments(data, n_neighbors=30, n_pcs=30)
+                u = data.layers['Mu']
+                s = data.layers['Ms']
+
+            print(u.shape, s.shape)
+
+            self.loom = data
+            self.gene_names = self.loom.var.index
+            self.data = np.concatenate([u, s], axis=1)
+            num_cells = self.data.shape[0]
+            self.data = torch.tensor(self.data.swapaxes(0, 1).reshape(4000, 1, num_cells))
+            self.m_observed = self.data.permute(1, 0, 2)
+
+            self.data = list(self.data)
+
+            torch.save({
+                'data': self.data,
+                'm_observed': self.m_observed,
+                'gene_names': self.gene_names,
+                'loom': self.loom,
+            }, data_path)
 
 
 class SingleCellKidney(TranscriptomicTimeSeries):
