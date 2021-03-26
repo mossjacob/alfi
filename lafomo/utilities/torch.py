@@ -1,5 +1,6 @@
 import torch
 import math
+import numpy as np
 CUDA_AVAILABLE = False
 
 
@@ -44,3 +45,21 @@ def cholesky_inverse(cholesky_factor, upper=False):
     else:
         matrix = torch.cholesky_inverse(cholesky_factor, upper=upper)
     return matrix
+
+
+def get_image(data, intensity_index=2):
+    """
+    Returns an array compatible with plt.imshow
+    Parameters:
+        data: should be of shape (N, D) where N is the number of datapoints and D is the number of columns.
+              First two columns are temporal and spatial dimensions
+        intensity_index: the column index of the intensity of the image
+    """
+    ts = np.unique(data[:, 0])
+    rows = list()
+    diff = data[:-1, 0] - data[1:, 0]
+    diff = int(np.ceil(np.abs(diff[np.nonzero(diff)][0])))+1
+    for t in ts:
+        row = data[data[:, 0] == t, intensity_index]
+        rows.extend([row] * diff)
+    return np.array(rows).T

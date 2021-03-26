@@ -151,7 +151,9 @@ class ToyTimeSeries(TranscriptomicTimeSeries):
 
 class ToySpatialTranscriptomics(LFMDataset):
     """
-
+    Toy dataset from López-Lopera et al. (2019)
+    https://arxiv.org/abs/1808.10026
+    Data download: https://github.com/anfelopera/PhysicallyGPDrosophila
     """
     def __init__(self, data_dir='../data/'):
         data = pd.read_csv(path.join(data_dir, 'demToy1GPmRNA.csv'))
@@ -160,6 +162,24 @@ class ToySpatialTranscriptomics(LFMDataset):
         t_observed = torch.tensor(data.values[:, 0:2]).permute(1, 0)
         data = torch.tensor(data.values[:, 3])
         self.data = [(t_observed, data)]
+
+
+class DrosophilaSpatialTranscriptomics(LFMDataset):
+    """
+    Dataset from Becker et al. (2013).
+    Reverse engineering post-transcriptional regulation of
+    gap genes in Drosophila melanogaster
+    """
+    def __init__(self, gene='kr', data_dir='../data/'):
+        indents = {'kr': 64, 'kni': 56, 'gt': 60}
+        assert gene in indents
+        data = pd.read_csv(path.join(data_dir, f'clean_{gene}.csv'))
+        data = data.iloc[indents[gene]:].values
+        self.orig_data = data[:, [0, 1, 3, 2]]
+        self.num_outputs = 1
+        x_observed = torch.tensor(data[:, 0:2]).permute(1, 0)
+        data = torch.tensor(data[:, 3]).unsqueeze(0)
+        self.data = [(x_observed, data)]
 
 
 class MarkovJumpProcess:
