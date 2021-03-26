@@ -30,6 +30,12 @@ toy_spatiotemporal:
     partial:
       epochs: 100
 
+drospohila_spatiotemporal:
+  num_latents: 1
+  methods:
+    partial:
+      epochs: 100
+
 mnist:
   methods:
     variational:

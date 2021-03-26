@@ -1,15 +1,12 @@
 import torch
-import numpy as np
 from torch.nn import Parameter
 from matplotlib import pyplot as plt
-import seaborn as sns
 import seaborn as sns
 import numpy as np
 
 from lafomo.datasets import P53Data
 from lafomo.configuration import VariationalConfiguration
 from lafomo.models import OrdinaryLFM, MultiOutputGP
-from lafomo.plot import Plotter
 from lafomo.trainer import TranscriptionalTrainer
 
 
@@ -70,7 +67,7 @@ def diff(lfm: TranscriptionLFM):
     D = lfm.basal_rate.detach()
     S = lfm.basal_rate.detach()
     mse = torch.square(B-B_exact) + torch.square(D-D_exact) + torch.square(S-S_exact)
-    mse = mse.sum()
+    mse = mse.mean()
 
     return mse
 
@@ -89,10 +86,11 @@ with open('experiments/inducing_points.txt', 'w') as f:
         trainer = P53ConstrainedTrainer(lfm, optimizer, dataset)
 
         lfm.train()
-        trainer.train(350, report_interval=10, step_size=1e-1)
+        trainer.train(350, report_interval=9, step_size=1e-1)
+        last_loss = trainer.losses[-1].sum()
         mse = diff(lfm)
         f.write(f'{i}\t{mse}\n')
-        outputs.append((i, mse))
+        outputs.append((i, mse, last_loss))
 
     outputs = np.array(outputs)
     palette = sns.color_palette('colorblind')
@@ -101,6 +99,12 @@ with open('experiments/inducing_points.txt', 'w') as f:
     sns.set(font="CMU Serif")
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = 'CMU Serif'
+
+    plt.figure(figsize=(4, 3))
+    plt.plot(outputs[:, 0], outputs[:, 2])
+    plt.xlabel('Inducing points')
+    plt.ylabel('MSE')
+    plt.savefig('experiments/inducingpoints_loss.pdf')
 
     plt.figure(figsize=(4, 3))
     plt.plot(outputs[:, 0], outputs[:, 1])
