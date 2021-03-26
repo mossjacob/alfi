@@ -6,7 +6,7 @@ import pandas as pd
 from scipy.io import loadmat
 
 from lafomo.datasets import load_barenco_puma
-from lafomo.datasets import LFMDataset
+from . import LFMDataset
 
 from tqdm import tqdm
 from os import path
@@ -122,7 +122,7 @@ class HafnerData(TranscriptomicTimeSeries):
         self.gene_names = target_genes
 
 
-class ToyTimeSeries(TranscriptomicTimeSeries):
+class MCMCToyTimeSeries(TranscriptomicTimeSeries):
     def __init__(self, delay=False):
         # We import the dataset here since it uses TensorFlow
         from lafomo.datasets.artificial import get_artificial_dataset

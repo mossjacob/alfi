@@ -6,7 +6,8 @@ from torch.distributions import MultivariateNormal
 from .lfm import LFM
 from lafomo.kernels import SIMKernel
 from lafomo.means import SIMMean
-from lafomo.utilities.data import flatten_dataset, LFMDataset
+from lafomo.utilities.data import flatten_dataset
+from lafomo.datasets import LFMDataset
 
 
 class ExactLFM(LFM, gpytorch.models.ExactGP):
