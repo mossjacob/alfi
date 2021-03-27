@@ -3,8 +3,10 @@ p53:
   methods:
     exact:
       epochs: 150
+      report_interval: 5
     variational:
       epochs: 300
+      report_interval: 10
     mcmc:
       epochs: 2000
 
@@ -13,6 +15,7 @@ hafner:
   methods:
     variational:
       epochs: 300
+      report_interval: 10
     mcmc:
       epochs: 2000
 
@@ -29,13 +32,14 @@ toy_spatial:
   methods:
     partial:
       epochs: 100
+      report_interval: 1
 
 drosophila:
   num_latents: 1
   methods:
     partial:
       epochs: 60
-
+      report_interval: 1
 mnist:
   methods:
     variational:

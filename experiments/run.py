@@ -151,7 +151,7 @@ if __name__ == "__main__":
             filepath.mkdir(parents=True, exist_ok=True)
 
             model, trainer, plotter = builders[method](dataset)
-            trainer.train(**methods[method], report_interval=10)
+            trainer.train(**methods[method])
             if method in plotters:
                 plotters[method](model, trainer, plotter)
 

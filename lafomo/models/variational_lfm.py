@@ -68,6 +68,7 @@ class VariationalLFM(LFM, ABC):
     def parameters(self, recurse: bool = True) -> Iterator[Parameter]:
         return [
             *self.gp_model.parameters(recurse),
+            *self.likelihood.parameters(),
             *super().parameters(recurse)
         ]
 
@@ -97,12 +98,12 @@ class VariationalLFM(LFM, ABC):
              gp_cls,
              gp_args=[], gp_kwargs={},
              lfm_args=[], lfm_kwargs={}):
-        gp_state_dict = torch.load('gp-'+filepath+'.pt')
+        gp_state_dict = torch.load(filepath+'gp.pt')
         gp_model = gp_cls(*gp_args, **gp_kwargs)
         gp_model.load_state_dict(gp_state_dict)
         gp_model.double()
 
-        lfm_state_dict = torch.load('lfm-'+filepath+'.pt')
-        lfm = cls(gp_model, *lfm_args, **lfm_kwargs)
+        lfm_state_dict = torch.load(filepath+'lfm.pt')
+        lfm = cls(lfm_args[0], gp_model, *lfm_args[1:], **lfm_kwargs)
         lfm.load_state_dict(lfm_state_dict)
         return lfm
