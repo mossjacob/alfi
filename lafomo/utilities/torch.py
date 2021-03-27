@@ -57,9 +57,23 @@ def get_image(data, intensity_index=2):
     """
     ts = np.unique(data[:, 0])
     rows = list()
-    diff = data[:-1, 0] - data[1:, 0]
-    diff = int(np.ceil(np.abs(diff[np.nonzero(diff)][0])))+1
     for t in ts:
         row = data[data[:, 0] == t, intensity_index]
-        rows.extend([row] * diff)
+        rows.extend([row])
     return np.array(rows).T
+
+def discretise(time, num_discretised=40):
+    """
+    Calculates a discretised time grid with num_discretised points.
+    Note: the return size is of size num_discretised + 1
+    @param time: the time vector of size (2, N) where dim 0 is time, dim 1 is space.
+    @param num_discretised: the number of points in the time grid
+    @return: grid, time: discretised time grid as well as an updated time vector which is
+    down or upsampled to include all points in the discretised time grid
+    """
+    t = np.unique(time)
+    t.sort()
+    t_range = t[-1] - t[0]
+    dp = t_range / num_discretised
+    print('t_sorted, dp', t, dp)
+    return np.arange(t[0], t[-1] + dp, dp)

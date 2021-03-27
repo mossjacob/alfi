@@ -157,11 +157,12 @@ class ToySpatialTranscriptomics(LFMDataset):
     """
     def __init__(self, data_dir='../data/'):
         data = pd.read_csv(path.join(data_dir, 'demToy1GPmRNA.csv'))
-        self.orig_data = data
+        self.orig_data = data.values
         self.num_outputs = 1
-        t_observed = torch.tensor(data.values[:, 0:2]).permute(1, 0)
-        data = torch.tensor(data.values[:, 3])
-        self.data = [(t_observed, data)]
+        x_observed = torch.tensor(data.values[:, 0:2]).permute(1, 0)
+        data = torch.tensor(data.values[:, 3]).unsqueeze(0)
+        self.num_discretised = 40
+        self.data = [(x_observed, data)]
 
 
 class DrosophilaSpatialTranscriptomics(LFMDataset):
@@ -177,6 +178,7 @@ class DrosophilaSpatialTranscriptomics(LFMDataset):
         data = data.iloc[indents[gene]:].values
         self.orig_data = data[:, [0, 1, 3, 2]]
         self.num_outputs = 1
+        self.num_discretised = 7
         x_observed = torch.tensor(data[:, 0:2]).permute(1, 0)
         data = torch.tensor(data[:, 3]).unsqueeze(0)
         self.data = [(x_observed, data)]

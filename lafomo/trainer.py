@@ -16,7 +16,7 @@ class Trainer:
     ----------
     lfm: .
     optimizer:
-    dataset: Dataset where t_observed (T,), m_observed (J, T).
+    dataset: Dataset where t_observed (D, T), m_observed (J, T).
     inducing timepoints.
     give_output: whether the trainer should give the first output (y_0) as initial value to the model `forward()`
     """
@@ -28,7 +28,6 @@ class Trainer:
         self.num_epochs = 0
         self.kl_mult = 0
         self.optimizer = optimizer
-        self.t_observed = dataset.data[0][0].view(-1)
         self.batch_size = batch_size
         self.data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
         self.losses = np.empty((0, 2))

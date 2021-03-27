@@ -3,8 +3,9 @@ from fenics_adjoint import *
 
 import torch_fenics
 
+
 class ReactionDiffusion(torch_fenics.FEniCSModule):
-    def __init__(self, t_range: tuple, time_steps, mesh_cells):
+    def __init__(self, t_range: tuple, time_steps, mesh):
         """
         Parameters:
             t_range: tuple(low, high)
@@ -13,11 +14,9 @@ class ReactionDiffusion(torch_fenics.FEniCSModule):
         """
         super().__init__()
         self.time_steps = time_steps
-        self.mesh_cells = mesh_cells
-        self.dt = t_range[1] / self.time_steps
-        # Create function space
-        mesh = UnitIntervalMesh(mesh_cells)
-        self.V = FunctionSpace(mesh, 'P', 1)
+        self.dt = ((t_range[1] - t_range[0]) / self.time_steps).item()
+        self.mesh = mesh
+        self.V = FunctionSpace(self.mesh, 'P', 1)
 
         # Create trial and test functions
         y = TrialFunction(self.V)
