@@ -16,6 +16,4 @@ def plot_before_after(before, after, extent):
     fig.colorbar(im, cax=axes[3])
     axes[0].axis('off')
     axes[2].axis('off')
-    xy = lfm.inducing_points.detach()[0]
-    axes[0].scatter(xy[:, 0], xy[:, 1], facecolors='none', edgecolors='r', s=3)
-
+    return axes

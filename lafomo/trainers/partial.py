@@ -1,8 +1,11 @@
 import torch
 import numpy as np
+from matplotlib import pyplot as plt
+from datetime import datetime
 
 from lafomo.utilities.torch import is_cuda, discretise
 from lafomo.models import PartialLFM
+from lafomo.plot import plot_before_after
 from .variational import VariationalTrainer
 
 
@@ -73,10 +76,19 @@ class PDETrainer(VariationalTrainer):
     def debug_out(self, data_input, y_target, output):
 
         print(output.variance.max(), output.mean.shape, output.variance.shape)
+        ts = self.tx[0, :].unique().numpy()
+        xs = self.tx[1, :].unique().numpy()
+        extent = [ts[0], ts[-1], xs[0], xs[-1]]
 
+        num_t = ts.shape[0]
+        num_x = xs.shape[0]
         f_mean = output.mean.reshape(num_t, num_x).detach()
         y_target = y_target.reshape(num_t, num_x)
-        plot_before_after(f_mean.transpose(0, 1), y_target.transpose(0, 1), extent)
+        axes = plot_before_after(f_mean.transpose(0, 1), y_target.transpose(0, 1), extent)
+        xy = self.lfm.inducing_points.detach()[0]
+        axes[0].scatter(xy[:, 0], xy[:, 1], facecolors='none', edgecolors='r', s=3)
+
+        plt.savefig(str(datetime.now().timestamp()) + '.png')
 
     def print_extra(self):
         print(' s:', self.lfm.fenics_parameters[0][0].item(),

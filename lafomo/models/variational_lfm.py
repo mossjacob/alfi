@@ -88,8 +88,8 @@ class VariationalLFM(LFM, ABC):
         return q_f
 
     def save(self, filepath):
-        torch.save(self.gp_model.state_dict(), 'gp-'+filepath+'.pt')
-        torch.save(self.state_dict(), 'lfm-'+filepath+'.pt')
+        torch.save(self.gp_model.state_dict(), filepath+'gp.pt')
+        torch.save(self.state_dict(), filepath+'lfm.pt')
 
     @classmethod
     def load(cls,

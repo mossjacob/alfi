@@ -16,7 +16,7 @@ hafner:
     mcmc:
       epochs: 2000
 
-artificial:
+toy:
   num_latents: 3
   methods:
     variational:
@@ -24,17 +24,17 @@ artificial:
     mcmc:
       epochs: 2000
 
-toy_spatiotemporal:
+toy_spatial:
   num_latents: 1
   methods:
     partial:
       epochs: 100
 
-drospohila_spatiotemporal:
+drosophila:
   num_latents: 1
   methods:
     partial:
-      epochs: 100
+      epochs: 60
 
 mnist:
   methods:

@@ -23,3 +23,5 @@ ffc_element*
 
 # Sphinx docs
 /docs/_build/
+
+pull.sh

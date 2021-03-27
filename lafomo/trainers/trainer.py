@@ -79,7 +79,8 @@ class Trainer:
         print('')
 
     def after_epoch(self):
-        params = dict(self.lfm.named_parameters())
-        for key in params:
-            if key in self.parameter_trace:
-                self.parameter_trace[key].append(params[key].detach())
+        if self.parameter_trace is not None:
+            params = dict(self.lfm.named_parameters())
+            for key in params:
+                if key in self.parameter_trace:
+                    self.parameter_trace[key].append(params[key].detach())
