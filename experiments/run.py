@@ -155,6 +155,6 @@ if __name__ == "__main__":
             if method in plotters:
                 plotters[method](model, trainer, plotter)
 
-            model.save(str(filepath / (str(datetime.now().timestamp()) + 'savedmodel')))
+            model.save(str(filepath / 'savedmodel'))
         else:
             print('--ignoring method', method, 'since no builder implemented.')

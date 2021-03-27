@@ -92,6 +92,6 @@ class PDETrainer(VariationalTrainer):
 
     def print_extra(self):
         print(' s:', self.lfm.fenics_parameters[0][0].item(),
-              'dif:', self.lfm.fenics_parameters[0][0].item(),
-              'dec:', self.lfm.fenics_parameters[0][0].item())
+              'dif:', self.lfm.fenics_parameters[1][0].item(),
+              'dec:', self.lfm.fenics_parameters[2][0].item())
 

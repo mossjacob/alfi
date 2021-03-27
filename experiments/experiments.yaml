@@ -1,4 +1,4 @@
-
+# p53 networks
 p53:
   methods:
     exact:
@@ -19,6 +19,7 @@ hafner:
     mcmc:
       epochs: 2000
 
+# Toy datasets
 toy:
   num_latents: 3
   methods:
@@ -34,12 +35,27 @@ toy_spatial:
       epochs: 100
       report_interval: 1
 
-drosophila:
+# Drosophila Experiments
+dros_kr:
   num_latents: 1
   methods:
     partial:
       epochs: 60
       report_interval: 1
+dros_kni:
+  num_latents: 1
+  methods:
+    partial:
+      epochs: 60
+      report_interval: 1
+dros_gt:
+  num_latents: 1
+  methods:
+    partial:
+      epochs: 60
+      report_interval: 1
+
+# Other stuff
 mnist:
   methods:
     variational:
