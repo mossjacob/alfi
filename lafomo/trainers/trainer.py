@@ -18,12 +18,12 @@ class Trainer:
     optimizer:
     dataset: Dataset where t_observed (D, T), m_observed (J, T).
     inducing timepoints.
-    give_output: whether the trainer should give the first output (y_0) as initial value to the model `forward()`
+    give_output: whether the trainers should give the first output (y_0) as initial value to the model `forward()`
     """
     def __init__(self,
                  lfm: LFM,
                  optimizer: torch.optim.Optimizer,
-                 dataset: LFMDataset, batch_size=1, give_output=False):
+                 dataset: LFMDataset, batch_size=1, give_output=False, track_parameters=None):
         self.lfm = lfm
         self.num_epochs = 0
         self.kl_mult = 0
@@ -32,6 +32,9 @@ class Trainer:
         self.data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
         self.losses = np.empty((0, 2))
         self.give_output = give_output
+        self.parameter_trace = None
+        if track_parameters is not None:
+            self.parameter_trace = {key: list() for key in track_parameters}
 
     def initial_value(self, y):
         initial_value = torch.zeros((self.batch_size, 1), dtype=torch.float64)
@@ -76,4 +79,7 @@ class Trainer:
         print('')
 
     def after_epoch(self):
-        pass
+        params = dict(self.lfm.named_parameters())
+        for key in params:
+            if key in self.parameter_trace:
+                self.parameter_trace[key].append(params[key].detach())
