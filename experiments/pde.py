@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 
 from lafomo.models import MultiOutputGP, PartialLFM
 from lafomo.models.pdes import ReactionDiffusion
-from lafomo.trainer import VariationalTrainer
+from lafomo.trainers import VariationalTrainer
 from lafomo.datasets import ToySpatialTranscriptomics, P53Data
 from lafomo.configuration import VariationalConfiguration
 from lafomo.utilities.torch import save, load

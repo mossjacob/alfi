@@ -1,13 +1,9 @@
 import torch
-import numpy as np
-import gpytorch
-from torch.utils.data.dataloader import DataLoader
 
 from lafomo.utilities.torch import is_cuda
-from lafomo.datasets import LFMDataset
-from lafomo.models import LFM
 
 from .trainer import Trainer
+from lafomo.models import VariationalLFM
 
 
 class VariationalTrainer(Trainer):
@@ -15,7 +11,7 @@ class VariationalTrainer(Trainer):
     Parameters:
         batch_size: in the case of the transcriptional regulation model, we train the entire gene set as a batch
     """
-    def __init__(self, lfm, optimizer: torch.optim.Optimizer, dataset, **kwargs):
+    def __init__(self, lfm: VariationalLFM, optimizer: torch.optim.Optimizer, dataset, **kwargs):
         super().__init__(lfm, optimizer, dataset, batch_size=lfm.num_outputs, **kwargs)
 
     def single_epoch(self, step_size=1e-1):

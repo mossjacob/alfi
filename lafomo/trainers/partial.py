@@ -1,17 +1,14 @@
 import torch
 import numpy as np
-import gpytorch
-from torch.utils.data.dataloader import DataLoader
 
-from lafomo.utilities.torch import is_cuda
-from lafomo.datasets import LFMDataset
-from lafomo.models import LFM
+from lafomo.utilities.torch import is_cuda, discretise
+from lafomo.models import PartialLFM
 from .variational import VariationalTrainer
 
 
 class PDETrainer(VariationalTrainer):
 
-    def __init__(self, lfm: LFM, optimizer: torch.optim.Optimizer, dataset):
+    def __init__(self, lfm: PartialLFM, optimizer: torch.optim.Optimizer, dataset):
         super().__init__(lfm, optimizer, dataset)
         data = next(iter(dataset))
         data_input, y = data
