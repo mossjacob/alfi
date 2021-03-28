@@ -32,7 +32,7 @@ toy-spatial:
   num_latents: 1
   methods:
     partial:
-      epochs: 100
+      epochs: 1
       report_interval: 1
 
 # Drosophila Experiments
