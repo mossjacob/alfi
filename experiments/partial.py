@@ -14,10 +14,10 @@ from lafomo.utilities.fenics import interval_mesh
 tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
 
 
-def build_partial(dataset):
+def build_partial(dataset, params):
     data = next(iter(dataset))
     tx, y_target = data
-    lengthscale = 10
+    lengthscale = params['lengthscale']
 
     # Define mesh
     spatial = np.unique(tx[1, :])

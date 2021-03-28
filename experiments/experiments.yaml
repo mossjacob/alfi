@@ -32,28 +32,39 @@ toy-spatial:
   num_latents: 1
   methods:
     partial:
-      epochs: 1
-      report_interval: 1
-
+      train-params:
+        epochs: 80
+        report_interval: 1
+      model-params:
+        lengthscale: 1
 # Drosophila Experiments
 dros-kr:
   num_latents: 1
   methods:
     partial:
-      epochs: 60
-      report_interval: 1
+      train-params:
+        epochs: 80
+        report_interval: 1
+      model-params:
+        lengthscale: 10
 dros-kni:
   num_latents: 1
   methods:
     partial:
-      epochs: 60
-      report_interval: 1
+      train-params:
+        epochs: 80
+        report_interval: 1
+      model-params:
+        lengthscale: 10
 dros-gt:
   num_latents: 1
   methods:
     partial:
-      epochs: 60
-      report_interval: 1
+      train-params:
+        epochs: 80
+        report_interval: 1
+      model-params:
+        lengthscale: 10
 
 # Other stuff
 mnist:

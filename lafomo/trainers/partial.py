@@ -13,6 +13,7 @@ class PDETrainer(VariationalTrainer):
 
     def __init__(self, lfm: PartialLFM, optimizer: torch.optim.Optimizer, dataset, **kwargs):
         super().__init__(lfm, optimizer, dataset, **kwargs)
+        self.debug_iteration = 0
         data = next(iter(dataset))
         data_input, y = data
         data_input = data_input.cuda() if is_cuda() else data_input
@@ -74,7 +75,10 @@ class PDETrainer(VariationalTrainer):
         return loss.item(), (-log_likelihood.item(), kl_divergence.item())
 
     def debug_out(self, data_input, y_target, output):
-
+        if (self.debug_iteration % 10) != 0:
+            self.debug_iteration += 1
+            return
+        self.debug_iteration += 1
         print(output.variance.max(), output.mean.shape, output.variance.shape)
         ts = self.tx[0, :].unique().numpy()
         xs = self.tx[1, :].unique().numpy()

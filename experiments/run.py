@@ -75,18 +75,18 @@ if __name__ == "__main__":
     dataset = load_dataset(key)
     print(dataset)
     methods = data_config['methods']
-    for method in methods:
-        print('--and for method:', method)
-
-        if method in builders:
-            filepath = Path('experiments', key, method)
+    for method_key in methods:
+        print('--and for method:', method_key)
+        method = methods[method_key]
+        if method_key in builders:
+            filepath = Path('experiments', key, method_key)
             filepath.mkdir(parents=True, exist_ok=True)
-
-            model, trainer, plotter = builders[method](dataset)
-            trainer.train(**methods[method])
-            if method in plotters:
-                plotters[method](model, trainer, plotter, filepath)
+            modelparams = method['model-params'] if 'model-params' in method else None
+            model, trainer, plotter = builders[method_key](dataset, modelparams)
+            trainer.train(**method['train-params'])
+            if method_key in plotters:
+                plotters[method_key](model, trainer, plotter, filepath)
 
             model.save(str(filepath / 'savedmodel'))
         else:
-            print('--ignoring method', method, 'since no builder implemented.')
+            print('--ignoring method', method_key, 'since no builder implemented.')

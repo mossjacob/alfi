@@ -67,10 +67,8 @@ class PartialLFM(VariationalLFM):
         f_mean = outputs.mean(dim=0).view(1, -1)  # shape (batch, times * distance)
         # h_var = torch.var(h_samples, dim=1).squeeze(-1).permute(1, 0) + 1e-7
         f_var = outputs.var(dim=0).view(1, -1) + 1e-7
-        print(f_mean.shape, f_var.shape)
         # TODO: make distribution something less constraining
         f_covar = torch.diag_embed(f_var)
-        print(f_covar.shape)
         batch_mvn = MultivariateNormal(f_mean, f_covar)
         return MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)
 
@@ -79,7 +77,7 @@ class PartialLFM(VariationalLFM):
         outputs = list()
         y_prev = torch.zeros((self.config.num_samples, self.mesh_cells + 1), requires_grad=False, dtype=torch.float64)
 
-        print('yprev u', y_prev.shape, u.shape)
+        # print('yprev u', y_prev.shape, u.shape)
 
         # t = df['t'].values[:41]
         for n in range(self.time_steps + 1):
@@ -93,7 +91,6 @@ class PartialLFM(VariationalLFM):
             outputs.append(y_prev)
 
         outputs = torch.stack(outputs).permute(1, 0, 2) # (S, T, X)
-        print(outputs.shape)
         return outputs
 
     def G(self, u):
