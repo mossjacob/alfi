@@ -51,13 +51,13 @@ def build_partial(dataset, params):
         num_samples=25
     )
 
-    sensitivity = Parameter(torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
-    decay = Parameter(0.1*torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
-    diffusion = Parameter(0.01*torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
+    sensitivity = Parameter(params['sensitivity']*torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
+    decay = Parameter(params['decay']**torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
+    diffusion = Parameter(params['diffusion']**torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
     fenics_params = [sensitivity, decay, diffusion]
 
     lfm = PartialLFM(1, gp_model, fenics_model, fenics_params, config)
-    optimizer = torch.optim.Adam(lfm.parameters(), lr=0.07)
+    optimizer = torch.optim.Adam(lfm.parameters(), lr=0.1)
     trainer = PDETrainer(lfm, optimizer, dataset, track_parameters=list(lfm.fenics_named_parameters.keys()))
     plotter = Plotter(lfm, dataset.gene_names)
     return lfm, trainer, plotter

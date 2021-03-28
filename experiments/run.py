@@ -35,24 +35,6 @@ dataset_choices = list(config.keys())
 parser = argparse.ArgumentParser()
 parser.add_argument('--data', type=str, choices=dataset_choices, default=dataset_choices[0])
 
-# ------Set up model initialisers------ #
-
-builders = {
-    'variational': build_variational,
-    'exact': build_exact,
-    'partial': build_partial,
-}
-
-
-# ------Plotters------#
-
-plotters = {
-    'partial': plot_partial,
-    'variational': plot_variational,
-}
-
-# ------Datasets------ #
-
 def load_dataset(name):
     return {
         'p53': lambda: P53Data(replicate=0, data_dir='data'),
@@ -62,9 +44,18 @@ def load_dataset(name):
         'toy': ToyTimeSeries(),
     }[name]()
 
-# ------Exact------ #
-# We run the exact experiments separately as it isn't appropriate for all datasets
+# ------Set up model initialisers------ #
 
+builders = {
+    'variational': build_variational,
+    'exact': build_exact,
+    'partial': build_partial,
+}
+
+plotters = {
+    'partial': plot_partial,
+    'variational': plot_variational,
+}
 
 if __name__ == "__main__":
     args = parser.parse_args()
