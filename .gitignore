@@ -13,7 +13,7 @@ tf_reggae.egg-info/
 *.pt
 lafomo.egg-info/
 
-examples/saved_models/
+deprecated/saved_models/
 
 data/
 
