@@ -23,18 +23,6 @@ class ExactLFM(LFM, gpytorch.models.ExactGP):
         self.mean_module = SIMMean(self.covar_module, self.num_outputs, initial_basal)
 
     @property
-    def basal_rate(self):
-        return self.mean_module.basal
-
-    @property
-    def sensitivity(self):
-        return self.covar_module.sensitivity
-
-    @sensitivity.setter
-    def sensitivity(self, val):
-        self.covar_module.sensitivity = val
-
-    @property
     def decay_rate(self):
         return self.covar_module.decay
 
@@ -86,3 +74,15 @@ class ExactLFM(LFM, gpytorch.models.ExactGP):
         batch_mvn = gpytorch.distributions.MultivariateNormal(mean, var)
         print(batch_mvn)
         return gpytorch.distributions.MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)
+
+    def save(self, filepath):
+        torch.save(self.state_dict(), filepath+'lfm.pt')
+
+    @classmethod
+    def load(cls,
+             filepath,
+             lfm_args=[], lfm_kwargs={}):
+        lfm_state_dict = torch.load(filepath+'lfm.pt')
+        lfm = cls(*lfm_args, **lfm_kwargs)
+        lfm.load_state_dict(lfm_state_dict)
+        return lfm

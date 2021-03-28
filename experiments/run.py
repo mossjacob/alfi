@@ -1,23 +1,25 @@
-import torch
 import argparse
-import numpy as np
-import seaborn as sns
 import yaml
-import os
+import seaborn as sns
+from matplotlib import pyplot as plt
 
 from pathlib import Path
-from matplotlib import pyplot as plt
-from os import path
-from datetime import datetime
 
 from lafomo.datasets import (
     P53Data, HafnerData, ToyTimeSeries,
     ToySpatialTranscriptomics, DrosophilaSpatialTranscriptomics
 )
-
-from .partial import build_partial, plot_partial
+try:
+    from .partial import build_partial, plot_partial
+except ImportError:
+    build_partial, plot_partial = None, None
 from .variational import build_variational, plot_variational
-from .exact import build_exact
+from .exact import build_exact, plot_exact
+
+
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['font.serif'] = 'CMU Serif'
+sns.set(font="CMU Serif")
 
 # ------Config------ #
 
@@ -35,6 +37,7 @@ dataset_choices = list(config.keys())
 parser = argparse.ArgumentParser()
 parser.add_argument('--data', type=str, choices=dataset_choices, default=dataset_choices[0])
 
+
 def load_dataset(name):
     return {
         'p53': lambda: P53Data(replicate=0, data_dir='data'),
@@ -44,8 +47,8 @@ def load_dataset(name):
         'toy': ToyTimeSeries(),
     }[name]()
 
-# ------Set up model initialisers------ #
 
+# ------Set up model initialisers------ #
 builders = {
     'variational': build_variational,
     'exact': build_exact,
@@ -53,8 +56,12 @@ builders = {
 }
 
 plotters = {
+    'exact': plot_exact,
     'partial': plot_partial,
     'variational': plot_variational,
+}
+train_pre_step = {
+    'exact': lambda model: model.likelihood.train()
 }
 
 if __name__ == "__main__":
@@ -64,20 +71,27 @@ if __name__ == "__main__":
     print('Running experiments for dataset:', key)
     data_config = config[key]
     dataset = load_dataset(key)
-    print(dataset)
     methods = data_config['methods']
     for method_key in methods:
         print('--and for method:', method_key)
         method = methods[method_key]
         if method_key in builders:
+            # Create experiments path
             filepath = Path('experiments', key, method_key)
             filepath.mkdir(parents=True, exist_ok=True)
+
+            # Construct model
             modelparams = method['model-params'] if 'model-params' in method else None
             model, trainer, plotter = builders[method_key](dataset, modelparams)
+
+            # Train model with optional initial step
+            if method_key in train_pre_step:
+                train_pre_step[method_key](model)
             trainer.train(**method['train-params'])
             if method_key in plotters:
-                plotters[method_key](model, trainer, plotter, filepath)
-
+                plotters[method_key](dataset, model, trainer, plotter, filepath)
+            else:
+                print('--ignoring plotter for', method_key, 'since no plotter implemented.')
             model.save(str(filepath / 'savedmodel'))
         else:
             print('--ignoring method', method_key, 'since no builder implemented.')

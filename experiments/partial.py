@@ -4,10 +4,10 @@ from torch.nn import Parameter
 from matplotlib import pyplot as plt
 
 from lafomo.configuration import VariationalConfiguration
-from lafomo.models import OrdinaryLFM, MultiOutputGP, ExactLFM, PartialLFM
+from lafomo.models import MultiOutputGP, PartialLFM
 from lafomo.models.pdes import ReactionDiffusion
 from lafomo.plot import Plotter, plot_before_after
-from lafomo.trainers import ExactTrainer, VariationalTrainer, PDETrainer
+from lafomo.trainers import PDETrainer
 from lafomo.utilities.fenics import interval_mesh
 
 
@@ -63,7 +63,7 @@ def build_partial(dataset, params):
     return lfm, trainer, plotter
 
 
-def plot_partial(lfm, trainer, plotter, filepath):
+def plot_partial(dataset, lfm, trainer, plotter, filepath):
     tx = trainer.tx
     num_t = tx[0, :].unique().shape[0]
     num_x = tx[1, :].unique().shape[0]

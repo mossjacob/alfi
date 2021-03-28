@@ -1,13 +1,12 @@
 import torch
 import numpy as np
 
-
 from .trainer import Trainer
 
 
 class ExactTrainer(Trainer):
-    def __init__(self, *args, loss_fn):
-        super().__init__(*args)
+    def __init__(self, *args, loss_fn, **kwargs):
+        super().__init__(*args, **kwargs)
         self.loss_fn = loss_fn
         self.losses = np.empty((0, 1))
 
@@ -35,9 +34,9 @@ class ExactTrainer(Trainer):
 
     def after_epoch(self):
         with torch.no_grad():
-            sens = self.lfm.sensitivity
+            sens = self.lfm.covar_module.sensitivity
             sens[3] = np.float64(1.)
-            deca = self.lfm.decay_rate
+            deca = self.lfm.covar_module.decay
             deca[3] = np.float64(0.8)
-            self.lfm.sensitivity = sens
-            self.lfm.decay_rate = deca
+            self.lfm.covar_module.sensitivity = sens
+            self.lfm.covar_module.decay = deca

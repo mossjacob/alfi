@@ -20,20 +20,20 @@ class SIMKernel(gpytorch.kernels.Kernel):
     def __init__(self, num_genes, variance, **kwargs):
         super().__init__(**kwargs)
         self.num_genes = num_genes
-        self.pos_contraint = Positive()
+        self.pos_constraint = Positive()
         self.lengthscale_constraint = Interval(0.5, 2.5)
 
         self.register_parameter(
             name='raw_lengthscale', parameter=torch.nn.Parameter(
-                self.lengthscale_constraint.inverse_transform(1.414 * torch.ones(1, 1)))
+                self.lengthscale_constraint.inverse_transform(1.5 * torch.ones(1, 1)))
         )
         self.register_parameter(
             name='raw_decay', parameter=torch.nn.Parameter(
-                self.pos_contraint.inverse_transform(0.9 * torch.ones(self.num_genes)))
+                self.pos_constraint.inverse_transform(0.9 * torch.ones(self.num_genes)))
         )
         self.register_parameter(
             name='raw_sensitivity', parameter=torch.nn.Parameter(
-                self.pos_contraint.inverse_transform(1 * torch.ones(self.num_genes)))
+                self.pos_constraint.inverse_transform(1 * torch.ones(self.num_genes)))
         )
         self.register_parameter(
             name='raw_noise', parameter=torch.nn.Parameter(4 * torch.ones(self.num_genes))
@@ -41,9 +41,9 @@ class SIMKernel(gpytorch.kernels.Kernel):
 
         # register the constraints
         self.register_constraint("raw_lengthscale", self.lengthscale_constraint)
-        self.register_constraint("raw_decay", self.pos_contraint)
-        self.register_constraint("raw_sensitivity", self.pos_contraint)
-        self.register_constraint("raw_noise", self.pos_contraint)
+        self.register_constraint("raw_sensitivity", Positive())
+        self.register_constraint("raw_decay", Positive())
+        self.register_constraint("raw_noise", self.pos_constraint)
 
         self.variance = torch.diag(variance)
 
@@ -57,27 +57,27 @@ class SIMKernel(gpytorch.kernels.Kernel):
 
     @property
     def decay(self):
-        return self.pos_contraint.transform(self.raw_decay)
+        return self.pos_constraint.transform(self.raw_decay)
 
     @decay.setter
     def decay(self, value):
-        self.initialize(raw_decay=self.pos_contraint.inverse_transform(value))
+        self.initialize(raw_decay=self.pos_constraint.inverse_transform(value))
 
     @property
     def sensitivity(self):
-        return self.pos_contraint.transform(self.raw_sensitivity)
+        return self.pos_constraint.transform(self.raw_sensitivity)
 
     @sensitivity.setter
     def sensitivity(self, value):
-        self.initialize(raw_sensitivity=self.pos_contraint.inverse_transform(value))
+        self.initialize(raw_sensitivity=self.pos_constraint.inverse_transform(value))
 
     @property
     def noise(self):
-        return self.pos_contraint.transform(self.raw_noise)
+        return self.pos_constraint.transform(self.raw_noise)
 
     @noise.setter
     def noise(self, value):
-        self.initialize(raw_noise=self.pos_contraint.inverse_transform(value))
+        self.initialize(raw_noise=self.pos_constraint.inverse_transform(value))
 
     def plot_cov(self, x1, x2):
         from matplotlib import pyplot as plt

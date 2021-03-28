@@ -4,15 +4,16 @@ from torch.nn import Parameter
 from matplotlib import pyplot as plt
 
 from lafomo.configuration import VariationalConfiguration
-from lafomo.models import OrdinaryLFM, MultiOutputGP, ExactLFM
+from lafomo.models import OrdinaryLFM, MultiOutputGP
 from lafomo.plot import Plotter
 from lafomo.trainers import VariationalTrainer
-
+from lafomo.utilities.data import p53_ground_truth
 
 tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
 
 
-def build_variational(dataset):
+def build_variational(dataset, params):
+    num_tfs = 1
     class TranscriptionLFM(OrdinaryLFM):
         def __init__(self, num_outputs, gp_model, config: VariationalConfiguration):
             super().__init__(num_outputs, gp_model, config)
@@ -48,11 +49,9 @@ def build_variational(dataset):
 
     num_inducing = 12  # (I x m x 1)
     inducing_points = torch.linspace(0, 12, num_inducing).repeat(num_tfs, 1).view(num_tfs, num_inducing, 1)
-    t_predict = torch.linspace(-1, 13, 80, dtype=torch.float32)
-    step_size = 1e-1
 
     gp_model = MultiOutputGP(inducing_points, num_tfs)
-    lfm = TranscriptionLFM(num_genes, gp_model, config)
+    lfm = TranscriptionLFM(dataset.num_outputs, gp_model, config)
     plotter = Plotter(lfm, dataset.gene_names, style='seaborn')
 
     class P53ConstrainedTrainer(VariationalTrainer):
@@ -81,7 +80,23 @@ def build_variational(dataset):
     return lfm, trainer, plotter
 
 
-def plot_variational(lfm, trainer, plotter, filepath):
-    plt.savefig(filepath / 'outputs.pdf', **tight_kwargs)
-    plt.savefig(filepath / 'latents.pdf', **tight_kwargs)
+def plot_variational(dataset, lfm, trainer, plotter, filepath):
+    lfm.eval()
+
+    t_predict = torch.linspace(-1, 13, 80, dtype=torch.float32)
+
+    labels = ['Basal rates', 'Sensitivities', 'Decay rates']
+    kinetics = list()
+    for key in ['basal_rate', 'sensitivity', 'decay_rate']:
+        kinetics.append(trainer.parameter_trace[key][-1].squeeze().numpy())
+
+    plotter.plot_double_bar(kinetics, labels, p53_ground_truth())
     plt.savefig(filepath / 'kinetics.pdf', **tight_kwargs)
+
+    plotter.plot_outputs(t_predict, replicate=0,
+                         t_scatter=dataset.t_observed, y_scatter=dataset.m_observed,
+                         model_kwargs=dict(step_size=1e-1))
+    plt.savefig(filepath / 'outputs.pdf', **tight_kwargs)
+
+    plotter.plot_latents(t_predict, ylim=(-1, 3), plot_barenco=False, plot_inducing=False)
+    plt.savefig(filepath / 'latents.pdf', **tight_kwargs)

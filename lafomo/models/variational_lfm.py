@@ -65,13 +65,6 @@ class VariationalLFM(LFM, ABC):
         self.gp_model.eval()
         self.likelihood.eval()
 
-    # def parameters(self, recurse: bool = True) -> Iterator[Parameter]:
-    #     return [
-    #         *self.gp_model.parameters(recurse),
-    #         *self.likelihood.parameters(),
-    #         *super().parameters(recurse)
-    #     ]
-
     def predict_m(self, t_predict, **kwargs) -> torch.distributions.MultivariateNormal:
         """
         Calls self on input `t_predict`
