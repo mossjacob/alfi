@@ -88,6 +88,8 @@ if __name__ == "__main__":
             if method_key in train_pre_step:
                 train_pre_step[method_key](model)
             trainer.train(**method['train-params'])
+
+            # Plot results of model
             if method_key in plotters:
                 plotters[method_key](dataset, model, trainer, plotter, filepath)
             else:

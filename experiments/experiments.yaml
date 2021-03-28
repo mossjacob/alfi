@@ -1,30 +1,37 @@
+# This configuration file is structured such that datasets are roots with methods direct descendents
 # p53 networks
 p53:
   methods:
     exact:
-      epochs: 150
-      report_interval: 5
+      train-params:
+        epochs: 350
+        report_interval: 5
     variational:
-      epochs: 300
-      report_interval: 10
+      train-params:
+        epochs: 300
+        report_interval: 10
     mcmc:
-      epochs: 2000
+      train-params:
+        epochs: 2000
 
 hafner:
   num_latents: 1
   methods:
     variational:
-      epochs: 300
-      report_interval: 10
+      train-params:
+        epochs: 300
+        report_interval: 10
     mcmc:
-      epochs: 2000
+      train-params:
+        epochs: 2000
 
 # Toy datasets
 toy:
   num_latents: 3
   methods:
     variational:
-      epochs: 300
+      train-params:
+        epochs: 300
     mcmc:
       epochs: 2000
 
@@ -40,6 +47,7 @@ toy-spatial:
         sensitivity: 0.5
         diffusion: 0.5
         decay: 0.5
+
 # Drosophila Experiments
 dros-kr:
   num_latents: 1
