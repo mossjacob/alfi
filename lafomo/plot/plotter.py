@@ -105,12 +105,13 @@ class Plotter:
         vars = [0] * len(params)
         fig, axes = plt.subplots(ncols=len(params), figsize=(8, 4))
         plotnum = 0
+        num_bars = self.output_names.shape[0]
         for A, B, var, label in zip(params, real_bars, vars, labels):
             if B is None:
-                axes[plotnum].bar(np.arange(5), A, width=0.4, tick_label=self.output_names, color=self.bar1_color)
+                axes[plotnum].bar(np.arange(num_bars), A, width=0.4, tick_label=self.output_names, color=self.bar1_color)
             else:
-                axes[plotnum].bar(np.arange(5) - 0.2, A, width=0.4, tick_label=self.output_names, color=self.bar1_color)
-                axes[plotnum].bar(np.arange(5) + 0.2, B, width=0.4, color=self.bar2_color, align='center')
+                axes[plotnum].bar(np.arange(num_bars) - 0.2, A, width=0.4, tick_label=self.output_names, color=self.bar1_color)
+                axes[plotnum].bar(np.arange(num_bars) + 0.2, B, width=0.4, color=self.bar2_color, align='center')
 
             axes[plotnum].set_title(label)
             axes[plotnum].tick_params(axis='x', labelrotation=45)

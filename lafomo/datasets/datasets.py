@@ -163,6 +163,7 @@ class ToySpatialTranscriptomics(LFMDataset):
         data = torch.tensor(data.values[:, 3]).unsqueeze(0)
         self.num_discretised = 40
         self.data = [(x_observed, data)]
+        self.gene_names = np.array(['toy'])
 
 
 class DrosophilaSpatialTranscriptomics(LFMDataset):
@@ -182,6 +183,7 @@ class DrosophilaSpatialTranscriptomics(LFMDataset):
         x_observed = torch.tensor(data[:, 0:2]).permute(1, 0)
         data = torch.tensor(data[:, 3]).unsqueeze(0)
         self.data = [(x_observed, data)]
+        self.gene_names = np.array([gene])
 
 
 class MarkovJumpProcess:

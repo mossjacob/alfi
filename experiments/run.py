@@ -103,8 +103,8 @@ def build_pde(dataset):
 
     lfm = PartialLFM(1, gp_model, fenics_model, fenics_params, config)
     optimizer = torch.optim.Adam(lfm.parameters(), lr=0.07)
-    trainer = PDETrainer(lfm, optimizer, dataset)
-    plotter = None
+    trainer = PDETrainer(lfm, optimizer, dataset, track_parameters=list(lfm.fenics_named_parameters.keys()))
+    plotter = Plotter(lfm, dataset.gene_names)
     return lfm, trainer, plotter
 
 builders = {
@@ -140,6 +140,14 @@ def plot_pde(lfm, trainer, plotter, filepath):
         titles=['Prediction', 'Ground truth']
     )
     plt.savefig(filepath / 'beforeafter.pdf', **tight_kwargs)
+
+    labels = ['Sensitivity', 'Decay', 'Diffusion']
+    kinetics = list()
+    for key in lfm.fenics_named_parameters.keys():
+        kinetics.append(trainer.parameter_trace[key][-1].squeeze().numpy())
+
+    plotter.plot_double_bar(kinetics, labels)
+    plt.savefig(filepath / 'kinetics.pdf', **tight_kwargs)
 
 
 plotters = {
