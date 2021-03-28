@@ -6,7 +6,7 @@ import pandas as pd
 from scipy.io import loadmat
 
 from lafomo.datasets import load_barenco_puma
-from lafomo.datasets import LFMDataset
+from . import LFMDataset
 
 from tqdm import tqdm
 from os import path
@@ -122,7 +122,7 @@ class HafnerData(TranscriptomicTimeSeries):
         self.gene_names = target_genes
 
 
-class ToyTimeSeries(TranscriptomicTimeSeries):
+class MCMCToyTimeSeries(TranscriptomicTimeSeries):
     def __init__(self, delay=False):
         # We import the dataset here since it uses TensorFlow
         from lafomo.datasets.artificial import get_artificial_dataset
@@ -151,15 +151,39 @@ class ToyTimeSeries(TranscriptomicTimeSeries):
 
 class ToySpatialTranscriptomics(LFMDataset):
     """
-
+    Toy dataset from López-Lopera et al. (2019)
+    https://arxiv.org/abs/1808.10026
+    Data download: https://github.com/anfelopera/PhysicallyGPDrosophila
     """
     def __init__(self, data_dir='../data/'):
         data = pd.read_csv(path.join(data_dir, 'demToy1GPmRNA.csv'))
-        self.orig_data = data
+        self.orig_data = data.values
         self.num_outputs = 1
-        t_observed = torch.tensor(data.values[:, 0:2]).permute(1, 0)
-        data = torch.tensor(data.values[:, 3])
-        self.data = [(t_observed, data)]
+        x_observed = torch.tensor(data.values[:, 0:2]).permute(1, 0)
+        data = torch.tensor(data.values[:, 3]).unsqueeze(0)
+        self.num_discretised = 40
+        self.data = [(x_observed, data)]
+        self.gene_names = np.array(['toy'])
+
+
+class DrosophilaSpatialTranscriptomics(LFMDataset):
+    """
+    Dataset from Becker et al. (2013).
+    Reverse engineering post-transcriptional regulation of
+    gap genes in Drosophila melanogaster
+    """
+    def __init__(self, gene='kr', data_dir='../data/'):
+        indents = {'kr': 64, 'kni': 56, 'gt': 60}
+        assert gene in indents
+        data = pd.read_csv(path.join(data_dir, f'clean_{gene}.csv'))
+        data = data.iloc[indents[gene]:].values
+        self.orig_data = data[:, [0, 1, 3, 2]]
+        self.num_outputs = 1
+        self.num_discretised = 7
+        x_observed = torch.tensor(data[:, 0:2]).permute(1, 0)
+        data = torch.tensor(data[:, 3]).unsqueeze(0)
+        self.data = [(x_observed, data)]
+        self.gene_names = np.array([gene])
 
 
 class MarkovJumpProcess:

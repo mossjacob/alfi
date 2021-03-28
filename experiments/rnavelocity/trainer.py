@@ -1,7 +1,7 @@
 import torch
 from gpytorch.distributions import MultivariateNormal, MultitaskMultivariateNormal
 
-from lafomo.trainer import Trainer
+from lafomo.trainers import Trainer
 from lafomo.utilities.torch import ceil, is_cuda
 from lafomo.models import LFM
 from lafomo.datasets import LFMDataset

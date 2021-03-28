@@ -65,12 +65,6 @@ class VariationalLFM(LFM, ABC):
         self.gp_model.eval()
         self.likelihood.eval()
 
-    def parameters(self, recurse: bool = True) -> Iterator[Parameter]:
-        return [
-            *self.gp_model.parameters(recurse),
-            *super().parameters(recurse)
-        ]
-
     def predict_m(self, t_predict, **kwargs) -> torch.distributions.MultivariateNormal:
         """
         Calls self on input `t_predict`
@@ -88,8 +82,8 @@ class VariationalLFM(LFM, ABC):
         return q_f
 
     def save(self, filepath):
-        torch.save(self.gp_model.state_dict(), 'gp-'+filepath+'.pt')
-        torch.save(self.state_dict(), 'lfm-'+filepath+'.pt')
+        torch.save(self.gp_model.state_dict(), filepath+'gp.pt')
+        torch.save(self.state_dict(), filepath+'lfm.pt')
 
     @classmethod
     def load(cls,
@@ -97,12 +91,12 @@ class VariationalLFM(LFM, ABC):
              gp_cls,
              gp_args=[], gp_kwargs={},
              lfm_args=[], lfm_kwargs={}):
-        gp_state_dict = torch.load('gp-'+filepath+'.pt')
+        gp_state_dict = torch.load(filepath+'gp.pt')
         gp_model = gp_cls(*gp_args, **gp_kwargs)
         gp_model.load_state_dict(gp_state_dict)
         gp_model.double()
 
-        lfm_state_dict = torch.load('lfm-'+filepath+'.pt')
-        lfm = cls(gp_model, *lfm_args, **lfm_kwargs)
+        lfm_state_dict = torch.load(filepath+'lfm.pt')
+        lfm = cls(lfm_args[0], gp_model, *lfm_args[1:], **lfm_kwargs)
         lfm.load_state_dict(lfm_state_dict)
         return lfm

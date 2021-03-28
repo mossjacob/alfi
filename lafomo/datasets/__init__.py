@@ -1,6 +1,14 @@
 from .loaders import load_barenco_puma, DataHolder, barenco_params, scaled_barenco_data, load_covid
 from .lfm_dataset import LFMDataset
-from .datasets import TranscriptomicTimeSeries, P53Data, HafnerData, ToyTimeSeries, ToySpatialTranscriptomics
+from .toy import ToyTimeSeries
+from .datasets import (
+    TranscriptomicTimeSeries,
+    P53Data,
+    HafnerData,
+    ToySpatialTranscriptomics,
+    DrosophilaSpatialTranscriptomics
+)
+
 
 __all__ = [
     'load_barenco_puma',
@@ -13,5 +21,6 @@ __all__ = [
     'HafnerData',
     'TranscriptomicTimeSeries',
     'ToyTimeSeries',
-    'ToySpatialTranscriptomics'
+    'ToySpatialTranscriptomics',
+    'DrosophilaSpatialTranscriptomics',
 ]

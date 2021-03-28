@@ -53,14 +53,16 @@ class Plotter:
         plt.rcParams['font.family'] = 'serif'
         plt.rcParams['font.serif'] = 'CMU Serif'
 
-    def plot_kinetics(self, results, kinetic_params, true_k=None, true_hpds=None, title='', xlabels=None):
+    def plot_kinetics(self, results, kinetic_params, true_k=None, true_hpds=None, title='', xlabels=None, transform=None):
         """
         Parameters:
             results: the results dictionary from the sampler
             kinetic_params: list of strings. The keys in `results` which are kinetic parameters of shape
                             (num_samples, num_outputs, 1)
         """
-        kinetics = np.stack([results[k] for k in kinetic_params]).transpose((1, 2, 0, 3)).squeeze(-1)
+        if transform is None:
+            transform = lambda x: x
+        kinetics = transform(np.stack([results[k] for k in kinetic_params]).transpose((1, 2, 0, 3)).squeeze(-1))
         mean_kinetics = np.mean(kinetics[-self.opt.num_kinetic_avg:], axis=0)
 
         plot_labels = ['Initial Conditions', 'Basal rates', 'Decay rates', 'Sensitivities']
@@ -112,8 +114,10 @@ class Plotter:
         plt.tight_layout()
         return hpds
 
-    def plot_convergence(self, results, param_names, title=''):
-        params = [results[param] for param in param_names]
+    def plot_convergence(self, results, param_names, title='', transform=None):
+        if transform is None:
+            transform = lambda x: x
+        params = [transform(results[param]) for param in param_names]
         num = len(params)
         plt.figure(figsize=(8, 3 * num))
         plt.suptitle(title)
@@ -191,10 +195,10 @@ class Plotter:
             figsize=(6, 4)
         plt.figure(figsize=figsize)
         scatter_args = {'s': 60, 'linewidth': 2}
-        self.plot_samples(f_samples, self.opt.tf_names, self.opt.num_plot_tfs, 
+        self.plot_samples(f_samples, self.opt.tf_names, self.opt.num_plot_tfs,
                           scatters=self.data.f_obs[replicate] if self.opt.tf_present else None,
                           scatter_args=scatter_args, margined=True, sample_gap=sample_gap)
-        
+
         # if 'σ2_f' in model.params._fields:
         #     σ2_f = model.params.σ2_f.value
         #     plt.errorbar(t_discretised[common_indices], f_observed[0], 2*np.sqrt(σ2_f[0]),

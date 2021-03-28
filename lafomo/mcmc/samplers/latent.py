@@ -33,8 +33,8 @@ class LatentGPSampler(MetropolisKernel, ParamGroupMixin):
         self.data_present = latent_likelihood_fn is not None
         self.step_fn = self.joint_one_step
         self.calc_prob_fn = self.joint_calc_prob
-            
-        super().__init__(step_size, tune_every=100)
+
+        super().__init__(step_size, tune_every=3000)
 
     def _one_step(self, current_state, previous_kernel_results):
         return self.step_fn(current_state, previous_kernel_results)
@@ -95,6 +95,7 @@ class LatentGPSampler(MetropolisKernel, ParamGroupMixin):
             new_prob = self.calc_prob_fn(test_state, new_hyp, old_hyp)
             old_prob = self.calc_prob_fn(current_state[0], old_hyp, new_hyp) #previous_kernel_results.target_log_prob
             is_accepted = self.metropolis_is_accepted(new_prob, old_prob)
+            # tf.print(new_prob, old_prob, is_accepted)
             if not is_accepted[0]:
                 new_state = (1-mask) * new_state + mask * current_state[0]
                 new_hyp[0] = (1-hyp_mask) * new_hyp[0] + hyp_mask * current_state[1]
@@ -107,8 +108,10 @@ class LatentGPSampler(MetropolisKernel, ParamGroupMixin):
         #                         lambda:[current_state[1], current_state[2]], lambda:[v, l2])
         return [[new_state, *new_hyp]], f64(0), is_accepted[0]
 
-    def _joint_one_step(self, current_state, previous_kernel_results, all_states):
+    def _joint_one_step(self, current_state, previous_kernel_results):
         # Untransformed tf mRNA vectors F (Step 1)
+        current_state = current_state[0]
+
         new_state = tf.identity(current_state[0])
         new_params = []
         S = tf.linalg.diag(self.step_size)
@@ -139,8 +142,8 @@ class LatentGPSampler(MetropolisKernel, ParamGroupMixin):
 
         new_hyp = [v, l2]
         old_hyp = [current_state[1], current_state[2]]
-        new_prob = self.calc_prob_fn(fstar, new_hyp, old_hyp, all_states)
-        old_prob = self.calc_prob_fn(new_state, old_hyp, new_hyp, all_states) #previous_kernel_results.target_log_prob 
+        new_prob = self.calc_prob_fn(fstar, new_hyp, old_hyp)
+        old_prob = self.calc_prob_fn(new_state, old_hyp, new_hyp) #previous_kernel_results.target_log_prob
 
         is_accepted = self.metropolis_is_accepted(new_prob, old_prob)
 
@@ -152,7 +155,7 @@ class LatentGPSampler(MetropolisKernel, ParamGroupMixin):
         new_params = tf.cond(tf.equal(is_accepted, tf.constant(False)),
                                 lambda:[current_state[1], current_state[2]], lambda:[v, l2])
 
-        return [new_state, *new_params], prob, is_accepted[0]
+        return [[new_state, *new_params]], prob, is_accepted[0]
 
     def joint_calc_prob(self, fstar, new_hyp, old_hyp):
         new_m_likelihood = self.likelihood_fn(
@@ -161,22 +164,26 @@ class LatentGPSampler(MetropolisKernel, ParamGroupMixin):
         # σ2_f = 1e-6 * tf.ones(fstar.shape[1], dtype='float64')
         # if 'σ2_f' in self.state_indices:
         #     σ2_f = all_states[self.state_indices['σ2_f']]
-
-        new_f_likelihood = tf.cond(tf.equal(self.data_present, tf.constant(True)),
-                                   lambda: tf.reduce_sum(self.latent_likelihood_fn(
+        # tf.print(self.data_present, tf.equal(self.data_present, True))
+        # print(self.data_present, tf.equal(self.data_present, True))
+        if self.data_present:
+            new_f_likelihood = tf.reduce_sum(self.latent_likelihood_fn(
                                        latent=[fstar]
-                                   )), lambda: f64(0))
+                                   ))
+        else:
+            new_f_likelihood = f64(0)
+
         new_prob = tf.reduce_sum(new_m_likelihood) + new_f_likelihood
 
         new_prob += tf.reduce_sum(
-            self.kernel_selector.proposal(0, new_hyp[0]).log_prob(old_hyp[0]) + \
+            self.kernel_selector.proposal(0, new_hyp[0]).log_prob(old_hyp[0]) +
             self.kernel_selector.proposal(1, new_hyp[1]).log_prob(old_hyp[1])
         )
         if self.kernel_exponential:
             new_hyp = [tf.exp(new_hyp[0]), tf.exp(new_hyp[1])]
 
         new_prob += tf.reduce_sum(
-            self.kernel_priors[0].log_prob(new_hyp[0]) + \
+            self.kernel_priors[0].log_prob(new_hyp[0]) +
             self.kernel_priors[1].log_prob(new_hyp[1])
         )
         return new_prob

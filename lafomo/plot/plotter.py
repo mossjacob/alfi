@@ -100,30 +100,22 @@ class Plotter:
         plt.title('Latent')
         return q_f
 
-    def plot_kinetics(self):
-        plt.figure(figsize=(8, 4))
-        plt.subplot(3, 3, 1)
-        B = np.squeeze(self.model.basal_rate.detach().numpy())
-        S = np.squeeze(self.model.sensitivity.detach().numpy())
-        D = np.squeeze(self.model.decay_rate.detach().numpy())
+    def plot_double_bar(self, params, labels, ground_truths=None):
+        real_bars = [None] * len(params) if ground_truths is None else ground_truths
+        vars = [0] * len(params)
+        fig, axes = plt.subplots(ncols=len(params), figsize=(8, 4))
+        plotnum = 0
+        num_bars = self.output_names.shape[0]
+        for A, B, var, label in zip(params, real_bars, vars, labels):
+            if B is None:
+                axes[plotnum].bar(np.arange(num_bars), A, width=0.4, tick_label=self.output_names, color=self.bar1_color)
+            else:
+                axes[plotnum].bar(np.arange(num_bars) - 0.2, A, width=0.4, tick_label=self.output_names, color=self.bar1_color)
+                axes[plotnum].bar(np.arange(num_bars) + 0.2, B, width=0.4, color=self.bar2_color, align='center')
 
-        B_exact = [0.0649, 0.0069, 0.0181, 0.0033, 0.0869]
-        D_exact = [0.2829, 0.3720, 0.3617, 0.8000, 0.3573]
-        S_exact = [0.9075, 0.9748, 0.9785, 1.0000, 0.9680]
-        data = [B, S, D]
-        barenco_data = [B_exact, S_exact, D_exact]
-        vars = [0, 0, 0]  # [ S_mcmc, D_mcmc]
-        labels = ['Basal rates', 'Sensitivities', 'Decay rates']
-
-        plotnum = 331
-        for A, B, var, label in zip(data, barenco_data, vars, labels):
-            plt.subplot(plotnum)
+            axes[plotnum].set_title(label)
+            axes[plotnum].tick_params(axis='x', labelrotation=45)
             plotnum += 1
-            plt.bar(np.arange(5) - 0.2, A, width=0.4, tick_label=self.output_names, color=self.bar1_color)
-            plt.bar(np.arange(5) + 0.2, B, width=0.4, color=self.bar2_color, align='center')
-
-            plt.title(label)
-            plt.xticks(rotation=45)
 
     def plot_losses(self, trainer, last_x=50):
         plt.figure(figsize=(5, 2))
