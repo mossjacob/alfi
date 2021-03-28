@@ -11,8 +11,8 @@ from .variational import VariationalTrainer
 
 class PDETrainer(VariationalTrainer):
 
-    def __init__(self, lfm: PartialLFM, optimizer: torch.optim.Optimizer, dataset):
-        super().__init__(lfm, optimizer, dataset)
+    def __init__(self, lfm: PartialLFM, optimizer: torch.optim.Optimizer, dataset, **kwargs):
+        super().__init__(lfm, optimizer, dataset, **kwargs)
         data = next(iter(dataset))
         data_input, y = data
         data_input = data_input.cuda() if is_cuda() else data_input
@@ -84,7 +84,11 @@ class PDETrainer(VariationalTrainer):
         num_x = xs.shape[0]
         f_mean = output.mean.reshape(num_t, num_x).detach()
         y_target = y_target.reshape(num_t, num_x)
-        axes = plot_before_after(f_mean.transpose(0, 1), y_target.transpose(0, 1), extent)
+        axes = plot_before_after(
+            f_mean.transpose(0, 1),
+            y_target.transpose(0, 1),
+            extent, ['Prediction', 'Ground truth']
+        )
         xy = self.lfm.inducing_points.detach()[0]
         axes[0].scatter(xy[:, 0], xy[:, 1], facecolors='none', edgecolors='r', s=3)
 

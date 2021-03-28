@@ -1,4 +1,6 @@
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+from mpl_toolkits.axes_grid1 import ImageGrid
 import numpy as np
 import seaborn as sns
 
@@ -8,12 +10,26 @@ plt.rcParams['font.serif'] = 'CMU Serif'
 sns.set(font="CMU Serif")
 
 
-def plot_before_after(before, after, extent):
-    fig, axes = plt.subplots(ncols=4, gridspec_kw={'width_ratios': [14, 1, 14, 1]})
-    im = axes[0].imshow(before, extent=extent, origin='lower')
-    fig.colorbar(im, cax=axes[1])
-    im = axes[2].imshow(after, extent=extent, origin='lower');
-    fig.colorbar(im, cax=axes[3])
-    axes[0].axis('off')
-    axes[2].axis('off')
-    return axes
+def plot_before_after(before, after, extent, titles=None):
+    fig = plt.figure()
+    grid = ImageGrid(fig, 111,  # similar to subplot(144)
+                     nrows_ncols=(1, 2),
+                     axes_pad=(0.8, 0.1),
+                     label_mode='all',
+                     share_all=False,
+                     cbar_location="right",
+                     cbar_mode="each",
+                     cbar_size="7%",
+                     cbar_pad="2%",
+                 )
+    aspect = (extent[1]-extent[0])/ (extent[3]-extent[2])
+    titles = [None]*2 if titles is None else titles
+    for ax, cax, image, title in zip(grid, grid.cbar_axes, [before, after], titles):
+        im = ax.imshow(image, extent=extent, origin='lower', aspect=aspect)
+        ax.grid()
+        cb = plt.colorbar(im, cax=cax)
+        cb.ax.yaxis.set_major_locator(ticker.MaxNLocator(nbins=5, integer=True))
+        ax.xaxis.set_major_locator(ticker.MaxNLocator(nbins=5, integer=True))
+        if title is not None:
+            ax.set_title(title)
+    return grid

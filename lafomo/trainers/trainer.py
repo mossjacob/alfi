@@ -34,7 +34,8 @@ class Trainer:
         self.give_output = give_output
         self.parameter_trace = None
         if track_parameters is not None:
-            self.parameter_trace = {key: list() for key in track_parameters}
+            named_params = dict(lfm.named_parameters())
+            self.parameter_trace = {key: [named_params[key].detach()] for key in track_parameters}
 
     def initial_value(self, y):
         initial_value = torch.zeros((self.batch_size, 1), dtype=torch.float64)

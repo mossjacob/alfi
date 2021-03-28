@@ -27,9 +27,11 @@ class PartialLFM(VariationalLFM):
         self.mesh_cells = fenics_model.mesh.cells().shape[0]
         self.fenics_module = fenics_model
         self.fenics_parameters = fenics_parameters
+        self.fenics_named_parameters = dict()
         name = 0
         for parameter in self.fenics_parameters:
             self.register_parameter(name='fenics' + str(name), param=parameter)
+            self.fenics_named_parameters['fenics' + str(name)] = parameter
             name += 1
 
     def forward(self, tx, step_size=1e-1, return_samples=False):

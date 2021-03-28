@@ -28,7 +28,7 @@ toy:
     mcmc:
       epochs: 2000
 
-toy_spatial:
+toy-spatial:
   num_latents: 1
   methods:
     partial:
@@ -36,19 +36,19 @@ toy_spatial:
       report_interval: 1
 
 # Drosophila Experiments
-dros_kr:
+dros-kr:
   num_latents: 1
   methods:
     partial:
       epochs: 60
       report_interval: 1
-dros_kni:
+dros-kni:
   num_latents: 1
   methods:
     partial:
       epochs: 60
       report_interval: 1
-dros_gt:
+dros-gt:
   num_latents: 1
   methods:
     partial:

@@ -24,5 +24,5 @@ if __name__ == '__main__':
     plotter.plot_latents(t_predict, num_samples=0)
     plt.savefig('latents.pdf')
 
-    plotter.plot_kinetics()
+    plotter.plot_double_bar()
     plt.savefig('kinetics.pdf')

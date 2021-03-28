@@ -19,13 +19,12 @@ from lafomo.datasets import (
 from lafomo.configuration import VariationalConfiguration
 from lafomo.models import OrdinaryLFM, MultiOutputGP, ExactLFM, PartialLFM
 from lafomo.models.pdes import ReactionDiffusion
-from lafomo.plot import Plotter
+from lafomo.plot import Plotter, plot_before_after
 from lafomo.trainers import ExactTrainer, PDETrainer
 from lafomo.utilities.fenics import interval_mesh
 
 
-
-
+tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
 # ------Config------ #
 
 with open("experiments/experiments.yaml", 'r') as stream:
@@ -114,7 +113,37 @@ builders = {
     'partial': build_pde,
 }
 
+
+# ------Plotters------#
+def plot_variational(lfm, trainer, plotter):
+    plt.savefig(path.join(experiment_dir, 'outputs.pdf'), **tight_kwargs)
+    plt.savefig(path.join(experiment_dir, 'latents.pdf'), **tight_kwargs)
+    plt.savefig(path.join(experiment_dir, 'kinetics.pdf'), **tight_kwargs)
+
+def plot_pde(lfm, trainer, plotter, filepath):
+    tx = trainer.tx
+    num_t = tx[0, :].unique().shape[0]
+    num_x = tx[1, :].unique().shape[0]
+    out = lfm(tx).mean
+    out = out.detach().view(num_t, num_x)
+    y_target = trainer.y_target
+    ts = tx[0, :].unique().sort()[0].numpy()
+    xs = tx[1, :].unique().sort()[0].numpy()
+    t_diff = ts[-1] - ts[0]
+    x_diff = xs[-1] - xs[0]
+    extent = [ts[0], ts[-1], xs[0], xs[-1]]
+
+    plot_before_after(
+        out.transpose(0, 1),
+        y_target.view(num_t, num_x).detach().transpose(0, 1),
+        extent,
+        titles=['Prediction', 'Ground truth']
+    )
+    plt.savefig(filepath / 'beforeafter.pdf', **tight_kwargs)
+
+
 plotters = {
+    'partial': plot_pde,
 
 }
 
@@ -124,8 +153,8 @@ def load_dataset(name):
     return {
         'p53': lambda: P53Data(replicate=0, data_dir='data'),
         'hafner': lambda: HafnerData(replicate=0, data_dir='data', extra_targets=False),
-        'toy_spatial': lambda: ToySpatialTranscriptomics(data_dir='data'),
-        'drosophila': lambda: DrosophilaSpatialTranscriptomics(gene='kr', data_dir='data'),
+        'toy-spatial': lambda: ToySpatialTranscriptomics(data_dir='data'),
+        'dros-kr': lambda: DrosophilaSpatialTranscriptomics(gene='kr', data_dir='data'),
         'toy': ToyTimeSeries(),
     }[name]()
 
@@ -153,7 +182,7 @@ if __name__ == "__main__":
             model, trainer, plotter = builders[method](dataset)
             trainer.train(**methods[method])
             if method in plotters:
-                plotters[method](model, trainer, plotter)
+                plotters[method](model, trainer, plotter, filepath)
 
             model.save(str(filepath / 'savedmodel'))
         else:
