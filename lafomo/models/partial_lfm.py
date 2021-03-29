@@ -18,8 +18,9 @@ class PartialLFM(VariationalLFM):
                  fenics_model: FEniCSModule,
                  fenics_parameters: list,
                  config: VariationalConfiguration,
+                 num_training_points=None,
                  dtype=torch.float64):
-        super().__init__(num_outputs, gp_model, config, dtype)
+        super().__init__(num_outputs, gp_model, config, num_training_points, dtype)
         if self.config.initial_conditions:
             raise Exception('Initial conditions are not implemented for PartialLFM.')
 

@@ -31,6 +31,7 @@ class VariationalLFM(LFM, ABC):
                  num_outputs: int,
                  gp_model: ApproximateGP,
                  config: VariationalConfiguration,
+                 num_training_points = None,
                  dtype=torch.float64):
         super().__init__()
         self.gp_model = gp_model
@@ -41,7 +42,8 @@ class VariationalLFM(LFM, ABC):
         except AttributeError:
             raise AttributeError('The GP model must define a function `get_inducing_points`.')
 
-        num_training_points = self.inducing_points.numel()  # TODO num_data refers to the number of training datapoints
+        if num_training_points is None:
+            num_training_points = self.inducing_points.numel()  # TODO num_data refers to the number of training datapoints
 
         self.loss_fn = MaskedVariationalELBO(self.likelihood, gp_model, num_training_points, combine_terms=False)
         self.config = config
