@@ -14,7 +14,7 @@ class VariationalTrainer(Trainer):
     def __init__(self, lfm: VariationalLFM, optimizer: torch.optim.Optimizer, dataset, **kwargs):
         super().__init__(lfm, optimizer, dataset, batch_size=lfm.num_outputs, **kwargs)
 
-    def single_epoch(self, step_size=1e-1):
+    def single_epoch(self, step_size=1e-1, **kwargs):
         epoch_loss = 0
         epoch_ll = 0
         epoch_kl = 0

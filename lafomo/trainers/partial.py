@@ -60,13 +60,14 @@ class PDETrainer(VariationalTrainer):
         spatial_grid = discretise(spatial, num_discretised=num_discretised)
         return spatial_grid
 
-    def single_epoch(self, step_size=1e-1):
+    def single_epoch(self, step_size=1e-1, **kwargs):
         self.optimizer.zero_grad()
         y = self.y_target
         output = self.lfm(self.tx, step_size=step_size)
         self.debug_out(self.tx, y, output)
 
-        log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y.permute(1, 0))
+        log_likelihood, kl_divergence, _ = self.lfm.loss_fn(
+            output, y.permute(1, 0), mask=self.train_mask)
 
         loss = - (log_likelihood - kl_divergence)
 

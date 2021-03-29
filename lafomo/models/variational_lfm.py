@@ -14,6 +14,7 @@ from gpytorch.mlls import VariationalELBO
 from .lfm import LFM
 from lafomo.utilities.torch import softplus, inv_softplus
 from lafomo.configuration import VariationalConfiguration
+from lafomo.mlls import MaskedVariationalELBO
 
 
 class VariationalLFM(LFM, ABC):
@@ -42,7 +43,7 @@ class VariationalLFM(LFM, ABC):
 
         num_training_points = self.inducing_points.numel()  # TODO num_data refers to the number of training datapoints
 
-        self.loss_fn = VariationalELBO(self.likelihood, gp_model, num_training_points, combine_terms=False)
+        self.loss_fn = MaskedVariationalELBO(self.likelihood, gp_model, num_training_points, combine_terms=False)
         self.config = config
         self.dtype = dtype
 

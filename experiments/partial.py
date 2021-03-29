@@ -42,6 +42,7 @@ def build_partial(dataset, params):
     gp_model = MultiOutputGP(inducing_points, 1, **gp_kwargs)
     gp_model.double();
 
+    # Define LFM
     t_range = (ts[0], ts[-1])
     time_steps = dataset.num_discretised
     fenics_model = ReactionDiffusion(t_range, time_steps, mesh)
@@ -58,7 +59,14 @@ def build_partial(dataset, params):
 
     lfm = PartialLFM(1, gp_model, fenics_model, fenics_params, config)
     optimizer = torch.optim.Adam(lfm.parameters(), lr=0.1)
-    trainer = PDETrainer(lfm, optimizer, dataset, track_parameters=list(lfm.fenics_named_parameters.keys()))
+
+    # As in Lopez-Lopera et al., we take 30% of data for training
+    train_mask = torch.zeros_like(tx[0,:])
+    train_mask[torch.randperm(tx.shape[1])[:int(0.3 * tx.shape[1])]] = 1
+
+    trainer = PDETrainer(lfm, optimizer, dataset,
+                         track_parameters=list(lfm.fenics_named_parameters.keys()),
+                         train_mask=train_mask.bool())
     plotter = Plotter(lfm, dataset.gene_names)
     return lfm, trainer, plotter
 

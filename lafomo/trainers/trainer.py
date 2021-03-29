@@ -23,7 +23,11 @@ class Trainer:
     def __init__(self,
                  lfm: LFM,
                  optimizer: torch.optim.Optimizer,
-                 dataset: LFMDataset, batch_size=1, give_output=False, track_parameters=None):
+                 dataset: LFMDataset,
+                 batch_size=1,
+                 give_output=False,
+                 track_parameters=None,
+                 train_mask=None):
         self.lfm = lfm
         self.num_epochs = 0
         self.kl_mult = 0
@@ -32,6 +36,7 @@ class Trainer:
         self.data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
         self.losses = np.empty((0, 2))
         self.give_output = give_output
+        self.train_mask = train_mask
         self.parameter_trace = None
         if track_parameters is not None:
             named_params = dict(lfm.named_parameters())
