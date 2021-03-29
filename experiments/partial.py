@@ -52,9 +52,9 @@ def build_partial(dataset, params):
         num_samples=25
     )
 
-    sensitivity = Parameter(params['sensitivity']*torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
-    decay = Parameter(params['decay']**torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
-    diffusion = Parameter(params['diffusion']**torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
+    sensitivity = Parameter(params['sensitivity'] * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
+    decay = Parameter(params['decay'] * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
+    diffusion = Parameter(params['diffusion'] * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
     fenics_params = [sensitivity, decay, diffusion]
 
     lfm = PartialLFM(1, gp_model, fenics_model, fenics_params, config)
@@ -63,9 +63,9 @@ def build_partial(dataset, params):
     # As in Lopez-Lopera et al., we take 30% of data for training
     train_mask = torch.zeros_like(tx[0,:])
     train_mask[torch.randperm(tx.shape[1])[:int(0.3 * tx.shape[1])]] = 1
-
+    track_parameters = list(lfm.fenics_named_parameters.keys()) + ['gp_model.covar_module.raw_lengthscale']
     trainer = PDETrainer(lfm, optimizer, dataset,
-                         track_parameters=list(lfm.fenics_named_parameters.keys()),
+                         track_parameters=track_parameters,
                          train_mask=train_mask.bool())
     plotter = Plotter(lfm, dataset.gene_names)
     return lfm, trainer, plotter

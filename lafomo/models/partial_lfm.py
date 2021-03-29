@@ -73,6 +73,11 @@ class PartialLFM(VariationalLFM):
         return MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)
 
     def solve_pde(self, u):
+        """
+
+        @param u: Shape (S, 1, num_t, num_x)
+        @return:
+        """
         # Integrate forward from the initial positions h0.
         outputs = list()
         y_prev = torch.zeros((self.config.num_samples, self.mesh_cells + 1), requires_grad=False, dtype=torch.float64)
