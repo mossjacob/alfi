@@ -28,7 +28,7 @@ def build_partial(dataset, params):
     xs = tx[1, :].unique().sort()[0].numpy()
     t_diff = ts[-1] - ts[0]
     x_diff = xs[-1] - xs[0]
-    num_inducing = int(tx.shape[1] * 2/3)
+    num_inducing = int(tx.shape[1] * 5/6)
     inducing_points = torch.stack([
         ts[0] + t_diff * torch.rand((1, num_inducing)),
         xs[0] + x_diff * torch.rand((1, num_inducing))

@@ -109,6 +109,7 @@ class Plotter:
         for A, B, var, label in zip(params, real_bars, vars, labels):
             if B is None:
                 axes[plotnum].bar(np.arange(num_bars), A, width=0.4, tick_label=self.output_names, color=self.bar1_color)
+                axes[plotnum].set_xlim(-1, 1)
             else:
                 axes[plotnum].bar(np.arange(num_bars) - 0.2, A, width=0.4, tick_label=self.output_names, color=self.bar1_color)
                 axes[plotnum].bar(np.arange(num_bars) + 0.2, B, width=0.4, color=self.bar2_color, align='center')
