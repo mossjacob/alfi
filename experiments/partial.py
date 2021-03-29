@@ -71,21 +71,41 @@ def build_partial(dataset, params):
     return lfm, trainer, plotter
 
 
+"""These metrics are translated from https://rdrr.io/cran/lineqGPR/man/errorMeasureRegress.html"""
+def smse(y_test, f_mean):
+    """Standardised mean square error (standardised by variance)"""
+    return (y_test - f_mean) ** 2 / y_test.var()
+
+def q2(y_test, f_mean):
+    return 1 - smse(y_test, f_mean).sum() / (y_test - y_test.mean()).sum()
+
+def cia(y_test, f_mean, f_var):
+    return ((y_test >= (f_mean - 1.98 * f_var.sqrt())) &
+            (y_test <= (f_mean + 1.98 * f_var.sqrt()))).double().mean()
+
 def plot_partial(dataset, lfm, trainer, plotter, filepath):
     tx = trainer.tx
     num_t = tx[0, :].unique().shape[0]
     num_x = tx[1, :].unique().shape[0]
-    out = lfm(tx).mean
-    out = out.detach().view(num_t, num_x)
-    y_target = trainer.y_target
+    f_mean = lfm(tx).mean.detach()
+    f_var = lfm(tx).variance.detach()
+    y_target = trainer.y_target[0]
     ts = tx[0, :].unique().sort()[0].numpy()
     xs = tx[1, :].unique().sort()[0].numpy()
     t_diff = ts[-1] - ts[0]
     x_diff = xs[-1] - xs[0]
     extent = [ts[0], ts[-1], xs[0], xs[-1]]
 
+    with open(filepath / 'metrics.csv', 'w') as f:
+        f.write('smse\tq2\tca\n')
+        f.write('\t'.join([
+            str(smse(y_target[~trainer.train_mask], f_mean[~trainer.train_mask]).mean().item()),
+            str(q2(y_target[~trainer.train_mask], f_mean[~trainer.train_mask]).item()),
+            str(cia(y_target[~trainer.train_mask], f_mean[~trainer.train_mask], f_var[~trainer.train_mask]).item())
+        ]) + '\n')
+
     plot_before_after(
-        out.transpose(0, 1),
+        f_mean.view(num_t, num_x).transpose(0, 1),
         y_target.view(num_t, num_x).detach().transpose(0, 1),
         extent,
         titles=['Prediction', 'Ground truth']
