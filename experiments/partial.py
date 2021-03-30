@@ -65,7 +65,7 @@ def build_partial(dataset, params):
 
     # As in Lopez-Lopera et al., we take 30% of data for training
     train_mask = torch.zeros_like(tx[0,:])
-    train_mask[torch.randperm(tx.shape[1])[:int(0.3 * tx.shape[1])]] = 1
+    train_mask[torch.randperm(tx.shape[1])[:int(0.9 * tx.shape[1])]] = 1
     track_parameters = list(lfm.fenics_named_parameters.keys()) + ['gp_model.covar_module.raw_lengthscale']
     trainer = PDETrainer(lfm, optimizer, dataset,
                          track_parameters=track_parameters,
