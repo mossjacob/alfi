@@ -52,9 +52,12 @@ def build_partial(dataset, params):
         num_samples=25
     )
 
-    sensitivity = Parameter(params['sensitivity'] * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
-    decay = Parameter(params['decay'] * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
-    diffusion = Parameter(params['diffusion'] * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
+    # sensitivity = Parameter(params['sensitivity'] * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
+    # decay = Parameter(params['decay'] * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
+    # diffusion = Parameter(params['diffusion'] * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
+    sensitivity = Parameter(1 * torch.ones((1, 1), dtype=torch.float64), requires_grad=False)
+    decay = Parameter(0.1 * torch.ones((1, 1), dtype=torch.float64), requires_grad=False)
+    diffusion = Parameter(0.01 * torch.ones((1, 1), dtype=torch.float64), requires_grad=False)
     fenics_params = [sensitivity, decay, diffusion]
 
     lfm = PartialLFM(1, gp_model, fenics_model, fenics_params, config, num_training_points=int(0.3 * tx.shape[1]))
