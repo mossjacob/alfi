@@ -9,6 +9,7 @@ from typing import Iterator
 from lafomo.datasets import LFMDataset
 from lafomo.models import VariationalLFM
 from lafomo.configuration import VariationalConfiguration
+from lafomo.utilities.torch import softplus
 
 
 class PartialLFM(VariationalLFM):
@@ -89,7 +90,7 @@ class PartialLFM(VariationalLFM):
         for n in range(self.time_steps + 1):
             u_n = u[:, 0, n]  # (S, t)
 
-            params = [param.repeat(self.config.num_samples, 1) for param in self.fenics_parameters]
+            params = [softplus(param.repeat(self.config.num_samples, 1)) for param in self.fenics_parameters]
 
             y_prev = self.fenics_module(y_prev, u_n, *params)
 

@@ -8,16 +8,18 @@ def is_cuda():
     import torch
     return CUDA_AVAILABLE and torch.cuda.is_available()
 
+"""These metrics are translated from https://rdrr.io/cran/lineqGPR/man/errorMeasureRegress.html"""
+def smse(y_test, f_mean):
+    """Standardised mean square error (standardised by variance)"""
+    return (y_test - f_mean).square() / y_test.var()
 
-def save(model, name):
-    torch.save(model.state_dict(), f'./saved_models/{name}.pt')
+def q2(y_test, f_mean):
+    y_mean = y_test.mean()
+    return 1 - (y_test - f_mean).square().sum() / (y_test - y_mean).square().sum()
 
-
-def load(name, model_class, *args, **kwargs):
-    model = model_class(*args, **kwargs)
-    model.load_state_dict(torch.load(f'./saved_models/{name}.pt'))
-    return model
-
+def cia(y_test, f_mean, f_var):
+    return ((y_test >= (f_mean - 1.98 * f_var.sqrt())) &
+            (y_test <= (f_mean + 1.98 * f_var.sqrt()))).double().mean()
 
 def ceil(x):
     return int(math.ceil(x))

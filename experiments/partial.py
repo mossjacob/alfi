@@ -9,7 +9,7 @@ from lafomo.models.pdes import ReactionDiffusion
 from lafomo.plot import Plotter, plot_before_after
 from lafomo.trainers import PDETrainer
 from lafomo.utilities.fenics import interval_mesh
-
+from lafomo.utilities.torch import cia, q2, smse, inv_softplus, softplus
 
 tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
 
@@ -52,12 +52,12 @@ def build_partial(dataset, params):
         num_samples=25
     )
 
-    # sensitivity = Parameter(params['sensitivity'] * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
-    # decay = Parameter(params['decay'] * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
-    # diffusion = Parameter(params['diffusion'] * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
-    sensitivity = Parameter(1 * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
-    decay = Parameter(0.1 * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
-    diffusion = Parameter(0.01 * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
+    sensitivity = Parameter(inv_softplus(params['sensitivity']) * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
+    decay = Parameter(inv_softplus(params['decay']) * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
+    diffusion = Parameter(inv_softplus(params['diffusion']) * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
+    # sensitivity = Parameter(1 * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
+    # decay = Parameter(0.1 * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
+    # diffusion = Parameter(0.01 * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
     fenics_params = [sensitivity, decay, diffusion]
 
     lfm = PartialLFM(1, gp_model, fenics_model, fenics_params, config, num_training_points=int(0.9 * tx.shape[1]))
@@ -74,18 +74,6 @@ def build_partial(dataset, params):
     return lfm, trainer, plotter
 
 
-"""These metrics are translated from https://rdrr.io/cran/lineqGPR/man/errorMeasureRegress.html"""
-def smse(y_test, f_mean):
-    """Standardised mean square error (standardised by variance)"""
-    return (y_test - f_mean).square() / y_test.var()
-
-def q2(y_test, f_mean):
-    y_mean = y_test.mean()
-    return 1 - (y_test - f_mean).square().sum() / (y_test - y_mean).square().sum()
-
-def cia(y_test, f_mean, f_var):
-    return ((y_test >= (f_mean - 1.98 * f_var.sqrt())) &
-            (y_test <= (f_mean + 1.98 * f_var.sqrt()))).double().mean()
 
 def plot_partial(dataset, lfm, trainer, plotter, filepath):
     tx = trainer.tx
