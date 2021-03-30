@@ -52,9 +52,9 @@ def build_partial(dataset, params):
         num_samples=25
     )
 
-    sensitivity = Parameter(inv_softplus(params['sensitivity']) * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
-    decay = Parameter(inv_softplus(params['decay']) * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
-    diffusion = Parameter(inv_softplus(params['diffusion']) * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
+    sensitivity = Parameter(inv_softplus(torch.tensor(params['sensitivity'])) * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
+    decay = Parameter(inv_softplus(torch.tensor(params['decay'])) * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
+    diffusion = Parameter(inv_softplus(torch.tensor(params['diffusion'])) * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
     # sensitivity = Parameter(1 * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
     # decay = Parameter(0.1 * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
     # diffusion = Parameter(0.01 * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)

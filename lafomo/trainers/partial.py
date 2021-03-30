@@ -7,7 +7,7 @@ from lafomo.utilities.torch import is_cuda, discretise
 from lafomo.models import PartialLFM
 from lafomo.plot import plot_before_after
 from .variational import VariationalTrainer
-from lafomo.utilities.torch import cia, q2, smse
+from lafomo.utilities.torch import cia, q2, smse, softplus
 
 
 class PDETrainer(VariationalTrainer):
@@ -107,7 +107,7 @@ class PDETrainer(VariationalTrainer):
         plt.savefig(str(datetime.now().timestamp()) + '.png')
 
     def print_extra(self):
-        print(' s:', self.lfm.fenics_parameters[0][0].item(),
-              'dec:', self.lfm.fenics_parameters[1][0].item(),
-              'diff:', self.lfm.fenics_parameters[2][0].item())
+        print(' s:', softplus(self.lfm.fenics_parameters[0][0]).item(),
+              'dec:', softplus(self.lfm.fenics_parameters[1][0]).item(),
+              'diff:', softplus(self.lfm.fenics_parameters[2][0]).item())
 
