@@ -83,9 +83,9 @@ class PDETrainer(VariationalTrainer):
         print(output.variance.max(), output.mean.shape, output.variance.shape)
         if self.train_mask is not None:
             with torch.no_grad():
-                log_likelihood, kl_divergence = self.lfm.loss_fn(output, y_target.permute(1, 0), mask=~self.train_mask)
+                log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target.permute(1, 0), mask=~self.train_mask)
                 test_loss = - (log_likelihood - kl_divergence)
-            print('Test loss: test_loss')
+            print('Test loss:', test_loss)
         ts = self.tx[0, :].unique().numpy()
         xs = self.tx[1, :].unique().numpy()
         extent = [ts[0], ts[-1], xs[0], xs[-1]]
