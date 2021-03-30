@@ -30,9 +30,9 @@ def build_partial(dataset, params):
     x_diff = xs[-1] - xs[0]
     num_inducing = int(tx.shape[1] * 5/6)
     inducing_points = torch.stack([
-        ts[0] + t_diff * torch.rand((1, num_inducing)),
-        xs[0] + x_diff * torch.rand((1, num_inducing))
-    ], dim=2)
+        tx[0, torch.randperm(tx.shape[1])[:int(0.3 * tx.shape[1])]],
+        tx[1, torch.randperm(tx.shape[1])[:int(0.3 * tx.shape[1])]]
+    ], dim=1).unsqueeze(0)
 
     gp_kwargs = dict(use_ard=True,
                      use_scale=False,

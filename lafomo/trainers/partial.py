@@ -87,7 +87,7 @@ class PDETrainer(VariationalTrainer):
                 log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target.permute(1, 0), mask=~self.train_mask)
                 test_loss = - (log_likelihood - kl_divergence)
             print('Test loss:', test_loss.item())
-        print(q2(y_target, output.mean).item())
+        print(f'Q2: {q2(y_target, output.mean).item():.03f}')
         ts = self.tx[0, :].unique().numpy()
         xs = self.tx[1, :].unique().numpy()
         extent = [ts[0], ts[-1], xs[0], xs[-1]]
