@@ -77,10 +77,11 @@ def build_partial(dataset, params):
 """These metrics are translated from https://rdrr.io/cran/lineqGPR/man/errorMeasureRegress.html"""
 def smse(y_test, f_mean):
     """Standardised mean square error (standardised by variance)"""
-    return (y_test - f_mean) ** 2 / y_test.var()
+    return (y_test - f_mean).square() / y_test.var()
 
 def q2(y_test, f_mean):
-    return 1 - smse(y_test, f_mean).sum() / (y_test - y_test.mean()).sum()
+    y_mean = y_test.mean()
+    return 1 - (y_test - f_mean).square().sum() / (y_test - y_mean).square().sum()
 
 def cia(y_test, f_mean, f_var):
     return ((y_test >= (f_mean - 1.98 * f_var.sqrt())) &
