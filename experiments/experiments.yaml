@@ -43,10 +43,10 @@ toy-spatial:
         epochs: 80
         report_interval: 1
       model-params:
-        lengthscale: 0.4
-        sensitivity: 0.4
-        diffusion: 0.4
-        decay: 0.4
+        lengthscale: 0.2
+        sensitivity: 0.2
+        diffusion: 0.2
+        decay: 0.2
 
 # Drosophila Experiments
 dros-kr:

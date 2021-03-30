@@ -76,11 +76,16 @@ class PDETrainer(VariationalTrainer):
         return loss.item(), (-log_likelihood.item(), kl_divergence.item())
 
     def debug_out(self, data_input, y_target, output):
-        if (self.debug_iteration % 10) != 0:
+        if (self.debug_iteration % 1) != 0:
             self.debug_iteration += 1
             return
         self.debug_iteration += 1
         print(output.variance.max(), output.mean.shape, output.variance.shape)
+        if self.train_mask is not None:
+            with torch.no_grad():
+                log_likelihood, kl_divergence = self.lfm.loss_fn(output, y_target.permute(1, 0), mask=~self.train_mask)
+                test_loss = - (log_likelihood - kl_divergence)
+            print('Test loss: test_loss')
         ts = self.tx[0, :].unique().numpy()
         xs = self.tx[1, :].unique().numpy()
         extent = [ts[0], ts[-1], xs[0], xs[-1]]
@@ -101,6 +106,6 @@ class PDETrainer(VariationalTrainer):
 
     def print_extra(self):
         print(' s:', self.lfm.fenics_parameters[0][0].item(),
-              'dif:', self.lfm.fenics_parameters[1][0].item(),
-              'dec:', self.lfm.fenics_parameters[2][0].item())
+              'dec:', self.lfm.fenics_parameters[1][0].item(),
+              'diff:', self.lfm.fenics_parameters[2][0].item())
 

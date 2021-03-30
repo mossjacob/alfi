@@ -61,7 +61,7 @@ def build_partial(dataset, params):
     fenics_params = [sensitivity, decay, diffusion]
 
     lfm = PartialLFM(1, gp_model, fenics_model, fenics_params, config, num_training_points=int(0.3 * tx.shape[1]))
-    optimizer = torch.optim.Adam(lfm.parameters(), lr=0.1)
+    optimizer = torch.optim.Adam(lfm.parameters(), lr=0.07)
 
     # As in Lopez-Lopera et al., we take 30% of data for training
     train_mask = torch.zeros_like(tx[0,:])
