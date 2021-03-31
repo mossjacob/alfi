@@ -5,7 +5,7 @@ from datetime import datetime
 
 from lafomo.utilities.torch import is_cuda, discretise
 from lafomo.models import PartialLFM
-from lafomo.plot import plot_before_after
+from lafomo.plot import plot_spatiotemporal_data
 from .variational import VariationalTrainer
 from lafomo.utilities.torch import cia, q2, smse, softplus
 
@@ -96,9 +96,8 @@ class PDETrainer(VariationalTrainer):
         num_x = xs.shape[0]
         f_mean = output.mean.reshape(num_t, num_x).detach()
         y_target = y_target.reshape(num_t, num_x)
-        axes = plot_before_after(
-            f_mean.transpose(0, 1),
-            y_target.transpose(0, 1),
+        axes = plot_spatiotemporal_data(
+            [f_mean.transpose(0, 1), y_target.transpose(0, 1)],
             extent, ['Prediction', 'Ground truth']
         )
         xy = self.lfm.inducing_points.detach()[0]

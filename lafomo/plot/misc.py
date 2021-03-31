@@ -9,11 +9,12 @@ plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = 'CMU Serif'
 sns.set(font="CMU Serif")
 
-
-def plot_before_after(before, after, extent, titles=None):
+def plot_spatiotemporal_data(images, extent, nrows=1, ncols=None, titles=None):
+    if ncols == None:
+        ncols = len(images)
     fig = plt.figure()
     grid = ImageGrid(fig, 111,  # similar to subplot(144)
-                     nrows_ncols=(1, 2),
+                     nrows_ncols=(nrows, ncols),
                      axes_pad=(0.8, 0.1),
                      label_mode='all',
                      share_all=False,
@@ -23,8 +24,8 @@ def plot_before_after(before, after, extent, titles=None):
                      cbar_pad="2%",
                  )
     aspect = (extent[1]-extent[0])/ (extent[3]-extent[2])
-    titles = [None]*2 if titles is None else titles
-    for ax, cax, image, title in zip(grid, grid.cbar_axes, [before, after], titles):
+    titles = [None] * len(images) if titles is None else titles
+    for ax, cax, image, title in zip(grid, grid.cbar_axes, images, titles):
         im = ax.imshow(image, extent=extent, origin='lower', aspect=aspect)
         ax.grid()
         cb = plt.colorbar(im, cax=cax)

@@ -1,8 +1,8 @@
 from .plotter import Plotter
-from .misc import plot_before_after
+from .misc import plot_spatiotemporal_data
 
 
 __all__ = [
     'Plotter',
-    'plot_before_after'
+    'plot_spatiotemporal_data'
 ]

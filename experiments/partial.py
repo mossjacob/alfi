@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 from lafomo.configuration import VariationalConfiguration
 from lafomo.models import MultiOutputGP, PartialLFM
 from lafomo.models.pdes import ReactionDiffusion
-from lafomo.plot import Plotter, plot_before_after
+from lafomo.plot import Plotter, plot_spatiotemporal_data
 from lafomo.trainers import PDETrainer
 from lafomo.utilities.fenics import interval_mesh
 from lafomo.utilities.torch import cia, q2, smse, inv_softplus, softplus
@@ -98,9 +98,8 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath):
             str(cia(y_target[~trainer.train_mask], f_mean_test, f_var_test).item())
         ]) + '\n')
 
-    plot_before_after(
-        f_mean.view(num_t, num_x).transpose(0, 1),
-        y_target.view(num_t, num_x).detach().transpose(0, 1),
+    plot_spatiotemporal_data(
+        [f_mean.view(num_t, num_x).transpose(0, 1), y_target.view(num_t, num_x).detach().transpose(0, 1)],
         extent,
         titles=['Prediction', 'Ground truth']
     )
@@ -109,7 +108,10 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath):
     labels = ['Sensitivity', 'Decay', 'Diffusion']
     kinetics = list()
     for key in lfm.fenics_named_parameters.keys():
-        kinetics.append(trainer.parameter_trace[key][-1].squeeze().numpy())
+        kinetics.append(softplus(trainer.parameter_trace[key][-1].squeeze()).numpy())
+    with open(filepath / 'kinetics.csv', 'w') as f:
+        f.write('sensitivity\tdecay\tdiffusion\n')
+        f.write('\t'.join(map(str, kinetics)) + '\n')
 
     plotter.plot_double_bar(kinetics, labels)
     plt.savefig(filepath / 'kinetics.pdf', **tight_kwargs)
