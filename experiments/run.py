@@ -68,12 +68,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
     key = args.data
 
-    print('Running experiments for dataset:', key)
+    print('\033[1;32;40m Running experiments for dataset:', key)
     data_config = config[key]
     dataset = load_dataset(key)
     methods = data_config['methods']
     for method_key in methods:
-        print('--and for method:', method_key)
+        print('\033[1;32;40m --and for method:', method_key)
         method = methods[method_key]
         if method_key in builders:
             # Create experiments path
@@ -93,7 +93,7 @@ if __name__ == "__main__":
             if method_key in plotters:
                 plotters[method_key](dataset, model, trainer, plotter, filepath)
             else:
-                print('--ignoring plotter for', method_key, 'since no plotter implemented.')
+                print('\033[1;35;40m --ignoring plotter for', method_key, 'since no plotter implemented.')
             model.save(str(filepath / 'savedmodel'))
         else:
-            print('--ignoring method', method_key, 'since no builder implemented.')
+            print('\033[1;35;40m --ignoring method', method_key, 'since no builder implemented.')
