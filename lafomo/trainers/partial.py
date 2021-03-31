@@ -98,7 +98,7 @@ class PDETrainer(VariationalTrainer):
         y_target = y_target.reshape(num_t, num_x)
         axes = plot_spatiotemporal_data(
             [f_mean.transpose(0, 1), y_target.transpose(0, 1)],
-            extent, ['Prediction', 'Ground truth']
+            extent, titles=['Prediction', 'Ground truth']
         )
         xy = self.lfm.inducing_points.detach()[0]
         axes[0].scatter(xy[:, 0], xy[:, 1], facecolors='none', edgecolors='r', s=3)
