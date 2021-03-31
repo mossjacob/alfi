@@ -62,7 +62,7 @@ class Trainer:
         end_epoch = self.num_epochs+epochs
 
         for epoch in range(epochs):
-            epoch_loss, split_loss = self.single_epoch(**kwargs)
+            epoch_loss, split_loss = self.single_epoch(epoch=epoch, **kwargs)
 
             if (epoch % report_interval) == 0:
                 print('Epoch %03d/%03d - Loss: %.2f (' % (
@@ -85,7 +85,7 @@ class Trainer:
         self.losses = np.concatenate([self.losses, losses], axis=0)
 
     @abstractmethod
-    def single_epoch(self, **kwargs):
+    def single_epoch(self, epoch=0, **kwargs):
         raise NotImplementedError
 
     def print_extra(self):

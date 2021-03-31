@@ -14,8 +14,9 @@ from lafomo.utilities.torch import cia, q2, smse, softplus
 
 class PDETrainer(VariationalTrainer):
 
-    def __init__(self, lfm: PartialLFM, optimizers: List[torch.optim.Optimizer], dataset, **kwargs):
+    def __init__(self, lfm: PartialLFM, optimizers: List[torch.optim.Optimizer], dataset, warm_variational=-1, **kwargs):
         super().__init__(lfm, optimizers, dataset, **kwargs)
+        self.warm_variational = warm_variational
         self.debug_iteration = 0
         data = next(iter(dataset))
         data_input, y = data
@@ -63,7 +64,7 @@ class PDETrainer(VariationalTrainer):
         spatial_grid = discretise(spatial, num_discretised=num_discretised)
         return spatial_grid
 
-    def single_epoch(self, step_size=1e-1, **kwargs):
+    def single_epoch(self, step_size=1e-1, epoch=0, **kwargs):
         [optim.zero_grad() for optim in self.optimizers]
         y = self.y_target
         output = self.lfm(self.tx, step_size=step_size)
@@ -75,7 +76,11 @@ class PDETrainer(VariationalTrainer):
         loss = - (log_likelihood - kl_divergence)
 
         loss.backward()
-        [optim.step() for optim in self.optimizers]
+        if epoch >= self.warm_variational:
+            [optim.step() for optim in self.optimizers]
+        else:
+            print(epoch, 'warming up')
+            self.optimizers[0].step()
         return loss.item(), (-log_likelihood.item(), kl_divergence.item())
 
     def debug_out(self, data_input, y_target, output):

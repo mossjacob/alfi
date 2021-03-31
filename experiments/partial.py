@@ -2,6 +2,8 @@ import torch
 import numpy as np
 from torch.nn import Parameter
 from matplotlib import pyplot as plt
+from torch.optim import Adam
+from gpytorch.optim import NGD
 
 from lafomo.configuration import VariationalConfiguration
 from lafomo.models import MultiOutputGP, PartialLFM
@@ -61,15 +63,19 @@ def build_partial(dataset, params):
     fenics_params = [sensitivity, decay, diffusion]
 
     lfm = PartialLFM(1, gp_model, fenics_model, fenics_params, config, num_training_points=int(0.9 * tx.shape[1]))
-    optimizer = torch.optim.Adam(lfm.parameters(), lr=0.07)
+    num_training = tx.shape[1]
+    variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
+    parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.07)
+    optimizers = [variational_optimizer, parameter_optimizer]
 
     # As in Lopez-Lopera et al., we take 30% of data for training
     train_mask = torch.zeros_like(tx[0,:])
     train_mask[torch.randperm(tx.shape[1])[:int(0.3 * tx.shape[1])]] = 1
     track_parameters = list(lfm.fenics_named_parameters.keys()) + ['gp_model.covar_module.raw_lengthscale']
-    trainer = PDETrainer(lfm, optimizer, dataset,
+    trainer = PDETrainer(lfm, optimizers, dataset,
                          track_parameters=track_parameters,
-                         train_mask=train_mask.bool())
+                         train_mask=train_mask.bool(),
+                         warm_variational=10)
     plotter = Plotter(lfm, dataset.gene_names)
     return lfm, trainer, plotter
 
