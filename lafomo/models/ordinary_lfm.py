@@ -20,15 +20,6 @@ class OrdinaryLFM(VariationalLFM):
         self.nfe = 0
         self.f = None
 
-    def nonvariational_parameters(self):
-        variational_keys = dict(self.gp_model.named_variational_parameters()).keys()
-        named_parameters = dict(self.named_parameters())
-        return [named_parameters[key] for key in named_parameters.keys()
-                if key[len('gp_model.'):] not in variational_keys]
-
-    def variational_parameters(self):
-        return self.gp_model.variational_parameters()
-
     def initial_state(self):
         initial_state = torch.zeros(torch.Size([self.num_outputs, 1]), dtype=torch.float64)
         initial_state = initial_state.cuda() if is_cuda() else initial_state

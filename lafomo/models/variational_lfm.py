@@ -57,6 +57,15 @@ class VariationalLFM(LFM, ABC):
         if config.initial_conditions:
             self.initial_conditions = Parameter(torch.tensor(torch.zeros(self.num_outputs, 1)), requires_grad=True)
 
+    def nonvariational_parameters(self):
+        variational_keys = dict(self.gp_model.named_variational_parameters()).keys()
+        named_parameters = dict(self.named_parameters())
+        return [named_parameters[key] for key in named_parameters.keys()
+                if key[len('gp_model.'):] not in variational_keys]
+
+    def variational_parameters(self):
+        return self.gp_model.variational_parameters()
+
     def forward(self, x):
         raise NotImplementedError
 

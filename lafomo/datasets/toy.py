@@ -72,7 +72,7 @@ class ToyTimeSeries(TranscriptomicTimeSeries):
         inducing_points = torch.linspace(0, 12, num_inducing).repeat(num_latents, 1).view(num_latents, num_inducing, 1)
         t_predict = torch.linspace(0, 12, prediction_points, dtype=torch.float32)
 
-        gp_model = MultiOutputGP(inducing_points, num_latents, initial_lengthscale=2)
+        gp_model = MultiOutputGP(inducing_points, num_latents, initial_lengthscale=2, natural=False)
         self.train_gp(gp_model, t_predict)
         with torch.no_grad():
             lfm = ToyLFM(num_outputs, gp_model, config)
