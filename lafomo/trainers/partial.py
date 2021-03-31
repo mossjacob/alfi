@@ -111,6 +111,7 @@ class PDETrainer(VariationalTrainer):
         axes[0].scatter(xy[:, 0], xy[:, 1], facecolors='none', edgecolors='r', s=3)
 
         plt.savefig(str(datetime.now().timestamp()) + '.png')
+        self.lfm.save('currentmodel')
 
     def print_extra(self):
         print(' s:', softplus(self.lfm.fenics_parameters[0][0]).item(),

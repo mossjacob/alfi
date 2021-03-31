@@ -20,6 +20,11 @@ from .exact import build_exact, plot_exact
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = 'CMU Serif'
 sns.set(font="CMU Serif")
+class TerminalColours:
+    GREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    END = '\033[0m'
 
 # ------Config------ #
 
@@ -68,12 +73,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
     key = args.data
 
-    print('\033[1;32;40m Running experiments for dataset:', key)
+    print(TerminalColours.GREEN, 'Running experiments for dataset:', key, TerminalColours.END)
     data_config = config[key]
     dataset = load_dataset(key)
     methods = data_config['methods']
     for method_key in methods:
-        print('\033[1;32;40m --and for method:', method_key)
+        print(TerminalColours.GREEN, '--constructing method:', method_key, '...', TerminalColours.END)
         method = methods[method_key]
         if method_key in builders:
             # Create experiments path
@@ -91,9 +96,10 @@ if __name__ == "__main__":
 
             # Plot results of model
             if method_key in plotters:
+                print(TerminalColours.GREEN, '--running plotter...')
                 plotters[method_key](dataset, model, trainer, plotter, filepath)
             else:
-                print('\033[1;35;40m --ignoring plotter for', method_key, 'since no plotter implemented.')
+                print(TerminalColours.WARNING, '--ignoring plotter for', method_key, 'since no plotter implemented.')
             model.save(str(filepath / 'savedmodel'))
         else:
-            print('\033[1;35;40m --ignoring method', method_key, 'since no builder implemented.')
+            print(TerminalColours.WARNING, '--ignoring method', method_key, 'since no builder implemented.')
