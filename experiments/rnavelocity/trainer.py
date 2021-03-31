@@ -14,13 +14,13 @@ class EMTrainer(Trainer):
     Parameters
     ----------
     de_model: .
-    optimizer:
+    optimizers:
     dataset: Dataset where t_observed (T,), m_observed (J, T).
     inducing timepoints.
     give_output: whether the trainer should give the first output (y_0) as initial value to the model `forward()`
     """
-    def __init__(self, lfm: LFM, optimizer: torch.optim.Optimizer, dataset: LFMDataset, batch_size: int):
-        super().__init__(lfm, optimizer, dataset, batch_size=batch_size)
+    def __init__(self, lfm: LFM, optimizers: torch.optim.Optimizer, dataset: LFMDataset, batch_size: int):
+        super().__init__(lfm, optimizers, dataset, batch_size=batch_size)
         # Initialise trajectory
         self.timepoint_choices = torch.linspace(0, 1, 100, requires_grad=False)
         initial_value = self.initial_value(None)
@@ -60,7 +60,7 @@ class EMTrainer(Trainer):
         epoch_ll = 0
         epoch_kl = 0
         for i, data in enumerate(self.data_loader):
-            self.optimizer.zero_grad()
+            [optim.zero_grad() for optim in self.optimizers]
             y = data.permute(0, 2, 1)  # (O, C, 1)
             y = y.cuda() if is_cuda() else y
             ### E-step ###
@@ -92,7 +92,7 @@ class EMTrainer(Trainer):
             log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target)
             total_loss = -log_likelihood + kl_divergence
             total_loss.backward()
-            self.optimizer.step()
+            [optim.step() for optim in self.optimizers]
 
             epoch_loss += total_loss.item()
             epoch_ll += log_likelihood.item()

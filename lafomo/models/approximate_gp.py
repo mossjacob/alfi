@@ -2,7 +2,12 @@ import torch
 import gpytorch
 
 from gpytorch.models import ApproximateGP
-from gpytorch.variational import CholeskyVariationalDistribution, VariationalStrategy, IndependentMultitaskVariationalStrategy
+from gpytorch.variational import (
+    NaturalVariationalDistribution,
+    CholeskyVariationalDistribution,
+    VariationalStrategy,
+    IndependentMultitaskVariationalStrategy
+)
 
 
 class MultiOutputGP(ApproximateGP):
@@ -12,11 +17,17 @@ class MultiOutputGP(ApproximateGP):
                  use_ard=True,
                  initial_lengthscale=None,
                  lengthscale_constraint=None,
-                 learn_inducing_locations=False):
+                 learn_inducing_locations=False,
+                 natural=True):
         # The variational dist batch shape means we learn a different variational dist for each latent
-        variational_distribution = CholeskyVariationalDistribution(
-            inducing_points.size(-2), batch_shape=torch.Size([num_latents])
-        )
+        if natural:
+            variational_distribution = NaturalVariationalDistribution(
+                inducing_points.size(-2), batch_shape=torch.Size([num_latents])
+            )
+        else:
+            variational_distribution = CholeskyVariationalDistribution(
+                inducing_points.size(-2), batch_shape=torch.Size([num_latents])
+            )
 
         # Wrap the VariationalStrategy in a MultiTask to make output MultitaskMultivariateNormal
         # rather than a batch MVN

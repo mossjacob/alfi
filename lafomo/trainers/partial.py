@@ -1,3 +1,5 @@
+from typing import List
+
 import torch
 import numpy as np
 from matplotlib import pyplot as plt
@@ -12,8 +14,8 @@ from lafomo.utilities.torch import cia, q2, smse, softplus
 
 class PDETrainer(VariationalTrainer):
 
-    def __init__(self, lfm: PartialLFM, optimizer: torch.optim.Optimizer, dataset, **kwargs):
-        super().__init__(lfm, optimizer, dataset, **kwargs)
+    def __init__(self, lfm: PartialLFM, optimizers: List[torch.optim.Optimizer], dataset, **kwargs):
+        super().__init__(lfm, optimizers, dataset, **kwargs)
         self.debug_iteration = 0
         data = next(iter(dataset))
         data_input, y = data
@@ -62,7 +64,7 @@ class PDETrainer(VariationalTrainer):
         return spatial_grid
 
     def single_epoch(self, step_size=1e-1, **kwargs):
-        self.optimizer.zero_grad()
+        [optim.zero_grad() for optim in self.optimizers]
         y = self.y_target
         output = self.lfm(self.tx, step_size=step_size)
         self.debug_out(self.tx, y, output)
@@ -73,7 +75,7 @@ class PDETrainer(VariationalTrainer):
         loss = - (log_likelihood - kl_divergence)
 
         loss.backward()
-        self.optimizer.step()
+        [optim.step() for optim in self.optimizers]
         return loss.item(), (-log_likelihood.item(), kl_divergence.item())
 
     def debug_out(self, data_input, y_target, output):

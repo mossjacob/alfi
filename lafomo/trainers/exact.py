@@ -13,7 +13,7 @@ class ExactTrainer(Trainer):
     def single_epoch(self, **kwargs):
         epoch_loss = 0
 
-        self.optimizer.zero_grad()
+        [optim.zero_grad() for optim in self.optimizers]
         # Output from model
         output = self.lfm(self.lfm.train_t)
         # print(output.mean.shape)
@@ -22,7 +22,7 @@ class ExactTrainer(Trainer):
         # Calc loss and backprop gradients
         loss = -self.loss_fn(output, self.lfm.train_y.squeeze())
         loss.backward()
-        self.optimizer.step()
+        [optim.step() for optim in self.optimizers]
         epoch_loss += loss.item()
 
         return epoch_loss, [epoch_loss]

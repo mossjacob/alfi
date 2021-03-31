@@ -1,3 +1,6 @@
+from abc import abstractmethod
+from typing import List
+
 from lafomo.models import LFM
 import torch
 import numpy as np
@@ -10,19 +13,21 @@ from lafomo.datasets import LFMDataset
 
 class Trainer:
     """
-    Trainer
+    An abstract LFM trainer. Subclasses must implement the `single_epoch` function.
 
     Parameters
     ----------
-    lfm: .
-    optimizer:
+    lfm: The Latent Force Model.
+    optimizers: list of `torch.optim.Optimizer`s. For when natural gradients are used for variational models.
     dataset: Dataset where t_observed (D, T), m_observed (J, T).
-    inducing timepoints.
     give_output: whether the trainers should give the first output (y_0) as initial value to the model `forward()`
+    track_parameters: the keys into `named_parameters()` of parameters that the trainer should track. The
+                      tracked parameters can be accessed from `parameter_trace`
+    train_mask: boolean mask
     """
     def __init__(self,
                  lfm: LFM,
-                 optimizer: torch.optim.Optimizer,
+                 optimizers: List[torch.optim.Optimizer],
                  dataset: LFMDataset,
                  batch_size=1,
                  give_output=False,
@@ -31,7 +36,8 @@ class Trainer:
         self.lfm = lfm
         self.num_epochs = 0
         self.kl_mult = 0
-        self.optimizer = optimizer
+        self.optimizers = optimizers
+        self.use_natural_gradient = len(self.optimizers) > 1
         self.batch_size = batch_size
         self.data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
         self.losses = np.empty((0, 2))
@@ -78,6 +84,7 @@ class Trainer:
         losses = np.array(losses)
         self.losses = np.concatenate([self.losses, losses], axis=0)
 
+    @abstractmethod
     def single_epoch(self, **kwargs):
         raise NotImplementedError
 

@@ -1,3 +1,5 @@
+from typing import List
+
 import torch
 
 from lafomo.utilities.torch import is_cuda
@@ -11,15 +13,15 @@ class VariationalTrainer(Trainer):
     Parameters:
         batch_size: in the case of the transcriptional regulation model, we train the entire gene set as a batch
     """
-    def __init__(self, lfm: VariationalLFM, optimizer: torch.optim.Optimizer, dataset, **kwargs):
-        super().__init__(lfm, optimizer, dataset, batch_size=lfm.num_outputs, **kwargs)
+    def __init__(self, lfm: VariationalLFM, optimizers: List[torch.optim.Optimizer], dataset, **kwargs):
+        super().__init__(lfm, optimizers, dataset, batch_size=lfm.num_outputs, **kwargs)
 
     def single_epoch(self, step_size=1e-1, **kwargs):
         epoch_loss = 0
         epoch_ll = 0
         epoch_kl = 0
         for i, data in enumerate(self.data_loader):
-            self.optimizer.zero_grad()
+            [optim.zero_grad() for optim in self.optimizers]
             data_input, y = data
             data_input = data_input.cuda() if is_cuda() else data_input
             y = y.cuda() if is_cuda() else y
@@ -34,7 +36,7 @@ class VariationalTrainer(Trainer):
             loss = - (log_likelihood - kl_divergence)
 
             loss.backward()
-            self.optimizer.step()
+            [optim.step() for optim in self.optimizers]
 
             epoch_loss += loss.item()
             epoch_ll += log_likelihood.item()
