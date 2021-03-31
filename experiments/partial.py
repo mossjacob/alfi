@@ -30,8 +30,8 @@ def build_partial(dataset, params):
     x_diff = xs[-1] - xs[0]
     num_inducing = int(tx.shape[1] * 5/6)
     inducing_points = torch.stack([
-        tx[0, torch.randperm(tx.shape[1])[:int(0.3 * tx.shape[1])]],
-        tx[1, torch.randperm(tx.shape[1])[:int(0.3 * tx.shape[1])]]
+        tx[0, torch.randperm(tx.shape[1])[:int(0.8 * tx.shape[1])]],
+        tx[1, torch.randperm(tx.shape[1])[:int(0.8 * tx.shape[1])]]
     ], dim=1).unsqueeze(0)
 
     gp_kwargs = dict(use_ard=True,
@@ -90,10 +90,12 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath):
 
     with open(filepath / 'metrics.csv', 'w') as f:
         f.write('smse\tq2\tca\n')
+        f_mean_test = f_mean[~trainer.train_mask].squeeze()
+        f_var_test = f_var[~trainer.train_mask].squeeze()
         f.write('\t'.join([
-            str(smse(y_target[~trainer.train_mask], f_mean[~trainer.train_mask]).mean().item()),
-            str(q2(y_target[~trainer.train_mask], f_mean[~trainer.train_mask]).item()),
-            str(cia(y_target[~trainer.train_mask], f_mean[~trainer.train_mask], f_var[~trainer.train_mask]).item())
+            str(smse(y_target[~trainer.train_mask], f_mean_test).mean().item()),
+            str(q2(y_target[~trainer.train_mask], f_mean_test).item()),
+            str(cia(y_target[~trainer.train_mask], f_mean_test, f_var_test).item())
         ]) + '\n')
 
     plot_before_after(
