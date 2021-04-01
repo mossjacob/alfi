@@ -40,14 +40,14 @@ toy-spatial:
   methods:
     partial:
       train-params:
-        epochs: 80
+        epochs: 90
         report_interval: 1
       model-params:
         lengthscale: 0.2
         sensitivity: 0.2
         diffusion: 0.2
         decay: 0.2
-
+        natural: true
 # Drosophila Experiments
 dros-kr:
   num_latents: 1
@@ -62,6 +62,7 @@ dros-kr:
         diffusion: 0.01
         decay: 0.1
         natural: false
+        warmup-epochs: 20
 dros-kni:
   num_latents: 1
   methods:
