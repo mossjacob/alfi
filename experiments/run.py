@@ -78,7 +78,7 @@ if __name__ == "__main__":
     dataset = load_dataset(key)
     methods = data_config['methods']
     for method_key in methods:
-        print(TerminalColours.GREEN, '--constructing method:', method_key, '...', TerminalColours.END)
+        print(TerminalColours.GREEN, 'Constructing method:', method_key, TerminalColours.END)
         method = methods[method_key]
         if method_key in builders:
             # Create experiments path
@@ -96,10 +96,10 @@ if __name__ == "__main__":
 
             # Plot results of model
             if method_key in plotters:
-                print(TerminalColours.GREEN, '--running plotter...')
+                print(TerminalColours.GREEN, 'Running plotter...', TerminalColours.END)
                 plotters[method_key](dataset, model, trainer, plotter, filepath)
             else:
-                print(TerminalColours.WARNING, '--ignoring plotter for', method_key, 'since no plotter implemented.')
+                print(TerminalColours.WARNING, 'Ignoring plotter for', method_key, 'since no plotter implemented.', TerminalColours.END)
             model.save(str(filepath / 'savedmodel'))
         else:
-            print(TerminalColours.WARNING, '--ignoring method', method_key, 'since no builder implemented.')
+            print(TerminalColours.WARNING, 'Ignoring method', method_key, 'since no builder implemented.', TerminalColours.END)

@@ -63,7 +63,7 @@ def build_partial(dataset, params):
     fenics_params = [sensitivity, decay, diffusion]
 
     num_training = int(0.3 * tx.shape[1])
-    lfm = PartialLFM(1, gp_model, fenics_model, fenics_params, config, num_training_points=int(0.5 * tx.shape[1]))
+    lfm = PartialLFM(1, gp_model, fenics_model, fenics_params, config, num_training_points=num_training)
     variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.08)
     parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.07)
     optimizers = [variational_optimizer, parameter_optimizer]
