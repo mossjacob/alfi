@@ -6,7 +6,8 @@ from gpytorch.variational import (
     NaturalVariationalDistribution,
     CholeskyVariationalDistribution,
     VariationalStrategy,
-    IndependentMultitaskVariationalStrategy
+    IndependentMultitaskVariationalStrategy,
+    TrilNaturalVariationalDistribution
 )
 
 
@@ -18,10 +19,12 @@ class MultiOutputGP(ApproximateGP):
                  initial_lengthscale=None,
                  lengthscale_constraint=None,
                  learn_inducing_locations=False,
-                 natural=True):
+                 natural=True,
+                 use_tril=False):
         # The variational dist batch shape means we learn a different variational dist for each latent
         if natural:
-            variational_distribution = NaturalVariationalDistribution(
+            Distribution = TrilNaturalVariationalDistribution if use_tril else NaturalVariationalDistribution
+            variational_distribution = Distribution(
                 inducing_points.size(-2), batch_shape=torch.Size([num_latents])
             )
         else:

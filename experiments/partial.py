@@ -40,7 +40,8 @@ def build_partial(dataset, params):
                      use_scale=False,
                      # lengthscale_constraint=Interval(0.1, 0.3),
                      learn_inducing_locations=False,
-                     initial_lengthscale=lengthscale)
+                     initial_lengthscale=lengthscale,
+                     use_tril=True)
     gp_model = MultiOutputGP(inducing_points, 1, **gp_kwargs)
     gp_model.double();
 
