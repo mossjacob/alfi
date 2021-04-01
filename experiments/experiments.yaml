@@ -59,7 +59,7 @@ dros-kr:
       model-params:
         lengthscale: 10
         sensitivity: 0.1
-        diffusion: 0.1
+        diffusion: 0.01
         decay: 0.1
         natural: false
 dros-kni:
@@ -72,7 +72,7 @@ dros-kni:
       model-params:
         lengthscale: 10
         sensitivity: 0.1
-        diffusion: 0.1
+        diffusion: 0.01
         decay: 0.1
         natural: false
 dros-gt:
@@ -85,7 +85,7 @@ dros-gt:
       model-params:
         lengthscale: 10
         sensitivity: 0.1
-        diffusion: 0.1
+        diffusion: 0.01
         decay: 0.1
         natural: false
 
