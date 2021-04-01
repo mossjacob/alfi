@@ -35,8 +35,6 @@ with open("experiments/experiments.yaml", 'r') as stream:
         print(exc)
         exit()
 
-print('Config', config)
-
 dataset_choices = list(config.keys())
 
 parser = argparse.ArgumentParser()

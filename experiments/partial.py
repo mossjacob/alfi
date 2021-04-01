@@ -41,6 +41,7 @@ def build_partial(dataset, params):
                      # lengthscale_constraint=Interval(0.1, 0.3),
                      learn_inducing_locations=False,
                      initial_lengthscale=lengthscale,
+                     natural=params['natural'],
                      use_tril=True)
     gp_model = MultiOutputGP(inducing_points, 1, **gp_kwargs)
     gp_model.double();
@@ -62,16 +63,17 @@ def build_partial(dataset, params):
     # decay = Parameter(0.1 * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
     # diffusion = Parameter(0.01 * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
     fenics_params = [sensitivity, decay, diffusion]
+    train_ratio = 0.3
+    num_training = int(train_ratio * tx.shape[1])
 
-    num_training = int(0.3 * tx.shape[1])
     lfm = PartialLFM(1, gp_model, fenics_model, fenics_params, config, num_training_points=num_training)
-    variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.08)
+    variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
     parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.07)
     optimizers = [variational_optimizer, parameter_optimizer]
 
     # As in Lopez-Lopera et al., we take 30% of data for training
     train_mask = torch.zeros_like(tx[0,:])
-    train_mask[torch.randperm(tx.shape[1])[:int(0.3 * tx.shape[1])]] = 1
+    train_mask[torch.randperm(tx.shape[1])[:int(train_ratio * tx.shape[1])]] = 1
     track_parameters = list(lfm.fenics_named_parameters.keys()) + ['gp_model.covar_module.raw_lengthscale']
     trainer = PDETrainer(lfm, optimizers, dataset,
                          track_parameters=track_parameters,
