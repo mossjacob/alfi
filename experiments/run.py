@@ -90,6 +90,7 @@ if __name__ == "__main__":
             # Train model with optional initial step
             if method_key in train_pre_step:
                 train_pre_step[method_key](model)
+            print(TerminalColours.GREEN, 'Training...', TerminalColours.END)
             trainer.train(**method['train-params'])
 
             # Plot results of model

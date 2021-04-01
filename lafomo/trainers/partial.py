@@ -52,6 +52,10 @@ class PDETrainer(VariationalTrainer):
         self.tx = torch.stack([new_t, new_x])
         self.y_target = y_target
 
+        # Cold start: don't train non variational parameters initially.
+        for param in lfm.nonvariational_parameters():
+            param.requires_grad = False
+
     def discretise_spatial(self, tx):
         # whilst maintaining an inverse mapping to mask the output for
         # calculating the loss. shape (T, X_unique).
@@ -72,7 +76,6 @@ class PDETrainer(VariationalTrainer):
 
         log_likelihood, kl_divergence, _ = self.lfm.loss_fn(
             output, y.permute(1, 0), mask=self.train_mask)
-
         loss = - (log_likelihood - kl_divergence)
 
         loss.backward()
@@ -81,6 +84,12 @@ class PDETrainer(VariationalTrainer):
         else:
             print(epoch, 'warming up')
             self.optimizers[0].step()
+
+        # Now we are warmed up, start training non variational parameters in the next epoch.
+        if epoch + 1 == self.warm_variational:
+            for param in self.lfm.nonvariational_parameters():
+                param.requires_grad = True
+
         return loss.item(), (-log_likelihood.item(), kl_divergence.item())
 
     def debug_out(self, data_input, y_target, output):
