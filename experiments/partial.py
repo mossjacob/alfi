@@ -62,8 +62,8 @@ def build_partial(dataset, params):
     # diffusion = Parameter(0.01 * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
     fenics_params = [sensitivity, decay, diffusion]
 
-    lfm = PartialLFM(1, gp_model, fenics_model, fenics_params, config, num_training_points=int(0.9 * tx.shape[1]))
-    num_training = tx.shape[1]
+    num_training = int(0.3 * tx.shape[1])
+    lfm = PartialLFM(1, gp_model, fenics_model, fenics_params, config, num_training_points=int(0.5 * tx.shape[1]))
     variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.08)
     parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.07)
     optimizers = [variational_optimizer, parameter_optimizer]
