@@ -67,9 +67,12 @@ def build_partial(dataset, params):
     num_training = int(train_ratio * tx.shape[1])
 
     lfm = PartialLFM(1, gp_model, fenics_model, fenics_params, config, num_training_points=num_training)
-    variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
-    parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.07)
-    optimizers = [variational_optimizer, parameter_optimizer]
+    if params['natural']:
+        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
+        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.07)
+        optimizers = [variational_optimizer, parameter_optimizer]
+    else:
+        optimizers = [Adam(lfm.parameters(), lr=0.07)]
 
     # As in Lopez-Lopera et al., we take 30% of data for training
     train_mask = torch.zeros_like(tx[0,:])
