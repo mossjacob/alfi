@@ -8,6 +8,7 @@ from .datasets import (
     ToySpatialTranscriptomics,
     DrosophilaSpatialTranscriptomics
 )
+from .lotkavolterra import DeterministicLotkaVolterra
 
 
 __all__ = [
@@ -23,4 +24,5 @@ __all__ = [
     'ToyTimeSeries',
     'ToySpatialTranscriptomics',
     'DrosophilaSpatialTranscriptomics',
+    'DeterministicLotkaVolterra',
 ]
