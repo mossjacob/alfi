@@ -15,8 +15,8 @@ class OrdinaryLFM(VariationalLFM):
     Inheriting classes must override the `odefunc` function which encodes the ODE.
     """
 
-    def __init__(self, num_outputs, gp_model, config: VariationalConfiguration, dtype=torch.float64):
-        super().__init__(num_outputs, gp_model, config, dtype=dtype)
+    def __init__(self, num_outputs, gp_model, config: VariationalConfiguration, **kwargs):
+        super().__init__(num_outputs, gp_model, config, **kwargs)
         self.nfe = 0
         self.f = None
 

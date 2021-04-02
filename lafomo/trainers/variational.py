@@ -30,7 +30,6 @@ class VariationalTrainer(Trainer):
 
             output = self.lfm(data_input, step_size=step_size)
             self.debug_out(data_input, y, output)
-
             log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y.permute(1, 0))
 
             loss = - (log_likelihood - kl_divergence)

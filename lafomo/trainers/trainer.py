@@ -71,9 +71,9 @@ class Trainer:
 
                 if isinstance(self.lfm, gpytorch.models.GP):
                     kernel = self.lfm.covar_module
+                    print(f') λ: {str(kernel.lengthscale.view(-1).detach().numpy())}', end='')
                 else:
-                    kernel = self.lfm.gp_model.covar_module
-                print(f') λ: {str(kernel.lengthscale.view(-1).detach().numpy())}', end='')
+                    print(f') kernel: {self.lfm.summarise_gp_hyp()}', end='')
                 self.print_extra()
 
             losses.append(split_loss)

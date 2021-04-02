@@ -58,7 +58,10 @@ class MultiOutputGP(ApproximateGP):
                 batch_shape=torch.Size([num_latents])
             )
         if initial_lengthscale is not None:
-            self.covar_module.lengthscale = initial_lengthscale
+            if use_scale:
+                self.covar_module.base_kernel.lengthscale = initial_lengthscale
+            else:
+                self.covar_module.lengthscale = initial_lengthscale
 
     def get_inducing_points(self):
         return self.variational_strategy.base_variational_strategy.inducing_points
