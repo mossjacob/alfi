@@ -41,14 +41,14 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--data', type=str, choices=dataset_choices, default=dataset_choices[0])
 
 
-def load_dataset(name):
-    return {
-        'p53': lambda: P53Data(replicate=0, data_dir='data'),
-        'hafner': lambda: HafnerData(replicate=0, data_dir='data', extra_targets=False),
-        'toy-spatial': lambda: ToySpatialTranscriptomics(data_dir='data'),
-        'dros-kr': lambda: DrosophilaSpatialTranscriptomics(gene='kr', data_dir='data'),
-        'toy': ToyTimeSeries(),
-    }[name]()
+
+datasets = {
+    'p53': lambda: P53Data(replicate=0, data_dir='data'),
+    'hafner': lambda: HafnerData(replicate=0, data_dir='data', extra_targets=False),
+    'toy-spatial': lambda: ToySpatialTranscriptomics(data_dir='data'),
+    'dros-kr': lambda: DrosophilaSpatialTranscriptomics(gene='kr', data_dir='data'),
+    'toy': lambda: ToyTimeSeries(),
+}
 
 
 # ------Set up model initialisers------ #
@@ -64,7 +64,7 @@ plotters = {
     'variational': plot_variational,
 }
 train_pre_step = {
-    'exact': lambda model: model.likelihood.train()
+    'exact': lambda model: model.likelihood.train(),
 }
 
 if __name__ == "__main__":
@@ -73,7 +73,7 @@ if __name__ == "__main__":
 
     print(TerminalColours.GREEN, 'Running experiments for dataset:', key, TerminalColours.END)
     data_config = config[key]
-    dataset = load_dataset(key)
+    dataset = datasets[key]()
     methods = data_config['methods']
     for method_key in methods:
         print(TerminalColours.GREEN, 'Constructing method:', method_key, TerminalColours.END)
