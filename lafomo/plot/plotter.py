@@ -32,78 +32,65 @@ class Plotter:
         plt.rcParams['font.family'] = 'serif'
         plt.rcParams['font.serif'] = 'CMU Serif'
 
-    def _plot_barenco(self, mean):
+    def plot_barenco(self, mean):
         barenco_f, _ = scaled_barenco_data(mean)
         plt.scatter(np.linspace(0, 12, 7), barenco_f, marker='x', s=60, linewidth=2, label='Barenco et al.')
 
-    def plot_outputs(self, t_predict, replicate=0, t_scatter=None, y_scatter=None, model_kwargs={}, ylim=None, max_plots=10):
+    def plot_gp(self, gp,
+                t_predict, t_scatter=None, y_scatter=None,
+                num_samples=7,
+                transform=lambda x:x,
+                ylim=None,
+                max_plots=10, replicate=0):
         """
         Parameters:
-            t_predict: tensor (T*,)
-            t_scatter: tensor (T,)
-            y_scatter: tensor (J, T)
-            model_kwargs: dictionary of keyword arguments to send to the model predict_m function
+            gp: output distribution of LFM or associated GP models.
+            t_predict: tensor (T*,) prediction input vector
+            t_scatter: tensor (T,) target input vector
+            y_scatter: tensor (J, T) target output vector
         """
-        q_m = self.model.predict_m(t_predict, **model_kwargs)
-        mu = q_m.mean.detach().transpose(0, 1)  # (T, J)
-        std = q_m.variance.detach().transpose(0, 1).sqrt()
-        mu = mu.view(self.num_outputs, self.num_replicates, -1).transpose(0, 1)
-        std = std.view(self.num_outputs, self.num_replicates, -1).transpose(0, 1)
-        num_plots = min(max_plots, self.num_outputs)
+        mean = gp.mean.detach().transpose(0, 1)  # (T, J)
+        std = gp.variance.detach().transpose(0, 1).sqrt()
+        num_plots = mean.shape[0]
+        mean = mean.view(num_plots, self.num_replicates, -1).transpose(0, 1)
+        std = std.view(num_plots, self.num_replicates, -1).transpose(0, 1)
+        mean = transform(mean)
+        std = transform(std)
+        num_plots = min(max_plots, num_plots)
         plt.figure(figsize=(6, 4 * np.ceil(num_plots / 3)))
+        print(num_plots)
         for i in range(num_plots):
-            plt.subplot(num_plots, 3, i + 1)
+            plt.subplot(num_plots, min(num_plots, 3), i + 1)
             plt.title(self.output_names[i])
-            plt.plot(t_predict, mu[replicate, i].detach(), color=self.line_color)
+            plt.plot(t_predict, mean[replicate, i].detach(), color=self.line_color)
             plt.fill_between(t_predict,
-                             mu[replicate, i] + 2*std[replicate, i],
-                             mu[replicate, i] - 2*std[replicate, i],
+                             mean[replicate, i] + 2*std[replicate, i],
+                             mean[replicate, i] - 2*std[replicate, i],
                              color=self.shade_color, alpha=0.3)
+            for _ in range(num_samples):
+                plt.plot(t_predict, gp.sample().detach().transpose(0, 1)[i], alpha=0.3, color=self.line_color)
+
+            if self.variational:
+                inducing_points = self.model.inducing_points.detach()[0].squeeze()
+                plt.scatter(inducing_points, np.zeros_like(inducing_points), marker='_', c='black', linewidths=4)
 
             if t_scatter is not None:
                 plt.scatter(t_scatter, y_scatter[replicate, i], color=self.scatter_color, marker='x')
 
             if ylim is None:
-                lb = min(mu[replicate, i])
+                lb = min(mean[replicate, i])
                 lb -= 0.2 * lb
-                ub = max(mu[replicate, i]) * 1.2
+                ub = max(mean[replicate, i]) * 1.2
                 plt.ylim(lb, ub)
-        plt.tight_layout()
-        return q_m
-
-    def plot_latents(self, t_predict, ylim=None, num_samples=7, plot_barenco=False, plot_inducing=False):
-        q_f = self.model.predict_f(t_predict.reshape(-1))
-        mean = q_f.mean.detach().transpose(0, 1)  # (T)
-        std = q_f.variance.detach().sqrt().transpose(0, 1)  # (T)
-        plt.figure(figsize=(5, 3*mean.shape[0]))
-        for i in range(mean.shape[0]):
-            plt.subplot(mean.shape[0], 1, i+1)
-            plt.plot(t_predict, mean[i], color=self.line_color)
-            plt.fill_between(t_predict,
-                             mean[i] + 2 * std[i],
-                             mean[i] - 2 * std[i],
-                             color=self.shade_color, alpha=0.3)
-            for _ in range(num_samples):
-                plt.plot(t_predict, q_f.sample().detach().transpose(0, 1)[i], alpha=0.3, color=self.line_color)
-
-            if plot_barenco:
-                self._plot_barenco(mean[i])
-            if self.variational:
-                inducing_points = self.model.inducing_points.detach()[0].squeeze()
-                plt.scatter(inducing_points, np.zeros_like(inducing_points), marker='_', c='black', linewidths=4)
-
-            if ylim is None:
-                plt.ylim(min(mean[i])-0.3, max(mean[i])+0.3)
             else:
                 plt.ylim(ylim)
-
-        plt.title('Latent')
-        return q_f
+        plt.tight_layout()
+        return gp
 
     def plot_double_bar(self, params, labels, ground_truths=None):
         real_bars = [None] * len(params) if ground_truths is None else ground_truths
         vars = [0] * len(params)
-        fig, axes = plt.subplots(ncols=len(params), figsize=(8, 4))
+        fig, axes = plt.subplots(ncols=len(params), figsize=(8, 3.5))
         plotnum = 0
         num_bars = self.output_names.shape[0]
         for A, B, var, label in zip(params, real_bars, vars, labels):

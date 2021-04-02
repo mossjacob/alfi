@@ -77,7 +77,7 @@ class ToyTimeSeries(TranscriptomicTimeSeries):
         with torch.no_grad():
             lfm = ToyLFM(num_outputs, gp_model, config)
             plotter = Plotter(lfm, np.arange(num_outputs))
-            q_m = plotter.plot_outputs(t_predict)
+            q_m = plotter.plot_gp(lfm.predict_m(t_predict), t_predict)
             self.t_observed = t_predict[::10]
             self.m_observed = q_m.mean[::10].unsqueeze(0).permute(0, 2, 1)
             print(self.m_observed.shape, self.f_observed.shape)
