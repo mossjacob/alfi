@@ -62,7 +62,7 @@ class Trainer:
         end_epoch = self.num_epochs+epochs
 
         for epoch in range(epochs):
-            epoch_loss, split_loss = self.single_epoch(epoch=epoch, **kwargs)
+            epoch_loss, split_loss = self.single_epoch(epoch=self.num_epochs, **kwargs)
 
             if (epoch % report_interval) == 0:
                 print('Epoch %03d/%03d - Loss: %.2f (' % (
@@ -96,4 +96,4 @@ class Trainer:
             params = dict(self.lfm.named_parameters())
             for key in params:
                 if key in self.parameter_trace:
-                    self.parameter_trace[key].append(params[key].detach())
+                    self.parameter_trace[key].append(params[key].detach().clone())

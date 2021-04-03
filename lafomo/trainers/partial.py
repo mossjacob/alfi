@@ -14,9 +14,8 @@ from lafomo.utilities.torch import cia, q2, smse, softplus
 
 class PDETrainer(VariationalTrainer):
 
-    def __init__(self, lfm: PartialLFM, optimizers: List[torch.optim.Optimizer], dataset, warm_variational=-1, **kwargs):
+    def __init__(self, lfm: PartialLFM, optimizers: List[torch.optim.Optimizer], dataset, **kwargs):
         super().__init__(lfm, optimizers, dataset, **kwargs)
-        self.warm_variational = warm_variational
         self.debug_iteration = 0
         data = next(iter(dataset))
         data_input, y = data
