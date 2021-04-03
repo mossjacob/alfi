@@ -7,7 +7,8 @@ from pathlib import Path
 
 from lafomo.datasets import (
     P53Data, HafnerData, ToyTimeSeries,
-    ToySpatialTranscriptomics, DrosophilaSpatialTranscriptomics
+    ToySpatialTranscriptomics, DrosophilaSpatialTranscriptomics,
+    DeterministicLotkaVolterra,
 )
 try:
     from .partial import build_partial, plot_partial
@@ -15,7 +16,7 @@ except ImportError:
     build_partial, plot_partial = None, None
 from .variational import build_variational, plot_variational
 from .exact import build_exact, plot_exact
-
+from .lotka import build_lotka, plot_lotka
 
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = 'CMU Serif'
@@ -41,13 +42,15 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--data', type=str, choices=dataset_choices, default=dataset_choices[0])
 
 
-
 datasets = {
     'p53': lambda: P53Data(replicate=0, data_dir='data'),
     'hafner': lambda: HafnerData(replicate=0, data_dir='data', extra_targets=False),
     'toy-spatial': lambda: ToySpatialTranscriptomics(data_dir='data'),
     'dros-kr': lambda: DrosophilaSpatialTranscriptomics(gene='kr', data_dir='data'),
     'toy': lambda: ToyTimeSeries(),
+    'lotka': lambda: DeterministicLotkaVolterra(alpha = 2./3, beta = 4./3,
+                                                gamma = 1., delta = 1.,
+                                                steps=13, end_time=12),
 }
 
 
@@ -56,12 +59,14 @@ builders = {
     'variational': build_variational,
     'exact': build_exact,
     'partial': build_partial,
+    'lotka': build_lotka,
 }
 
 plotters = {
     'exact': plot_exact,
     'partial': plot_partial,
     'variational': plot_variational,
+    'lotka': plot_lotka,
 }
 train_pre_step = {
     'exact': lambda model: model.likelihood.train(),
@@ -74,31 +79,31 @@ if __name__ == "__main__":
     print(TerminalColours.GREEN, 'Running experiments for dataset:', key, TerminalColours.END)
     data_config = config[key]
     dataset = datasets[key]()
-    methods = data_config['methods']
-    for method_key in methods:
-        print(TerminalColours.GREEN, 'Constructing method:', method_key, TerminalColours.END)
-        method = methods[method_key]
-        if method_key in builders:
+    experiments = data_config['experiments']
+    for experiment in experiments:
+        method = experiment['method']
+        print(TerminalColours.GREEN, 'Constructing method:', method, TerminalColours.END)
+        if method in builders:
             # Create experiments path
-            filepath = Path('experiments', key, method_key)
+            filepath = Path('experiments', key, method)
             filepath.mkdir(parents=True, exist_ok=True)
 
             # Construct model
-            modelparams = method['model-params'] if 'model-params' in method else None
-            model, trainer, plotter = builders[method_key](dataset, modelparams)
+            modelparams = experiment['model-params'] if 'model-params' in method else None
+            model, trainer, plotter = builders[method](dataset, modelparams)
 
             # Train model with optional initial step
-            if method_key in train_pre_step:
-                train_pre_step[method_key](model)
+            if method in train_pre_step:
+                train_pre_step[method](model)
             print(TerminalColours.GREEN, 'Training...', TerminalColours.END)
-            trainer.train(**method['train-params'])
+            trainer.train(**experiment['train-params'])
 
             # Plot results of model
-            if method_key in plotters:
+            if method in plotters:
                 print(TerminalColours.GREEN, 'Running plotter...', TerminalColours.END)
-                plotters[method_key](dataset, model, trainer, plotter, filepath)
+                plotters[method](dataset, model, trainer, plotter, filepath, params)
             else:
-                print(TerminalColours.WARNING, 'Ignoring plotter for', method_key, 'since no plotter implemented.', TerminalColours.END)
+                print(TerminalColours.WARNING, 'Ignoring plotter for', method, 'since no plotter implemented.', TerminalColours.END)
             model.save(str(filepath / 'savedmodel'))
         else:
-            print(TerminalColours.WARNING, 'Ignoring method', method_key, 'since no builder implemented.', TerminalColours.END)
+            print(TerminalColours.WARNING, 'Ignoring method', method, 'since no builder implemented.', TerminalColours.END)

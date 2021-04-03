@@ -75,12 +75,12 @@ def build_variational(dataset, params):
     ]
 
     optimizer = torch.optim.Adam(lfm.parameters(), lr=0.03)
-    trainer = P53ConstrainedTrainer(lfm, optimizer, dataset, track_parameters=track_parameters)
+    trainer = P53ConstrainedTrainer(lfm, [optimizer], dataset, track_parameters=track_parameters)
 
     return lfm, trainer, plotter
 
 
-def plot_variational(dataset, lfm, trainer, plotter, filepath):
+def plot_variational(dataset, lfm, trainer, plotter, filepath, params):
     lfm.eval()
 
     t_predict = torch.linspace(-1, 13, 80, dtype=torch.float32)

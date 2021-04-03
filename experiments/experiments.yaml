@@ -1,44 +1,45 @@
 # This configuration file is structured such that datasets are roots with methods direct descendents
 # p53 networks
 p53:
-  methods:
-    exact:
+  experiments:
+    - method: exact
       train-params:
         epochs: 350
         report_interval: 5
-    variational:
+    - method: variational
       train-params:
         epochs: 300
         report_interval: 10
-    mcmc:
+    - method: mcmc
       train-params:
         epochs: 2000
 
 hafner:
   num_latents: 1
-  methods:
-    variational:
+  experiments:
+    - method: variational
       train-params:
         epochs: 300
         report_interval: 10
-    mcmc:
+    - method: mcmc
       train-params:
         epochs: 2000
 
 # Toy datasets
 toy:
   num_latents: 3
-  methods:
-    variational:
+  experiments:
+    - method: variational
       train-params:
         epochs: 300
-    mcmc:
-      epochs: 2000
+    - method: mcmc
+      train-params:
+        epochs: 2000
 
 toy-spatial:
   num_latents: 1
-  methods:
-    partial:
+  experiments:
+    - method: partial
       train-params:
         epochs: 90
         report_interval: 1
@@ -51,8 +52,8 @@ toy-spatial:
 # Drosophila Experiments
 dros-kr:
   num_latents: 1
-  methods:
-    partial:
+  experiments:
+    - method: partial
       train-params:
         epochs: 80
         report_interval: 1
@@ -65,8 +66,8 @@ dros-kr:
         warmup-epochs: 20
 dros-kni:
   num_latents: 1
-  methods:
-    partial:
+  experiments:
+    - method: partial
       train-params:
         epochs: 80
         report_interval: 1
@@ -78,8 +79,8 @@ dros-kni:
         natural: false
 dros-gt:
   num_latents: 1
-  methods:
-    partial:
+  experiments:
+    - method: partial
       train-params:
         epochs: 80
         report_interval: 1
@@ -90,8 +91,18 @@ dros-gt:
         decay: 0.1
         natural: false
 
-# Other stuff
-mnist:
-  methods:
-    variational:
-      epochs: 300
+# Lotka volterra
+lotka:
+  experiments:
+    - method: lotka
+      train-params:
+        epochs: 1000
+      model-params:
+        natural: false
+        kernel: 'periodic'
+    - method: lotka
+      train-params:
+        epochs: 1000
+      model-params:
+        natural: false
+        kernel: 'rbf'

@@ -24,14 +24,14 @@ def build_exact(dataset, params):
     ]
     print(dict(model.named_parameters()))
 
-    trainer = ExactTrainer(model, optimizer, dataset, loss_fn=loss_fn, track_parameters=track_parameters)
+    trainer = ExactTrainer(model, [optimizer], dataset, loss_fn=loss_fn, track_parameters=track_parameters)
     plotter = Plotter(model, dataset.gene_names)
     model.likelihood.train()
 
     return model, trainer, plotter
 
 
-def plot_exact(dataset, lfm, trainer, plotter, filepath):
+def plot_exact(dataset, lfm, trainer, plotter, filepath, params):
     t_predict = torch.linspace(-1, 13, 80, dtype=torch.float64)
 
     plotter.plot_outputs(t_predict, t_scatter=dataset.t_observed, y_scatter=dataset.m_observed)

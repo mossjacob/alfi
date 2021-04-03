@@ -86,8 +86,7 @@ def build_partial(dataset, params):
     return lfm, trainer, plotter
 
 
-
-def plot_partial(dataset, lfm, trainer, plotter, filepath):
+def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
     lfm.eval()
     tx = trainer.tx
     num_t = tx[0, :].unique().shape[0]
