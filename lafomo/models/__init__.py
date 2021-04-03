@@ -2,7 +2,7 @@ from .lfm import LFM
 from .exact_lfm import ExactLFM
 from .variational_lfm import VariationalLFM
 from .ordinary_lfm import OrdinaryLFM
-from .approximate_gp import MultiOutputGP
+from .approximate_gp import MultiOutputGP, generate_multioutput_rbf_gp
 
 
 modules = [
@@ -11,6 +11,7 @@ modules = [
     'VariationalLFM',
     'OrdinaryLFM',
     'MultiOutputGP',
+    'generate_multioutput_rbf_gp',
 ]
 
 try:

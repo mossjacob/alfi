@@ -4,9 +4,10 @@ from torch.nn import Parameter
 from matplotlib import pyplot as plt
 from torch.optim import Adam
 from gpytorch.optim import NGD
+import gpytorch
 
 from lafomo.configuration import VariationalConfiguration
-from lafomo.models import MultiOutputGP, PartialLFM
+from lafomo.models import MultiOutputGP, PartialLFM, generate_multioutput_rbf_gp
 from lafomo.models.pdes import ReactionDiffusion
 from lafomo.plot import Plotter, plot_spatiotemporal_data
 from lafomo.trainers import PDETrainer
@@ -36,15 +37,14 @@ def build_partial(dataset, params):
         tx[1, torch.randperm(tx.shape[1])[:int(0.8 * tx.shape[1])]]
     ], dim=1).unsqueeze(0)
 
-    gp_kwargs = dict(use_ard=True,
-                     use_scale=False,
-                     # lengthscale_constraint=Interval(0.1, 0.3),
-                     learn_inducing_locations=False,
-                     initial_lengthscale=lengthscale,
+    gp_kwargs = dict(learn_inducing_locations=False,
                      natural=params['natural'],
                      use_tril=True)
-    gp_model = MultiOutputGP(inducing_points, 1, **gp_kwargs)
-    gp_model.double();
+
+    gp_model = generate_multioutput_rbf_gp(1, inducing_points, gp_kwargs=gp_kwargs)
+    gp_model.covar_module.lengthscale = lengthscale
+    # lengthscale_constraint=Interval(0.1, 0.3),
+    gp_model.double()
 
     # Define LFM
     t_range = (ts[0], ts[-1])

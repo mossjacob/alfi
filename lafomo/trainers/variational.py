@@ -47,7 +47,6 @@ class VariationalTrainer(Trainer):
             if epoch >= self.warm_variational:
                 [optim.step() for optim in self.optimizers]
             else:
-                print(epoch, 'warming up')
                 self.optimizers[0].step()
 
             epoch_loss += loss.item()
