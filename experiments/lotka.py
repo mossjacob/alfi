@@ -20,9 +20,6 @@ def build_lotka(dataset, params):
     num_tfs = 1
     x_min, x_max = min(dataset.times), max(dataset.times)
 
-    plt.plot(dataset.data[0][0], dataset.data[0][1], c='red', label='predator')
-    plt.plot(torch.linspace(x_min, x_max, dataset.prey.shape[0]), dataset.prey, c='blue', label='prey')
-    plt.legend()
     num_latents = 1
     num_outputs = 1
     num_training = dataset[0][0].shape[0]
@@ -102,6 +99,7 @@ def build_lotka(dataset, params):
     mean_module = gpytorch.means.ConstantMean(batch_shape=torch.Size([num_latents]))
     with torch.no_grad():
         mean_module.constant -= 0.2
+    track_parameters = ['raw_growth', 'raw_decay']
 
     if periodic:
         covar_module = gpytorch.kernels.ScaleKernel(
@@ -113,12 +111,16 @@ def build_lotka(dataset, params):
         print(covar_module.base_kernel.period_length)
         covar_module.base_kernel.lengthscale = 3
         covar_module.base_kernel.period_length = 8
+        track_parameters.append('gp_model.covar_module.base_kernel.raw_lengthscale')
+        track_parameters.append('gp_model.covar_module.base_kernel.raw_period_length')
         # covar_module.kernels[1].lengthscale = 2
     else:
         covar_module = gpytorch.kernels.RBFKernel(
             batch_shape=torch.Size([num_latents]),
             lengthscale_constraint=Interval(1, 6))
         covar_module.lengthscale = 2
+        track_parameters.append('gp_model.covar_module.raw_lengthscale')
+
     gp_model = MultiOutputGP(mean_module, covar_module,
                              inducing_points, num_latents,
                              natural=use_natural)
@@ -137,7 +139,8 @@ def build_lotka(dataset, params):
         lfm,
         optimizers,
         dataset,
-        warm_variational=50
+        warm_variational=50,
+        track_parameters=track_parameters
     )
 
     return lfm, trainer, plotter
@@ -167,13 +170,6 @@ def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
                     titles=['Prey'])
     plt.savefig(filepath / params['kernel'] + '-prey.pdf', **tight_kwargs)
 
-    # labels = ['Initial', 'Grown rates', 'Decay rates']
-    # kinetics = list()
-    # for key in ['raw_initial', 'raw_growth', 'raw_decay']:
-    #     kinetics.append(softplus(torch.tensor(trainer.parameter_trace[key][-1])).squeeze().numpy())
-    #
-    # plotter.plot_double_bar(kinetics, labels)
-
     real_prey, real_pred = dataset.prey, dataset.predator
     prey = lfm.likelihood(lfm.gp_model(t_predict))
     predator = lfm(t_predict)
@@ -193,5 +189,11 @@ def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
     plt.tight_layout()
     plt.savefig(filepath / params['kernel'] + '-phase.pdf', **tight_kwargs)
 
-    plotter.plot_double_bar(kinetics, labels, p53_ground_truth())
-    plt.savefig(filepath / 'kinetics.pdf', **tight_kwargs)
+
+    # labels = ['Initial', 'Grown rates', 'Decay rates']
+    # kinetics = list()
+    # for key in ['raw_initial', 'raw_growth', 'raw_decay']:
+    #     kinetics.append(softplus(torch.tensor(trainer.parameter_trace[key][-1])).squeeze().numpy())
+    #
+    # plotter.plot_double_bar(kinetics, labels)
+    # plt.savefig(filepath / 'kinetics.pdf', **tight_kwargs)
