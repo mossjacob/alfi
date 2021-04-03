@@ -94,7 +94,7 @@ class VariationalLFM(LFM, ABC):
         """
         Calls self on input `t_predict`
         """
-        return self.likelihood(self(t_predict.view(-1), **kwargs))
+        return (self(t_predict.view(-1), **kwargs))
 
     def predict_f(self, t_predict) -> torch.distributions.MultivariateNormal:
         """

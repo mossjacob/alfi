@@ -41,6 +41,7 @@ class Plotter:
                 num_samples=7,
                 transform=lambda x:x,
                 ylim=None,
+                titles=None,
                 max_plots=10, replicate=0):
         """
         Parameters:
@@ -58,17 +59,17 @@ class Plotter:
         std = transform(std)
         num_plots = min(max_plots, num_plots)
         plt.figure(figsize=(6, 4 * np.ceil(num_plots / 3)))
-        print(num_plots)
         for i in range(num_plots):
             plt.subplot(num_plots, min(num_plots, 3), i + 1)
-            plt.title(self.output_names[i])
+            if titles is not None:
+                plt.title(titles[i])
             plt.plot(t_predict, mean[replicate, i].detach(), color=self.line_color)
             plt.fill_between(t_predict,
                              mean[replicate, i] + 2*std[replicate, i],
                              mean[replicate, i] - 2*std[replicate, i],
                              color=self.shade_color, alpha=0.3)
             for _ in range(num_samples):
-                plt.plot(t_predict, gp.sample().detach().transpose(0, 1)[i], alpha=0.3, color=self.line_color)
+                plt.plot(t_predict, transform(gp.sample().detach()).transpose(0, 1)[i], alpha=0.3, color=self.line_color)
 
             if self.variational:
                 inducing_points = self.model.inducing_points.detach()[0].squeeze()
