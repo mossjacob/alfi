@@ -3,6 +3,8 @@ import matplotlib.ticker as ticker
 from mpl_toolkits.axes_grid1 import ImageGrid
 import numpy as np
 import seaborn as sns
+import pandas as pd
+from seaborn import kdeplot
 
 
 plt.rcParams['font.family'] = 'serif'
@@ -34,3 +36,32 @@ def plot_spatiotemporal_data(images, extent, nrows=1, ncols=None, titles=None):
         if title is not None:
             ax.set_title(title)
     return grid
+
+
+def plot_phase(x_samples, y_samples,
+               x_target=None, y_target=None,
+               x_mean=None, y_mean=None, figsize=(4, 4)):
+    """
+
+    @param x_samples:
+    @param y_samples:
+    @param x_mean: if None, estimated from data
+    @param y_mean: if None, estimated from data
+    @return:
+    """
+    if x_mean is None:
+        x_mean = x_samples.mean(0)
+    if y_mean is None:
+        y_mean = y_samples.mean(0)
+    plt.figure(figsize=figsize)
+    plt.plot(x_mean, y_mean, label='Predicted')
+    if x_target is not None:
+        plt.plot(x_target, y_target, label='Target')
+
+    data_stacked = np.stack([x_samples.flatten(), y_samples.flatten()])
+
+    ndp_df = pd.DataFrame(data_stacked.transpose(), columns=['Prey', 'Predator'])
+
+    kdeplot(data=ndp_df, fill=True, x="Prey", y="Predator",
+            color='pink', alpha=0.1, levels=3, thresh=.1, )
+    plt.legend()
