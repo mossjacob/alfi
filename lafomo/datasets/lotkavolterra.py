@@ -1,9 +1,10 @@
 import torch
 import numpy as np
 
-from scipy.integrate import odeint
+from scipy.integrate import solve_ivp
 from . import LFMDataset
 from tqdm import tqdm
+from torchdiffeq import odeint
 
 
 class DeterministicLotkaVolterra(LFMDataset):
@@ -39,7 +40,8 @@ class DeterministicLotkaVolterra(LFMDataset):
         how many time steps to take from 0 to end_time
     """
     def __init__(self, initial_u=None, initial_v=None,
-                 alpha=None, beta=None, gamma=None, delta=None, steps=150, end_time=15):
+                 alpha=None, beta=None, gamma=None, delta=None,
+                 steps=13, end_time=12, num_disc=7):
 
         if initial_u is None:
             self.mode = 'greek'
@@ -56,7 +58,7 @@ class DeterministicLotkaVolterra(LFMDataset):
 
         self.steps = steps
         self.end_time = end_time
-
+        self.num_disc = num_disc
         # Generate data
         self.data = []
         print("Creating dataset...", flush=True)
@@ -64,16 +66,15 @@ class DeterministicLotkaVolterra(LFMDataset):
         removed = 0
         times, states = self.generate_ts()
         #normalise times
-        times = torch.FloatTensor(times) / 10
+        times = times
+        self.times = times
 
-        states = torch.FloatTensor(states)
         if self.mode == 'population':
             states = states / 100
         #states = torch.cat((states, times), dim=-1)
         self.prey = states[:, 0]
         self.predator = states[:, 1]
-        self.data.append((times[::5], states[::5, 1]))
-
+        self.data.append((times[::self.num_disc+1], states[::self.num_disc+1, 1]))
 
     def generate_ts(self):
         if self.mode == 'population':
@@ -86,14 +87,17 @@ class DeterministicLotkaVolterra(LFMDataset):
             equal_pop = np.random.uniform(0.25,1.)
             X_0 = np.array([2*equal_pop,equal_pop])
             a, b, c, d = self.alpha, self.beta, self.gamma, self.delta
-        def dX_dt(X, t=0):
+
+        def dX_dt(t, X):
             """ Return the growth rate of fox and rabbit populations. """
-            return np.array([ a*X[0] - b*X[0]*X[1],
-                             -c*X[1] + d*X[0]*X[1]])
+            return torch.stack([ a*X[0] - b*X[0]*X[1],
+                                -c*X[1] + d*X[0]*X[1]])
 
-        t = np.linspace(0, self.end_time, self.steps)
-        X = odeint(dX_dt, X_0, t)
+        def calc(N, d):
+            return (N - 1) * (d + 1) + 1
 
+        t = torch.linspace(0, self.end_time, calc(self.steps, self.num_disc))
+        X = odeint(dX_dt, torch.tensor(X_0), t, method='rk4', options=dict(step_size=1e-1))
         return t, X
 
     def __getitem__(self, index):
