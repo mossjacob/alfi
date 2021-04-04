@@ -5,7 +5,7 @@ import numpy as np
 import seaborn as sns
 import pandas as pd
 from seaborn import kdeplot
-
+from .colours import Colours
 
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = 'CMU Serif'
@@ -40,7 +40,7 @@ def plot_spatiotemporal_data(images, extent, nrows=1, ncols=None, titles=None):
 
 def plot_phase(x_samples, y_samples,
                x_target=None, y_target=None,
-               x_mean=None, y_mean=None, figsize=(4, 4)):
+               x_mean=None, y_mean=None, figsize=(4, 4), ax=None):
     """
 
     @param x_samples:
@@ -53,15 +53,17 @@ def plot_phase(x_samples, y_samples,
         x_mean = x_samples.mean(0)
     if y_mean is None:
         y_mean = y_samples.mean(0)
-    plt.figure(figsize=figsize)
-    plt.plot(x_mean, y_mean, label='Predicted')
+    if ax is None:
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(1, 1, 1)
+    ax.plot(x_mean, y_mean, label='Predicted', color=Colours.line_color)
     if x_target is not None:
-        plt.plot(x_target, y_target, label='Target')
+        ax.plot(x_target, y_target, label='Target', color=Colours.scatter_color)
 
     data_stacked = np.stack([x_samples.flatten(), y_samples.flatten()])
 
     ndp_df = pd.DataFrame(data_stacked.transpose(), columns=['Prey', 'Predator'])
 
-    kdeplot(data=ndp_df, fill=True, x="Prey", y="Predator",
+    kdeplot(data=ndp_df, ax=ax, fill=True, x="Prey", y="Predator",
             color='pink', alpha=0.1, levels=3, thresh=.1, )
-    plt.legend()
+    plt.legend(loc='upper right')

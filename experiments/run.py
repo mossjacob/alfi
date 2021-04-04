@@ -80,6 +80,7 @@ if __name__ == "__main__":
     data_config = config[key]
     dataset = datasets[key]()
     experiments = data_config['experiments']
+    seen_methods = dict()
     for experiment in experiments:
         method = experiment['method']
         print(TerminalColours.GREEN, 'Constructing method:', method, TerminalColours.END)
@@ -104,7 +105,12 @@ if __name__ == "__main__":
                 plotters[method](dataset, model, trainer, plotter, filepath, modelparams)
             else:
                 print(TerminalColours.WARNING, 'Ignoring plotter for', method, 'since no plotter implemented.', TerminalColours.END)
-            model.save(str(filepath / 'savedmodel'))
+            if method in seen_methods:
+                model.save(str(filepath / (str(seen_methods[method]) + 'savedmodel')))
+            else:
+                seen_methods[method] = 0
+                model.save(str(filepath / (str(seen_methods[method]) + 'savedmodel')))
+            seen_methods[method] += 1
             print(TerminalColours.GREEN, f'{method} completed successfully.', TerminalColours.END)
         else:
             print(TerminalColours.WARNING, 'Ignoring method', method, 'since no builder implemented.', TerminalColours.END)

@@ -155,20 +155,23 @@ def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
 
     q_m = lfm.predict_m(t_predict, step_size=1e-2)
     q_f = lfm.predict_f(t_predict)
+
+    fig, axes = plt.subplots(ncols=3, figsize=(8, 3))
     plotter.plot_gp(q_m, t_predict, num_samples=0,
                     t_scatter=t_scatter,
                     y_scatter=y_scatter,
-                    titles=['Predator'])
-    plt.title('')
-    plt.savefig(filepath / (params['kernel'] + '-predator.pdf'), **tight_kwargs)
+                    titles=None, ax=axes[0])
+    axes[0].set_xlabel('Time')
+    axes[0].set_ylabel('Predator population')
 
     plotter.plot_gp(q_f, t_predict,
                     transform=softplus,
                     t_scatter=dataset.times[::5],
                     y_scatter=dataset.prey[None, None, ::5],
                     ylim=(-0.9, 4),
-                    titles=['Prey'])
-    plt.savefig(filepath / (params['kernel'] + '-prey.pdf'), **tight_kwargs)
+                    titles=None, ax=axes[1])
+    axes[1].set_xlabel('Time')
+    axes[1].set_ylabel('Prey population')
 
     real_prey, real_pred = dataset.prey, dataset.predator
     prey = lfm.likelihood(lfm.gp_model(t_predict))
@@ -183,11 +186,12 @@ def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
                x_mean=softplus(prey_mean),
                y_mean=predator_mean,
                x_target=real_prey,
-               y_target=real_pred)
-    plt.xlabel('Prey population')
-    plt.ylabel('Prey population')
+               y_target=real_pred,
+               ax=axes[2])
+    axes[2].set_xlabel('Prey population')
+    axes[2].set_ylabel('Predator population')
     plt.tight_layout()
-    plt.savefig(filepath / (params['kernel'] + '-phase.pdf'), **tight_kwargs)
+    plt.savefig(filepath / (params['kernel'] + '-combined.pdf'), **tight_kwargs)
 
 
     # labels = ['Initial', 'Grown rates', 'Decay rates']
