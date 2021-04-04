@@ -89,7 +89,7 @@ if __name__ == "__main__":
             filepath.mkdir(parents=True, exist_ok=True)
 
             # Construct model
-            modelparams = experiment['model-params'] if 'model-params' in method else None
+            modelparams = experiment['model-params'] if 'model-params' in experiment else None
             model, trainer, plotter = builders[method](dataset, modelparams)
 
             # Train model with optional initial step

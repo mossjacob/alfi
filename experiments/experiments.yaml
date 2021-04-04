@@ -96,13 +96,13 @@ lotka:
   experiments:
     - method: lotka
       train-params:
-        epochs: 1000
+        epochs: 1100
       model-params:
         natural: false
         kernel: 'periodic'
     - method: lotka
       train-params:
-        epochs: 1000
+        epochs: 1100
       model-params:
         natural: false
         kernel: 'rbf'

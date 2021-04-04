@@ -160,7 +160,7 @@ def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
                     y_scatter=y_scatter,
                     titles=['Predator'])
     plt.title('')
-    plt.savefig(filepath / params['kernel'] + '-predator.pdf', **tight_kwargs)
+    plt.savefig(filepath / (params['kernel'] + '-predator.pdf'), **tight_kwargs)
 
     plotter.plot_gp(q_f, t_predict,
                     transform=softplus,
@@ -168,7 +168,7 @@ def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
                     y_scatter=dataset.prey[None, None, ::5],
                     ylim=(-0.9, 4),
                     titles=['Prey'])
-    plt.savefig(filepath / params['kernel'] + '-prey.pdf', **tight_kwargs)
+    plt.savefig(filepath / (params['kernel'] + '-prey.pdf'), **tight_kwargs)
 
     real_prey, real_pred = dataset.prey, dataset.predator
     prey = lfm.likelihood(lfm.gp_model(t_predict))
@@ -187,7 +187,7 @@ def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
     plt.xlabel('Prey population')
     plt.ylabel('Prey population')
     plt.tight_layout()
-    plt.savefig(filepath / params['kernel'] + '-phase.pdf', **tight_kwargs)
+    plt.savefig(filepath / (params['kernel'] + '-phase.pdf'), **tight_kwargs)
 
 
     # labels = ['Initial', 'Grown rates', 'Decay rates']
