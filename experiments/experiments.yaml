@@ -97,12 +97,14 @@ lotka:
     - method: lotka
       train-params:
         epochs: 1100
+        report_interval: 20
       model-params:
         natural: false
         kernel: 'periodic'
     - method: lotka
       train-params:
         epochs: 1100
+        report_interval: 20
       model-params:
         natural: false
         kernel: 'rbf'

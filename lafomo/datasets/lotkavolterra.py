@@ -84,7 +84,7 @@ class DeterministicLotkaVolterra(LFMDataset):
             c = np.random.uniform(1.25, 1.75)
             d = np.random.uniform(0.5, 1.0)
         else:
-            equal_pop = np.random.uniform(0.25,1.)
+            equal_pop = np.random.uniform(0.35,1.)
             X_0 = np.array([2*equal_pop,equal_pop])
             a, b, c, d = self.alpha, self.beta, self.gamma, self.delta
 

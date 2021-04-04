@@ -130,10 +130,10 @@ def build_lotka(dataset, params):
 
     if use_natural:
         variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
-        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.02)
+        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.03)
         optimizers = [variational_optimizer, parameter_optimizer]
     else:
-        optimizers = [Adam(lfm.parameters(), lr=0.02)]
+        optimizers = [Adam(lfm.parameters(), lr=0.03)]
 
     trainer = VariationalTrainer(
         lfm,

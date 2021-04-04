@@ -101,9 +101,10 @@ if __name__ == "__main__":
             # Plot results of model
             if method in plotters:
                 print(TerminalColours.GREEN, 'Running plotter...', TerminalColours.END)
-                plotters[method](dataset, model, trainer, plotter, filepath, params)
+                plotters[method](dataset, model, trainer, plotter, filepath, modelparams)
             else:
                 print(TerminalColours.WARNING, 'Ignoring plotter for', method, 'since no plotter implemented.', TerminalColours.END)
             model.save(str(filepath / 'savedmodel'))
+            print(TerminalColours.GREEN, f'{method} completed successfully.', TerminalColours.END)
         else:
             print(TerminalColours.WARNING, 'Ignoring method', method, 'since no builder implemented.', TerminalColours.END)
