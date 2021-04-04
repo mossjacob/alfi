@@ -50,7 +50,7 @@ datasets = {
     'toy': lambda: ToyTimeSeries(),
     'lotka': lambda: DeterministicLotkaVolterra(alpha = 2./3, beta = 4./3,
                                                 gamma = 1., delta = 1.,
-                                                steps=13, end_time=12),
+                                                steps=13, end_time=12, fixed_initial=0.8),
 }
 
 

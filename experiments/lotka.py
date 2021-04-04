@@ -16,7 +16,7 @@ from lafomo.trainers import VariationalTrainer
 tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
 
 
-def build_lotka(dataset, params):
+def build_lotka(dataset, params, reload=None):
     num_tfs = 1
     x_min, x_max = min(dataset.times), max(dataset.times)
 
@@ -93,7 +93,6 @@ def build_lotka(dataset, params):
     config = VariationalConfiguration(num_samples=70)
     inducing_points = torch.linspace(x_min, x_max, num_inducing).repeat(num_latents, 1).view(
         num_latents, num_inducing, 1)
-    t_predict = torch.linspace(0, x_max, 151, dtype=torch.float32)
 
     periodic = params['kernel'] == 'periodic'
     mean_module = gpytorch.means.ConstantMean(batch_shape=torch.Size([num_latents]))
@@ -124,7 +123,15 @@ def build_lotka(dataset, params):
     gp_model = MultiOutputGP(mean_module, covar_module,
                              inducing_points, num_latents,
                              natural=use_natural)
-    lfm = LotkaVolterra(num_outputs, gp_model, config, num_training_points=num_training)
+
+    lfm_kwargs = dict(num_training_points=num_training)
+    if reload is not None:
+        lfm = LotkaVolterra.load(reload,
+                                 gp_model=gp_model,
+                                 lfm_args=[1, config],
+                                 lfm_kwargs=lfm_kwargs)
+    else:
+        lfm = LotkaVolterra(num_outputs, gp_model, config, **lfm_kwargs)
 
     plotter = Plotter(lfm, np.array(['predator']))
 

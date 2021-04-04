@@ -41,7 +41,7 @@ class DeterministicLotkaVolterra(LFMDataset):
     """
     def __init__(self, initial_u=None, initial_v=None,
                  alpha=None, beta=None, gamma=None, delta=None,
-                 steps=13, end_time=12, num_disc=7):
+                 steps=13, end_time=12, num_disc=7, fixed_initial=None):
 
         if initial_u is None:
             self.mode = 'greek'
@@ -55,7 +55,7 @@ class DeterministicLotkaVolterra(LFMDataset):
             self.initial_v = initial_v
 
         print(f'Lotka-Voltera is in {self.mode} mode.')
-
+        self.fixed_initial = fixed_initial
         self.steps = steps
         self.end_time = end_time
         self.num_disc = num_disc
@@ -84,10 +84,13 @@ class DeterministicLotkaVolterra(LFMDataset):
             c = np.random.uniform(1.25, 1.75)
             d = np.random.uniform(0.5, 1.0)
         else:
-            while True:
-                equal_pop = np.random.uniform(0.15, 1.)
-                if equal_pop < 0.35 or equal_pop > 0.6:
-                    break
+            equal_pop = self.fixed_initial
+            if equal_pop is None:
+                while True:
+                    equal_pop = np.random.uniform(0.15, 1.)
+                    if equal_pop < 0.35 or equal_pop > 0.6:
+                        break
+
             X_0 = np.array([2*equal_pop,equal_pop])
             a, b, c, d = self.alpha, self.beta, self.gamma, self.delta
 

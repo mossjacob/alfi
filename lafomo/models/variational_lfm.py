@@ -113,11 +113,13 @@ class VariationalLFM(LFM, ABC):
     @classmethod
     def load(cls,
              filepath,
-             gp_cls,
+             gp_cls=None, gp_model=None,
              gp_args=[], gp_kwargs={},
              lfm_args=[], lfm_kwargs={}):
+        assert not (gp_cls is None and (gp_model is None))
         gp_state_dict = torch.load(filepath+'gp.pt')
-        gp_model = gp_cls(*gp_args, **gp_kwargs)
+        if gp_cls is not None:
+            gp_model = gp_cls(*gp_args, **gp_kwargs)
         gp_model.load_state_dict(gp_state_dict)
         gp_model.double()
 
