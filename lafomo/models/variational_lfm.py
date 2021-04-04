@@ -72,7 +72,12 @@ class VariationalLFM(LFM, ABC):
         if self.gp_model.covar_module.lengthscale is not None:
             return self.gp_model.covar_module.lengthscale.detach().numpy()
         elif hasattr(self.gp_model.covar_module, 'base_kernel'):
-            return self.gp_model.covar_module.base_kernel.lengthscale.detach().numpy()
+            kernel = self.gp_model.covar_module.base_kernel
+            if hasattr(kernel, 'kernels'):
+                if hasattr(kernel.kernels[0], 'lengthscale'):
+                    return kernel.kernels[0].lengthscale.detach().numpy()
+            else:
+                return self.gp_model.covar_module.base_kernel.lengthscale.detach().numpy()
         else:
             return ''
 
@@ -94,7 +99,7 @@ class VariationalLFM(LFM, ABC):
         """
         Calls self on input `t_predict`
         """
-        return (self(t_predict.view(-1), **kwargs))
+        return self(t_predict.view(-1), **kwargs)
 
     def predict_f(self, t_predict) -> torch.distributions.MultivariateNormal:
         """

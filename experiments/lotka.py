@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib import ticker
 import gpytorch
 from torch.nn import Parameter
 from torch.optim import Adam
@@ -9,7 +10,7 @@ from gpytorch.constraints import Positive, Interval
 
 from lafomo.models import OrdinaryLFM, MultiOutputGP
 from lafomo.utilities.torch import inv_softplus, softplus
-from lafomo.plot import Plotter, plot_phase
+from lafomo.plot import Plotter, plot_phase, Colours
 from lafomo.configuration import VariationalConfiguration
 from lafomo.trainers import VariationalTrainer
 
@@ -23,7 +24,7 @@ def build_lotka(dataset, params, reload=None):
     num_latents = 1
     num_outputs = 1
     num_training = dataset[0][0].shape[0]
-    num_inducing = 12
+    num_inducing = 20
 
     print('Num training points: ', num_training)
     output_names = np.array(['pred', 'prey'])
@@ -137,10 +138,10 @@ def build_lotka(dataset, params, reload=None):
 
     if use_natural:
         variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
-        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.03)
+        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.025)
         optimizers = [variational_optimizer, parameter_optimizer]
     else:
-        optimizers = [Adam(lfm.parameters(), lr=0.03)]
+        optimizers = [Adam(lfm.parameters(), lr=0.025)]
 
     trainer = VariationalTrainer(
         lfm,
@@ -155,30 +156,37 @@ def build_lotka(dataset, params, reload=None):
 
 def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
     lfm.eval()
-
-    t_predict = torch.linspace(-5, 18, 100, dtype=torch.float32)
+    t_predict = torch.linspace(0, 18, 100, dtype=torch.float32)
     t_scatter = dataset.data[0][0].unsqueeze(0).unsqueeze(0)
     y_scatter = dataset.data[0][1].unsqueeze(0).unsqueeze(0)
 
-    q_m = lfm.predict_m(t_predict, step_size=1e-2)
+    q_m = lfm.predict_m(t_predict, step_size=1e-1)
     q_f = lfm.predict_f(t_predict)
-
-    fig, axes = plt.subplots(ncols=3, figsize=(8, 3))
+    ylim = (-0.9, 3)
+    fig, axes = plt.subplots(ncols=2,
+                             figsize=(8, 3),
+                             gridspec_kw=dict(width_ratios=[3, 1]))
     plotter.plot_gp(q_m, t_predict, num_samples=0,
                     t_scatter=t_scatter,
                     y_scatter=y_scatter,
+                    ylim=ylim,
                     titles=None, ax=axes[0])
     axes[0].set_xlabel('Time')
     axes[0].set_ylabel('Predator population')
+    axes[0].legend()
 
     plotter.plot_gp(q_f, t_predict,
                     transform=softplus,
-                    t_scatter=dataset.times[::5],
-                    y_scatter=dataset.prey[None, None, ::5],
-                    ylim=(-0.9, 4),
-                    titles=None, ax=axes[1])
-    axes[1].set_xlabel('Time')
-    axes[1].set_ylabel('Prey population')
+                    color=Colours.line2_color,
+                    shade_color=Colours.shade2_color,
+                    ylim=ylim,
+                    titles=None, ax=axes[0])
+    axes[0].set_xlabel('Time')
+    axes[0].set_ylabel('Prey population')
+    axes[0].plot(dataset.times, dataset.prey, c=Colours.scatter_color, label='Target')
+    axes[0].xaxis.set_major_locator(ticker.MaxNLocator(nbins=3, integer=True))
+    axes[0].yaxis.set_major_locator(ticker.MaxNLocator(nbins=3, integer=True))
+    axes[0].fill_between(t_scatter.squeeze(), ylim[0], ylim[1], alpha=0.2, color='gray')
 
     real_prey, real_pred = dataset.prey, dataset.predator
     prey = lfm.likelihood(lfm.gp_model(t_predict))
@@ -194,12 +202,12 @@ def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
                y_mean=predator_mean,
                x_target=real_prey,
                y_target=real_pred,
-               ax=axes[2])
-    axes[2].set_xlabel('Prey population')
-    axes[2].set_ylabel('Predator population')
+               ax=axes[1])
+    axes[1].set_xlabel('Prey population')
+    axes[1].set_ylabel('Predator population')
     plt.tight_layout()
-    plt.savefig(filepath / (params['kernel'] + '-combined.pdf'), **tight_kwargs)
 
+    plt.savefig(filepath / (params['kernel'] + '-combined.pdf'), **tight_kwargs)
 
     # labels = ['Initial', 'Grown rates', 'Decay rates']
     # kinetics = list()

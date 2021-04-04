@@ -37,7 +37,9 @@ class Plotter:
                 transform=lambda x:x,
                 ylim=None,
                 titles=None,
-                max_plots=10, replicate=0, ax=None):
+                max_plots=10, replicate=0, ax=None, plot_inducing=False,
+                color=Colours.line_color,
+                shade_color=Colours.shade_color):
         """
         Parameters:
             gp: output distribution of LFM or associated GP models.
@@ -51,7 +53,7 @@ class Plotter:
         mean = mean.view(num_plots, self.num_replicates, -1).transpose(0, 1)
         std = std.view(num_plots, self.num_replicates, -1).transpose(0, 1)
         mean = transform(mean)
-        std = transform(std)
+        # std = transform(std)
         num_plots = min(max_plots, num_plots)
         axes_given = ax is not None
         if not axes_given:
@@ -61,17 +63,17 @@ class Plotter:
                 ax = fig.add_subplot(num_plots, min(num_plots, 3), i + 1)
             if titles is not None:
                 ax.set_title(titles[i])
-            ax.plot(t_predict, mean[replicate, i].detach(), color=Colours.line_color)
+            ax.plot(t_predict, mean[replicate, i].detach(), color=color)
             ax.fill_between(t_predict,
                              mean[replicate, i] + 2*std[replicate, i],
                              mean[replicate, i] - 2*std[replicate, i],
-                             color=Colours.shade_color, alpha=0.3)
+                             color=shade_color, alpha=0.3)
             for _ in range(num_samples):
-                ax.plot(t_predict, transform(gp.sample().detach()).transpose(0, 1)[i], alpha=0.3, color=Colours.line_color)
+                ax.plot(t_predict, transform(gp.sample().detach()).transpose(0, 1)[i], alpha=0.3, color=color)
 
-            if self.variational:
+            if self.variational and plot_inducing:
                 inducing_points = self.model.inducing_points.detach()[0].squeeze()
-                ax.scatter(inducing_points, np.zeros_like(inducing_points), marker='_', c='black', linewidths=4)
+                ax.scatter(inducing_points, np.zeros_like(inducing_points), marker='_', c='black', linewidths=2)
 
             if t_scatter is not None:
                 ax.scatter(t_scatter, y_scatter[replicate, i], color=Colours.scatter_color, marker='x')
