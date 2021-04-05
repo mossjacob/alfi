@@ -7,9 +7,12 @@ import pandas as pd
 from seaborn import kdeplot
 from .colours import Colours
 
+plt.style.use('seaborn')
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = 'CMU Serif'
-sns.set(font="CMU Serif")
+sns.set(style='white', font="CMU Serif")
+
+
 
 def plot_spatiotemporal_data(images, extent, nrows=1, ncols=None, titles=None):
     if ncols == None:
@@ -56,7 +59,7 @@ def plot_phase(x_samples, y_samples,
     if ax is None:
         fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(1, 1, 1)
-    ax.plot(x_mean, y_mean, label='Predicted', color=Colours.line_color)
+    ax.plot(x_mean, y_mean, label='Prediction', color=Colours.line_color)
     if x_target is not None:
         ax.plot(x_target, y_target, label='Target', color=Colours.scatter_color)
 

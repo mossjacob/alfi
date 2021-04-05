@@ -6,9 +6,11 @@ from lafomo.datasets import scaled_barenco_data
 from lafomo.models import VariationalLFM
 from .colours import Colours
 
+
+plt.style.use('seaborn')
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = 'CMU Serif'
-sns.set(font="CMU Serif")
+sns.set(style='white', font="CMU Serif")
 
 
 class Plotter:
@@ -23,7 +25,7 @@ class Plotter:
         self.num_replicates = self.model.num_outputs // self.num_outputs
         self.variational = isinstance(self.model, VariationalLFM)
         plt.style.use(style)
-        sns.set(font="CMU Serif")
+        sns.set(font="CMU Serif", style='white')
         plt.rcParams['font.family'] = 'serif'
         plt.rcParams['font.serif'] = 'CMU Serif'
 
@@ -93,7 +95,7 @@ class Plotter:
     def plot_double_bar(self, params, labels, ground_truths=None):
         real_bars = [None] * len(params) if ground_truths is None else ground_truths
         vars = [0] * len(params)
-        fig, axes = plt.subplots(ncols=len(params), figsize=(8, 3.5))
+        fig, axes = plt.subplots(ncols=len(params), figsize=(8, 3))
         plotnum = 0
         num_bars = self.output_names.shape[0]
         for A, B, var, label in zip(params, real_bars, vars, labels):

@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from matplotlib import pyplot as plt
-from matplotlib import ticker
+import seaborn as sns
 import gpytorch
 from torch.nn import Parameter
 from torch.optim import Adam
@@ -15,6 +15,11 @@ from lafomo.configuration import VariationalConfiguration
 from lafomo.trainers import VariationalTrainer
 
 tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
+
+plt.style.use('seaborn-white')
+plt.rcParams['font.family'] = 'serif'
+plt.rcParams['font.serif'] = 'CMU Serif'
+sns.set(style='white', font="CMU Serif")
 
 
 def build_lotka(dataset, params, reload=None):
@@ -156,13 +161,14 @@ def build_lotka(dataset, params, reload=None):
 
 def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
     lfm.eval()
-    t_predict = torch.linspace(0, 18, 100, dtype=torch.float32)
+    t_interval = (0, 18)
+    t_predict = torch.linspace(*t_interval, 100, dtype=torch.float32)
     t_scatter = dataset.data[0][0].unsqueeze(0).unsqueeze(0)
     y_scatter = dataset.data[0][1].unsqueeze(0).unsqueeze(0)
 
     q_m = lfm.predict_m(t_predict, step_size=1e-1)
     q_f = lfm.predict_f(t_predict)
-    ylim = (-0.9, 3)
+    ylim = (-0.5, 3)
     fig, axes = plt.subplots(ncols=2,
                              figsize=(8, 3),
                              gridspec_kw=dict(width_ratios=[3, 1]))
@@ -172,8 +178,9 @@ def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
                     ylim=ylim,
                     titles=None, ax=axes[0])
     axes[0].set_xlabel('Time')
-    axes[0].set_ylabel('Predator population')
-    axes[0].legend()
+    axes[0].set_ylabel('Population')
+    axes[0].set_xlim(*t_interval)
+    # axes[0].legend()
 
     plotter.plot_gp(q_f, t_predict,
                     transform=softplus,
@@ -184,10 +191,13 @@ def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
     axes[0].set_xlabel('Time')
     axes[0].set_ylabel('Prey population')
     axes[0].plot(dataset.times, dataset.prey, c=Colours.scatter_color, label='Target')
-    axes[0].xaxis.set_major_locator(ticker.MaxNLocator(nbins=3, integer=True))
-    axes[0].yaxis.set_major_locator(ticker.MaxNLocator(nbins=3, integer=True))
+    axes[0].set_xticks([t_predict[0], t_predict[-1]])
+    # axes[0].xaxis.set_major_locator(ticker.MaxNLocator(nbins=2, integer=True))
+    axes[0].set_yticks([ylim[0], ylim[1]])
     axes[0].fill_between(t_scatter.squeeze(), ylim[0], ylim[1], alpha=0.2, color='gray')
-
+    axes[0].get_lines()[0].set_label('Predator')
+    axes[0].get_lines()[1].set_label('Prey')
+    axes[0].legend()
     real_prey, real_pred = dataset.prey, dataset.predator
     prey = lfm.likelihood(lfm.gp_model(t_predict))
     predator = lfm(t_predict)

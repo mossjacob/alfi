@@ -1,18 +1,12 @@
-from typing import Iterator
 from abc import ABC
 
 import torch
 from torch.nn.parameter import Parameter
-from torch.distributions.multivariate_normal import MultivariateNormal
-from torch.distributions.normal import Normal
 
-import numpy as np
 from gpytorch.models import ApproximateGP
 from gpytorch.likelihoods import MultitaskGaussianLikelihood
-from gpytorch.mlls import VariationalELBO
 
 from .lfm import LFM
-from lafomo.utilities.torch import softplus, inv_softplus
 from lafomo.configuration import VariationalConfiguration
 from lafomo.mlls import MaskedVariationalELBO
 
@@ -25,7 +19,6 @@ class VariationalLFM(LFM, ABC):
     ----------
     num_outputs : int : the number of outputs (for example, the number of genes)
     fixed_variance : tensor : variance if the preprocessing variance is known, otherwise learnt.
-    t_inducing : tensor of shape (..., T_u) : the inducing timepoints. Preceding dimensions are for multi-dimensional inputs
     """
     def __init__(self,
                  num_outputs: int,
