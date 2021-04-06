@@ -40,7 +40,7 @@ dataset_choices = list(config.keys())
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--data', type=str, choices=dataset_choices, default=dataset_choices[0])
-
+parser.add_argument('--reload', type=bool, default=False)
 
 datasets = {
     'p53': lambda: P53Data(replicate=0, data_dir='data'),
@@ -85,13 +85,18 @@ if __name__ == "__main__":
         method = experiment['method']
         print(TerminalColours.GREEN, 'Constructing method:', method, TerminalColours.END)
         if method in builders:
+            if method not in seen_methods:
+                seen_methods[method] = 0
+
             # Create experiments path
             filepath = Path('experiments', key, method)
             filepath.mkdir(parents=True, exist_ok=True)
+            save_filepath = str(filepath / (str(seen_methods[method]) + 'savedmodel'))
 
             # Construct model
             modelparams = experiment['model-params'] if 'model-params' in experiment else None
-            model, trainer, plotter = builders[method](dataset, modelparams)
+            reload = save_filepath if args.reload else None
+            model, trainer, plotter = builders[method](dataset, modelparams, reload=reload)
 
             # Train model with optional initial step
             if method in train_pre_step:
@@ -105,11 +110,7 @@ if __name__ == "__main__":
                 plotters[method](dataset, model, trainer, plotter, filepath, modelparams)
             else:
                 print(TerminalColours.WARNING, 'Ignoring plotter for', method, 'since no plotter implemented.', TerminalColours.END)
-            if method in seen_methods:
-                model.save(str(filepath / (str(seen_methods[method]) + 'savedmodel')))
-            else:
-                seen_methods[method] = 0
-                model.save(str(filepath / (str(seen_methods[method]) + 'savedmodel')))
+            model.save(save_filepath)
             seen_methods[method] += 1
             print(TerminalColours.GREEN, f'{method} completed successfully.', TerminalColours.END)
         else:
