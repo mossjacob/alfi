@@ -41,7 +41,7 @@ toy-spatial:
   experiments:
     - method: partial
       train-params:
-        epochs: 90
+        epochs: 110
         report_interval: 1
       model-params:
         lengthscale: 0.2
@@ -49,13 +49,14 @@ toy-spatial:
         diffusion: 0.2
         decay: 0.2
         natural: true
+        clamp: false
 # Drosophila Experiments
 dros-kr:
   num_latents: 1
   experiments:
     - method: partial
       train-params:
-        epochs: 80
+        epochs: 120
         report_interval: 1
       model-params:
         lengthscale: 10
@@ -64,6 +65,7 @@ dros-kr:
         decay: 0.1
         natural: false
         warmup-epochs: 20
+        clamp: true
 dros-kni:
   num_latents: 1
   experiments:
@@ -77,6 +79,8 @@ dros-kni:
         diffusion: 0.01
         decay: 0.1
         natural: false
+        clamp: true
+
 dros-gt:
   num_latents: 1
   experiments:
@@ -90,6 +94,7 @@ dros-gt:
         diffusion: 0.01
         decay: 0.1
         natural: false
+        clamp: true
 
 # Lotka volterra
 lotka:

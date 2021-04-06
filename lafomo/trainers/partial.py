@@ -14,9 +14,10 @@ from lafomo.utilities.torch import cia, q2, smse, softplus
 
 class PDETrainer(VariationalTrainer):
 
-    def __init__(self, lfm: PartialLFM, optimizers: List[torch.optim.Optimizer], dataset, **kwargs):
+    def __init__(self, lfm: PartialLFM, optimizers: List[torch.optim.Optimizer], dataset, clamp=False, **kwargs):
         super().__init__(lfm, optimizers, dataset, **kwargs)
         self.debug_iteration = 0
+        self.clamp = clamp
         data = next(iter(dataset))
         data_input, y = data
         data_input = data_input.cuda() if is_cuda() else data_input
@@ -126,3 +127,9 @@ class PDETrainer(VariationalTrainer):
               'dec:', softplus(self.lfm.fenics_parameters[1][0]).item(),
               'diff:', softplus(self.lfm.fenics_parameters[2][0]).item())
 
+    def after_epoch(self):
+        super().after_epoch()
+        with torch.no_grad():
+            self.lfm.fenics_parameters[2].clamp_(-15, -2.25)
+            self.lfm.fenics_parameters[1].clamp_(-15, -2.25)
+            self.lfm.fenics_parameters[0].clamp_(-15, -2.25)

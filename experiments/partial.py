@@ -17,7 +17,7 @@ from lafomo.utilities.torch import cia, q2, smse, inv_softplus, softplus
 tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
 
 
-def build_partial(dataset, params):
+def build_partial(dataset, params, reload=None):
     data = next(iter(dataset))
     tx, y_target = data
     lengthscale = params['lengthscale']
@@ -71,18 +71,24 @@ def build_partial(dataset, params):
     num_training = int(train_ratio * tx.shape[1])
 
     lfm = PartialLFM(1, gp_model, fenics_model, fenics_params, config, num_training_points=num_training)
+    if reload is not None:
+        lfm = lfm.load(reload,
+                       gp_model=lfm.gp_model,
+                       lfm_args=[1, lfm.fenics_module, lfm.fenics_parameters, config])
+
     if params['natural']:
         variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
         parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.07)
         optimizers = [variational_optimizer, parameter_optimizer]
     else:
-        optimizers = [Adam(lfm.parameters(), lr=0.07)]
+        optimizers = [Adam(lfm.parameters(), lr=0.09)]
 
     # As in Lopez-Lopera et al., we take 30% of data for training
     train_mask = torch.zeros_like(tx[0, :])
     train_mask[torch.randperm(tx.shape[1])[:int(train_ratio * tx.shape[1])]] = 1
     track_parameters = list(lfm.fenics_named_parameters.keys()) + ['gp_model.covar_module.raw_lengthscale']
     trainer = PDETrainer(lfm, optimizers, dataset,
+                         clamp=params['clamp'],
                          track_parameters=track_parameters,
                          train_mask=train_mask.bool(),
                          warm_variational=10)
@@ -95,8 +101,9 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
     tx = trainer.tx
     num_t = tx[0, :].unique().shape[0]
     num_x = tx[1, :].unique().shape[0]
-    f_mean = lfm(tx).mean.detach()
-    f_var = lfm(tx).variance.detach()
+    f = lfm(tx)
+    f_mean = f.mean.detach()
+    f_var = f.variance.detach()
     y_target = trainer.y_target[0]
     ts = tx[0, :].unique().sort()[0].numpy()
     xs = tx[1, :].unique().sort()[0].numpy()
@@ -112,11 +119,21 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
             str(cia(y_target[~trainer.train_mask], f_mean_test, f_var_test).item())
         ]) + '\n')
 
+    l_target = torch.tensor(dataset.orig_data[:, 2])
+    l = lfm.gp_model(tx.t())
+    l_mean = l.mean.detach()
     plot_spatiotemporal_data(
-        [f_mean.view(num_t, num_x).transpose(0, 1), y_target.view(num_t, num_x).detach().transpose(0, 1)],
+        [
+            f_mean.view(num_t, num_x).t(),
+            y_target.view(num_t, num_x).detach().t(),
+
+            l_mean.view(num_t, num_x).t(),
+            l_target.view(num_t, num_x).t()
+        ],
         extent,
-        titles=['Prediction', 'Target']
+        titles=None
     )
+
     plt.savefig(filepath / 'beforeafter.pdf', **tight_kwargs)
 
     labels = ['Sensitivity', 'Decay', 'Diffusion']
@@ -126,6 +143,6 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
     with open(filepath / 'kinetics.csv', 'w') as f:
         f.write('sensitivity\tdecay\tdiffusion\n')
         f.write('\t'.join(map(str, kinetics)) + '\n')
-
-    plotter.plot_double_bar(kinetics, labels)
-    plt.savefig(filepath / 'kinetics.pdf', **tight_kwargs)
+    #
+    # plotter.plot_double_bar(kinetics, labels)
+    # plt.savefig(filepath / 'kinetics.pdf', **tight_kwargs)

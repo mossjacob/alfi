@@ -13,10 +13,10 @@ plt.rcParams['font.serif'] = 'CMU Serif'
 sns.set(style='white', font="CMU Serif")
 
 
-def plot_spatiotemporal_data(images, extent, nrows=1, ncols=None, titles=None):
+def plot_spatiotemporal_data(images, extent, nrows=1, ncols=None, titles=None, figsize=(10, 5)):
     if ncols == None:
         ncols = len(images)
-    fig = plt.figure()
+    fig = plt.figure(figsize=figsize)
     grid = ImageGrid(fig, 111,  # similar to subplot(144)
                      nrows_ncols=(nrows, ncols),
                      axes_pad=(0.8, 0.1),
