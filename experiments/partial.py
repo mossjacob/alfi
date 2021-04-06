@@ -29,12 +29,10 @@ def build_partial(dataset, params):
     # Define GP
     ts = tx[0, :].unique().sort()[0].numpy()
     xs = tx[1, :].unique().sort()[0].numpy()
-    t_diff = ts[-1] - ts[0]
-    x_diff = xs[-1] - xs[0]
     num_inducing = int(tx.shape[1] * 5/6)
     inducing_points = torch.stack([
-        tx[0, torch.randperm(tx.shape[1])[:int(0.8 * tx.shape[1])]],
-        tx[1, torch.randperm(tx.shape[1])[:int(0.8 * tx.shape[1])]]
+        tx[0, torch.randperm(tx.shape[1])[:num_inducing]],
+        tx[1, torch.randperm(tx.shape[1])[:num_inducing]]
     ], dim=1).unsqueeze(0)
 
     gp_kwargs = dict(learn_inducing_locations=False,
@@ -56,9 +54,15 @@ def build_partial(dataset, params):
         num_samples=25
     )
 
-    sensitivity = Parameter(inv_softplus(torch.tensor(params['sensitivity'])) * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
-    decay = Parameter(inv_softplus(torch.tensor(params['decay'])) * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
-    diffusion = Parameter(inv_softplus(torch.tensor(params['diffusion'])) * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
+    sensitivity = Parameter(
+        inv_softplus(torch.tensor(params['sensitivity'])) * torch.ones((1, 1), dtype=torch.float64),
+        requires_grad=True)
+    decay = Parameter(
+        inv_softplus(torch.tensor(params['decay'])) * torch.ones((1, 1), dtype=torch.float64),
+        requires_grad=True)
+    diffusion = Parameter(
+        inv_softplus(torch.tensor(params['diffusion'])) * torch.ones((1, 1), dtype=torch.float64),
+        requires_grad=True)
     # sensitivity = Parameter(1 * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
     # decay = Parameter(0.1 * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
     # diffusion = Parameter(0.01 * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
@@ -75,7 +79,7 @@ def build_partial(dataset, params):
         optimizers = [Adam(lfm.parameters(), lr=0.07)]
 
     # As in Lopez-Lopera et al., we take 30% of data for training
-    train_mask = torch.zeros_like(tx[0,:])
+    train_mask = torch.zeros_like(tx[0, :])
     train_mask[torch.randperm(tx.shape[1])[:int(train_ratio * tx.shape[1])]] = 1
     track_parameters = list(lfm.fenics_named_parameters.keys()) + ['gp_model.covar_module.raw_lengthscale']
     trainer = PDETrainer(lfm, optimizers, dataset,
@@ -96,8 +100,6 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
     y_target = trainer.y_target[0]
     ts = tx[0, :].unique().sort()[0].numpy()
     xs = tx[1, :].unique().sort()[0].numpy()
-    t_diff = ts[-1] - ts[0]
-    x_diff = xs[-1] - xs[0]
     extent = [ts[0], ts[-1], xs[0], xs[-1]]
 
     with open(filepath / 'metrics.csv', 'w') as f:
@@ -113,7 +115,7 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
     plot_spatiotemporal_data(
         [f_mean.view(num_t, num_x).transpose(0, 1), y_target.view(num_t, num_x).detach().transpose(0, 1)],
         extent,
-        titles=['Prediction', 'Ground truth']
+        titles=['Prediction', 'Target']
     )
     plt.savefig(filepath / 'beforeafter.pdf', **tight_kwargs)
 

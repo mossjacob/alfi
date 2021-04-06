@@ -215,6 +215,7 @@ def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
                ax=axes[1])
     axes[1].set_xlabel('Prey population')
     axes[1].set_ylabel('Predator population')
+    axes[1].set_yticks([0, 1])
     plt.tight_layout()
 
     plt.savefig(filepath / (params['kernel'] + '-combined.pdf'), **tight_kwargs)

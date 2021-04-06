@@ -13,7 +13,6 @@ plt.rcParams['font.serif'] = 'CMU Serif'
 sns.set(style='white', font="CMU Serif")
 
 
-
 def plot_spatiotemporal_data(images, extent, nrows=1, ncols=None, titles=None):
     if ncols == None:
         ncols = len(images)
@@ -28,14 +27,16 @@ def plot_spatiotemporal_data(images, extent, nrows=1, ncols=None, titles=None):
                      cbar_size="7%",
                      cbar_pad="2%",
                  )
-    aspect = (extent[1]-extent[0])/ (extent[3]-extent[2])
+    aspect = (extent[1]-extent[0]) / (extent[3]-extent[2])
     titles = [None] * len(images) if titles is None else titles
     for ax, cax, image, title in zip(grid, grid.cbar_axes, images, titles):
         im = ax.imshow(image, extent=extent, origin='lower', aspect=aspect)
-        ax.grid()
         cb = plt.colorbar(im, cax=cax)
         cb.ax.yaxis.set_major_locator(ticker.MaxNLocator(nbins=5, integer=True))
-        ax.xaxis.set_major_locator(ticker.MaxNLocator(nbins=5, integer=True))
+        ax.set_xticks([np.ceil(extent[0]), np.floor(extent[1])])
+        ax.set_yticks([np.ceil(extent[2]), np.floor(extent[3])])
+        ax.set_xlim([extent[0], extent[1]])
+        ax.set_ylim([extent[2], extent[3]])
         if title is not None:
             ax.set_title(title)
     return grid
