@@ -53,14 +53,19 @@ class MultiOutputGP(ApproximateGP):
         covar_x = self.covar_module(t)
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
+
 def generate_multioutput_rbf_gp(num_latents, inducing_points,
                                 ard_dims=None,
                                 use_scale=False,
                                 initial_lengthscale=None,
                                 lengthscale_constraint=None,
+                                zero_mean=True,
                                 gp_kwargs={}):
     # Modules should be marked as batch so different set of hyperparameters are learnt
-    mean_module = gpytorch.means.ZeroMean(batch_shape=torch.Size([num_latents]))
+    if zero_mean:
+        mean_module = gpytorch.means.ZeroMean(batch_shape=torch.Size([num_latents]))
+    else:
+        mean_module = gpytorch.means.ConstantMean(batch_shape=torch.Size([num_latents]))
     covar_module = gpytorch.kernels.RBFKernel(
         batch_shape=torch.Size([num_latents]),
         ard_num_dims=ard_dims,

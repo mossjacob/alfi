@@ -23,7 +23,6 @@ sns.set(style='white', font="CMU Serif")
 
 
 def build_lotka(dataset, params, reload=None):
-    num_tfs = 1
     x_min, x_max = min(dataset.times), max(dataset.times)
 
     num_latents = 1
@@ -32,7 +31,6 @@ def build_lotka(dataset, params, reload=None):
     num_inducing = 20
 
     print('Num training points: ', num_training)
-    output_names = np.array(['pred', 'prey'])
 
     class LotkaVolterra(OrdinaryLFM):
         """Outputs are predator. Latents are prey"""
@@ -161,7 +159,7 @@ def build_lotka(dataset, params, reload=None):
 
 def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
     lfm.eval()
-    t_interval = (0, 18)
+    t_interval = (0, 20)
     t_predict = torch.linspace(*t_interval, 100, dtype=torch.float32)
     t_scatter = dataset.data[0][0].unsqueeze(0).unsqueeze(0)
     y_scatter = dataset.data[0][1].unsqueeze(0).unsqueeze(0)

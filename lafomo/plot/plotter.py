@@ -35,11 +35,15 @@ class Plotter:
 
     def plot_gp(self, gp,
                 t_predict, t_scatter=None, y_scatter=None,
-                num_samples=7,
+                num_samples=0,
                 transform=lambda x:x,
                 ylim=None,
                 titles=None,
-                max_plots=10, replicate=0, ax=None, plot_inducing=False,
+                max_plots=10,
+                replicate=0,
+                only_plot_index=None,
+                ax=None,
+                plot_inducing=False,
                 color=Colours.line_color,
                 shade_color=Colours.shade_color):
         """
@@ -52,8 +56,8 @@ class Plotter:
         mean = gp.mean.detach().transpose(0, 1)  # (T, J)
         std = gp.variance.detach().transpose(0, 1).sqrt()
         num_plots = mean.shape[0]
-        mean = mean.view(num_plots, self.num_replicates, -1).transpose(0, 1)
-        std = std.view(num_plots, self.num_replicates, -1).transpose(0, 1)
+        mean = mean.view(num_plots, self.num_replicates, -1).transpose(0, 1)[replicate].detach()
+        std = std.view(num_plots, self.num_replicates, -1).transpose(0, 1)[replicate].detach()
         mean = transform(mean)
         # std = transform(std)
         num_plots = min(max_plots, num_plots)
@@ -61,53 +65,69 @@ class Plotter:
         if not axes_given:
             fig = plt.figure(figsize=(6, 4 * np.ceil(num_plots / 3)))
         for i in range(num_plots):
+            if only_plot_index is not None:
+                i = only_plot_index
             if not axes_given:
                 ax = fig.add_subplot(num_plots, min(num_plots, 3), i + 1)
             if titles is not None:
                 ax.set_title(titles[i])
-            ax.plot(t_predict, mean[replicate, i].detach(), color=color)
+
+            ax.plot(t_predict, mean[i], color=color)
             ax.fill_between(t_predict,
-                             mean[replicate, i] + 2*std[replicate, i],
-                             mean[replicate, i] - 2*std[replicate, i],
-                             color=shade_color, alpha=0.3)
+                            mean[i] + 2 * std[i],
+                            mean[i] - 2 * std[i],
+                            color=shade_color, alpha=0.3)
+
             for _ in range(num_samples):
                 ax.plot(t_predict, transform(gp.sample().detach()).transpose(0, 1)[i], alpha=0.3, color=color)
 
             if self.variational and plot_inducing:
                 inducing_points = self.model.inducing_points.detach()[0].squeeze()
                 ax.scatter(inducing_points, np.zeros_like(inducing_points), marker='_', c='black', linewidths=2)
-
             if t_scatter is not None:
                 ax.scatter(t_scatter, y_scatter[replicate, i], color=Colours.scatter_color, marker='x')
-
             if ylim is None:
-                lb = min(mean[replicate, i])
+                lb = min(mean[i])
                 lb -= 0.2 * lb
-                ub = max(mean[replicate, i]) * 1.2
+                ub = max(mean[i]) * 1.2
                 ax.set_ylim(lb, ub)
             else:
                 ax.set_ylim(ylim)
+
             if axes_given:
                 break
         plt.tight_layout()
         return gp
 
-    def plot_double_bar(self, params, labels, ground_truths=None):
+    def plot_double_bar(self, params, labels, ground_truths=None, figsize=(8.5, 3), yticks=None, max_plots=10):
         real_bars = [None] * len(params) if ground_truths is None else ground_truths
         vars = [0] * len(params)
-        fig, axes = plt.subplots(ncols=len(params), figsize=(8, 3))
+        fig, axes = plt.subplots(ncols=len(params), figsize=figsize)
         plotnum = 0
         num_bars = self.output_names.shape[0]
+        num_bars = min(max_plots, num_bars)
         for A, B, var, label in zip(params, real_bars, vars, labels):
             if B is None:
-                axes[plotnum].bar(np.arange(num_bars), A, width=0.4, tick_label=self.output_names, color=Colours.bar1_color)
-                axes[plotnum].set_xlim(-1, 1)
+                axes[plotnum].bar(np.arange(num_bars), A[:num_bars],
+                                  width=0.4,
+                                  tick_label=self.output_names[:num_bars],
+                                  color=Colours.bar1_color)
             else:
-                axes[plotnum].bar(np.arange(num_bars) - 0.2, A, width=0.4, tick_label=self.output_names, color=Colours.bar1_color)
-                axes[plotnum].bar(np.arange(num_bars) + 0.2, B, width=0.4, color=Colours.bar2_color, align='center')
+                axes[plotnum].bar(np.arange(num_bars) - 0.2, A[:num_bars],
+                                  width=0.4,
+                                  tick_label=self.output_names[:num_bars],
+                                  color=Colours.bar1_color)
+                axes[plotnum].bar(np.arange(num_bars) + 0.2, B[:num_bars],
+                                  width=0.4,
+                                  color=Colours.bar2_color,
+                                  align='center')
 
             axes[plotnum].set_title(label)
             axes[plotnum].tick_params(axis='x', labelrotation=45)
+            if yticks is not None:
+                axes[plotnum].set_yticks(yticks[plotnum])
+            if num_bars == 1:
+                axes[plotnum].set_xlim(-1, 1)
             plotnum += 1
 
     def plot_losses(self, trainer, last_x=50):

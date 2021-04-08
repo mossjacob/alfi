@@ -111,15 +111,15 @@ class HafnerData(TranscriptomicTimeSeries):
         self.tfs = (f / np.sqrt(tfs_norm.reshape(-1, 1)))
         self.tfs = self.tfs.reshape((1, 2, 13)).swapaxes(0,1)
 
-        self.t = torch.linspace(0, 12, 13, dtype=torch.float32)
+        self.t_observed = torch.linspace(0, 12, 13, dtype=torch.float32)
         self.m_observed = self.m_observed.reshape(self.num_outputs, 2, 13).transpose(0, 1)
 
         if replicate is None:
-            self.data = [(self.t, self.m_observed[r, i]) for r in range(2) for i in range(self.num_outputs)]
+            self.data = [(self.t_observed, self.m_observed[r, i]) for r in range(2) for i in range(self.num_outputs)]
         else:
-            self.data = [(self.t, self.m_observed[replicate, i]) for i in range(self.num_outputs)]
+            self.data = [(self.t_observed, self.m_observed[replicate, i]) for i in range(self.num_outputs)]
 
-        self.gene_names = target_genes
+        self.gene_names = np.array(target_genes)
 
 
 class MCMCToyTimeSeries(TranscriptomicTimeSeries):
