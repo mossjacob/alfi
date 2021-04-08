@@ -24,12 +24,13 @@ class VariationalLFM(LFM, ABC):
                  num_outputs: int,
                  gp_model: ApproximateGP,
                  config: VariationalConfiguration,
-                 num_training_points = None,
+                 num_training_points=None,
                  dtype=torch.float64):
         super().__init__()
         self.gp_model = gp_model
         self.num_outputs = num_outputs
         self.likelihood = MultitaskGaussianLikelihood(num_tasks=self.num_outputs)
+        self.pretrain_mode = False
         try:
             self.inducing_points = self.gp_model.get_inducing_points()
         except AttributeError:
@@ -84,9 +85,13 @@ class VariationalLFM(LFM, ABC):
         self.gp_model.train(mode)
         self.likelihood.train(mode)
 
+    def pretrain(self, mode=True):
+        self.pretrain_mode = mode
+
     def eval(self):
         self.gp_model.eval()
         self.likelihood.eval()
+        self.pretrain(False)
 
     def predict_m(self, t_predict, **kwargs) -> torch.distributions.MultivariateNormal:
         """

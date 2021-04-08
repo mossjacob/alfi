@@ -25,7 +25,7 @@ class VariationalTrainer(Trainer):
             for param in self.lfm.nonvariational_parameters():
                 param.requires_grad = False
 
-    def single_epoch(self, step_size=1e-1, epoch=0, **kwargs):
+    def single_epoch(self, step_size=1e-1, epoch=0, pretrain_target=None, **kwargs):
         epoch_loss = 0
         epoch_ll = 0
         epoch_kl = 0
@@ -36,10 +36,15 @@ class VariationalTrainer(Trainer):
             y = y.cuda() if is_cuda() else y
             # Assume that the batch of t s are the same
             data_input, y = data_input[0], y
+            if not self.lfm.pretrain_mode:
+                output = self.lfm(data_input, step_size=step_size)
+                y_target = y.t()
+            else:
+                output = self.lfm((data_input, y))
+                y_target = pretrain_target.t()
 
-            output = self.lfm(data_input, step_size=step_size)
             self.debug_out(data_input, y, output)
-            log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y.permute(1, 0))
+            log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target)
 
             loss = - (log_likelihood - kl_divergence)
 
