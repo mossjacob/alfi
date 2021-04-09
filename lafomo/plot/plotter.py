@@ -96,7 +96,6 @@ class Plotter:
 
             if axes_given:
                 break
-        plt.tight_layout()
         return gp
 
     def plot_double_bar(self, params, labels, ground_truths=None, figsize=(8.5, 3), yticks=None, max_plots=10):

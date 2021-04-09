@@ -51,7 +51,6 @@ class OrdinaryLFM(VariationalLFM):
 
         q_f = self.gp_model(t_f)
 
-
         self.f = q_f.rsample(torch.Size([self.config.num_samples])).permute(0, 2, 1)  # (S, I, T)
         self.f = self.G(self.f)
 

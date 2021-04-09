@@ -12,7 +12,6 @@ from lafomo.configuration import VariationalConfiguration
 from lafomo.utilities.torch import softplus
 
 
-
 class ToyTimeSeries(TranscriptomicTimeSeries):
     """
     This dataset stochastically generates a toy transcriptional regulation dataset.
@@ -20,15 +19,16 @@ class ToyTimeSeries(TranscriptomicTimeSeries):
 
     def __init__(self, num_outputs=30, num_latents=3, num_times=10):
         super().__init__()
-        from lafomo.models import OrdinaryLFM, MultiOutputGP
+        self.num_disc = 9
+        from lafomo.models import OrdinaryLFM, generate_multioutput_rbf_gp
         from lafomo.plot import Plotter
         class ToyLFM(OrdinaryLFM):
             """
             This LFM is to generate toy data.
             """
 
-            def __init__(self, num_outputs, gp_model, config: VariationalConfiguration):
-                super().__init__(num_outputs, gp_model, config)
+            def __init__(self, num_outputs, gp_model, config: VariationalConfiguration, **kwargs):
+                super().__init__(num_outputs, gp_model, config, **kwargs)
                 num_latents = gp_model.variational_strategy.num_tasks
                 self.decay_rate = Parameter(
                     0.2 + 2 * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float32))
@@ -64,22 +64,26 @@ class ToyTimeSeries(TranscriptomicTimeSeries):
         self.num_latents = num_latents
         config = VariationalConfiguration(
             num_samples=70,
-            kernel_scale=False,
             initial_conditions=False # TODO
         )
-        prediction_points = num_times * 10
+
+        def calc(N, d):
+            return (N - 1) * (d + 1) + 1
+
         num_inducing = 10  # (I x m x 1)
         inducing_points = torch.linspace(0, 12, num_inducing).repeat(num_latents, 1).view(num_latents, num_inducing, 1)
-        t_predict = torch.linspace(0, 12, prediction_points, dtype=torch.float32)
+        t_predict = torch.linspace(0, 12, calc(num_times, self.num_disc), dtype=torch.float32)
 
-        gp_model = MultiOutputGP(inducing_points, num_latents, initial_lengthscale=2, natural=False)
+        gp_model = generate_multioutput_rbf_gp(num_latents, inducing_points,
+                                               initial_lengthscale=2,
+                                               gp_kwargs=dict(natural=False))
         self.train_gp(gp_model, t_predict)
         with torch.no_grad():
             lfm = ToyLFM(num_outputs, gp_model, config)
             plotter = Plotter(lfm, np.arange(num_outputs))
             q_m = plotter.plot_gp(lfm.predict_m(t_predict), t_predict)
-            self.t_observed = t_predict[::10]
-            self.m_observed = q_m.mean[::10].unsqueeze(0).permute(0, 2, 1)
+            self.t_observed = t_predict[::self.num_disc]
+            self.m_observed = q_m.mean[::self.num_disc].unsqueeze(0).permute(0, 2, 1)
             print(self.m_observed.shape, self.f_observed.shape)
             self.data = [(self.t_observed, self.m_observed[0, i]) for i in range(num_outputs)]
 
@@ -93,7 +97,7 @@ class ToyTimeSeries(TranscriptomicTimeSeries):
             axes[0].plot(softplus(samples[i][:, 1]), color='red')
             axes[0].plot(softplus(samples[i][:, 2]), color='yellow')
         train_y = samples[0]
-        self.f_observed = train_y[::10].unsqueeze(0).permute(0, 2, 1)
+        self.f_observed = train_y[::self.num_disc].unsqueeze(0).permute(0, 2, 1)
 
         likelihood = MultitaskGaussianLikelihood(num_tasks=self.num_latents)
 
