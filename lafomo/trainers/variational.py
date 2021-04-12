@@ -36,12 +36,12 @@ class VariationalTrainer(Trainer):
             y = y.cuda() if is_cuda() else y
             # Assume that the batch of t s are the same
             data_input, y = data_input[0], y
-            if not self.lfm.pretrain_mode:
-                output = self.lfm(data_input, step_size=step_size)
-                y_target = y.t()
-            else:
+            if self.lfm.pretrain_mode:
                 output = self.lfm((data_input, y))
                 y_target = pretrain_target.t()
+            else:
+                output = self.lfm(data_input, step_size=step_size)
+                y_target = y.t()
 
             self.debug_out(data_input, y, output)
             log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target)
