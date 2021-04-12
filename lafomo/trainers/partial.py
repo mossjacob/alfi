@@ -129,7 +129,8 @@ class PDETrainer(VariationalTrainer):
 
     def after_epoch(self):
         super().after_epoch()
-        with torch.no_grad():
-            self.lfm.fenics_parameters[2].clamp_(-15, -2.25)
-            self.lfm.fenics_parameters[1].clamp_(-15, -2.25)
-            self.lfm.fenics_parameters[0].clamp_(-15, -2.25)
+        if self.clamp:
+            with torch.no_grad():
+                self.lfm.fenics_parameters[2].clamp_(-15, -2.25)
+                self.lfm.fenics_parameters[1].clamp_(-15, -2.25)
+                self.lfm.fenics_parameters[0].clamp_(-15, -2.25)

@@ -1,12 +1,9 @@
 import torch
 
-from torch.nn import Parameter
 from gpytorch.models import ApproximateGP
 from gpytorch.distributions import MultivariateNormal, MultitaskMultivariateNormal
 from torch_fenics import FEniCSModule
-from typing import Iterator
 
-from lafomo.datasets import LFMDataset
 from lafomo.models import VariationalLFM
 from lafomo.configuration import VariationalConfiguration
 from lafomo.utilities.torch import softplus
