@@ -37,10 +37,9 @@ def build_partial(dataset, params, reload=None):
 
     gp_kwargs = dict(learn_inducing_locations=False,
                      natural=params['natural'],
-                     use_tril=True,
-                     ard_dims=2)
+                     use_tril=True)
 
-    gp_model = generate_multioutput_rbf_gp(1, inducing_points, gp_kwargs=gp_kwargs)
+    gp_model = generate_multioutput_rbf_gp(1, inducing_points, ard_dims=2, gp_kwargs=gp_kwargs)
     gp_model.covar_module.lengthscale = lengthscale
     # lengthscale_constraint=Interval(0.1, 0.3),
     gp_model.double()
