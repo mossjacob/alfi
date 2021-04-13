@@ -37,6 +37,8 @@ def plot_spatiotemporal_data(images, extent, nrows=1, ncols=None, titles=None, f
         ax.set_yticks([np.ceil(extent[2]), np.floor(extent[3])])
         ax.set_xlim([extent[0], extent[1]])
         ax.set_ylim([extent[2], extent[3]])
+        ax.set_xlabel('t')
+        ax.set_ylabel('x')
         if title is not None:
             ax.set_title(title)
     return grid

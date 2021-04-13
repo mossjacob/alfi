@@ -33,7 +33,7 @@ class ReactionDiffusion(torch_fenics.FEniCSModule):
         # Construct boundary condition
         bc = DirichletBC(self.V, Constant(0), 'on_boundary')
 
-        # Solve the Poisson equation
+        # Solve the equation
         y = Function(self.V)
         solve(self.a == L, y, bc)
 

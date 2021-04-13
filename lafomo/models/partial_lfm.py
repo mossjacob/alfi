@@ -33,10 +33,10 @@ class PartialLFM(VariationalLFM):
             self.fenics_named_parameters['fenics' + str(name)] = parameter
             name += 1
 
-    def forward(self, tx, step_size=1e-1, return_samples=False):
+    def forward(self, tx, step_size=1e-1, return_samples=False, **kwargs):
         """
         tx : torch.Tensor
-            Shape (2, num_times)
+            Shape (2, num_times) or, if in pretrain mode, then a tuple containing input and output
         h : torch.Tensor the initial state of the ODE
             Shape (num_genes, 1)
         Returns
@@ -45,26 +45,32 @@ class PartialLFM(VariationalLFM):
         Shape (num_genes, num_points).
         """
         self.nfe = 0
-        num_t = tx[0, :].unique().shape[0]
-        num_x = tx[1, :].unique().shape[0]
 
         # Get GP outputs
-        q_u = self.gp_model(tx.transpose(0, 1))
+        if self.pretrain_mode:
+            t_f = tx[0].transpose(0, 1)
+            data = tx[0]
+        else:
+            t_f = tx.transpose(0, 1)
+            data = tx
+        num_t = data[0, :].unique().shape[0]
+        num_x = data[1, :].unique().shape[0]
+
+        q_u = self.gp_model(t_f)
         u = q_u.rsample(torch.Size([self.config.num_samples])).permute(0, 2, 1)
         u = self.G(u)  # (S, num_outputs, tx)
         u = u.view(*u.shape[:2], num_t, num_x)
 
-        # t_size = u.shape[2]
-        # u = u.view(self.config.num_samples, self.num_outputs, )
-        # # u = torch.tensor(df['U']).unsqueeze(0).repeat(self.config.num_samples, 1, 1)
-        # print(u.shape)
-        outputs = self.solve_pde(u)
+        if self.pretrain_mode:
+            params = [softplus(param.repeat(self.config.num_samples, 1)) for param in self.fenics_parameters]
+            outputs = kwargs['pde_func'](tx[1], u, *params)
+        else:
+            outputs = self.solve_pde(u)
 
         if return_samples:
             return outputs
 
         f_mean = outputs.mean(dim=0).view(1, -1)  # shape (batch, times * distance)
-        # h_var = torch.var(h_samples, dim=1).squeeze(-1).permute(1, 0) + 1e-7
         f_var = outputs.var(dim=0).view(1, -1) + 1e-7
         # TODO: make distribution something less constraining
         f_covar = torch.diag_embed(f_var)
