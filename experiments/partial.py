@@ -45,9 +45,20 @@ def build_partial(dataset, params, reload=None):
     gp_model.double()
 
     # Define LFM
-    t_range = (ts[0], ts[-1])
-    time_steps = dataset.num_discretised
-    fenics_model = ReactionDiffusion(t_range, time_steps, mesh)
+    def fenics_fn():
+        # We calculate a mesh that contains all possible spatial locations in the dataset
+        data = next(iter(dataset))
+        tx, y_target = data
+
+        # Define mesh
+        spatial = np.unique(tx[1, :])
+        mesh = interval_mesh(spatial)
+
+        # Define fenics model
+        ts = tx[0, :].unique().sort()[0].numpy()
+        t_range = (ts[0], ts[-1])
+        time_steps = dataset.num_discretised
+        return ReactionDiffusion(t_range, time_steps, mesh)
 
     config = VariationalConfiguration(
         initial_conditions=False,
@@ -71,11 +82,11 @@ def build_partial(dataset, params, reload=None):
     train_ratio = 0.3
     num_training = int(train_ratio * tx.shape[1])
 
-    lfm = PartialLFM(1, gp_model, fenics_model, fenics_params, config, num_training_points=num_training)
+    lfm = PartialLFM(1, gp_model, fenics_fn, fenics_params, config, num_training_points=num_training)
     if reload is not None:
         lfm = lfm.load(reload,
                        gp_model=lfm.gp_model,
-                       lfm_args=[1, lfm.fenics_module, lfm.fenics_parameters, config])
+                       lfm_args=[1, lfm.fenics_model_fn, lfm.fenics_parameters, config])
 
     if params['natural']:
         variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.4)
