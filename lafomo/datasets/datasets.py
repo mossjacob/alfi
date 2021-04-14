@@ -177,7 +177,7 @@ class DrosophilaSpatialTranscriptomics(LFMDataset):
         assert gene in indents
         data = pd.read_csv(path.join(data_dir, f'clean_{gene}.csv'))
         data = data.iloc[indents[gene]:].values
-        # data = data[:, [0, 1, 3, 2]]
+        data = data[:, [0, 1, 3, 2]]
         self.orig_data = data
         self.num_outputs = 1
         self.num_discretised = 7

@@ -86,14 +86,11 @@ class PartialLFM(VariationalLFM):
         # Integrate forward from the initial positions h0.
         outputs = list()
         y_prev = torch.zeros((self.config.num_samples, self.mesh_cells + 1), requires_grad=False, dtype=torch.float64)
-
-        # print('yprev u', y_prev.shape, u.shape)
+        params = [softplus(param.repeat(self.config.num_samples, 1)) for param in self.fenics_parameters]
 
         # t = df['t'].values[:41]
         for n in range(self.time_steps + 1):
             u_n = u[:, 0, n]  # (S, t)
-
-            params = [softplus(param.repeat(self.config.num_samples, 1)) for param in self.fenics_parameters]
 
             y_prev = self.fenics_module(y_prev, u_n, *params)
 

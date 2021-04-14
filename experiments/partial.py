@@ -39,7 +39,7 @@ def build_partial(dataset, params, reload=None):
                      natural=params['natural'],
                      use_tril=True)
 
-    gp_model = generate_multioutput_rbf_gp(1, inducing_points, ard_dims=2, gp_kwargs=gp_kwargs)
+    gp_model = generate_multioutput_rbf_gp(1, inducing_points, ard_dims=2, zero_mean=False, gp_kwargs=gp_kwargs)
     gp_model.covar_module.lengthscale = lengthscale
     # lengthscale_constraint=Interval(0.1, 0.3),
     gp_model.double()
@@ -54,15 +54,16 @@ def build_partial(dataset, params, reload=None):
         num_samples=25
     )
 
+    parameter_grad = params['parameter_grad'] if 'parameter_grad' in params else True
     sensitivity = Parameter(
         inv_softplus(torch.tensor(params['sensitivity'])) * torch.ones((1, 1), dtype=torch.float64),
-        requires_grad=True)
+        requires_grad=parameter_grad)
     decay = Parameter(
         inv_softplus(torch.tensor(params['decay'])) * torch.ones((1, 1), dtype=torch.float64),
-        requires_grad=True)
+        requires_grad=parameter_grad)
     diffusion = Parameter(
         inv_softplus(torch.tensor(params['diffusion'])) * torch.ones((1, 1), dtype=torch.float64),
-        requires_grad=True)
+        requires_grad=parameter_grad)
     # sensitivity = Parameter(1 * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
     # decay = Parameter(0.1 * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
     # diffusion = Parameter(0.01 * torch.ones((1, 1), dtype=torch.float64), requires_grad=True)
@@ -77,21 +78,22 @@ def build_partial(dataset, params, reload=None):
                        lfm_args=[1, lfm.fenics_module, lfm.fenics_parameters, config])
 
     if params['natural']:
-        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
+        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.4)
         parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.09)
         optimizers = [variational_optimizer, parameter_optimizer]
     else:
-        optimizers = [Adam(lfm.parameters(), lr=0.09)]
+        optimizers = [Adam(lfm.parameters(), lr=0.1)]
 
     # As in Lopez-Lopera et al., we take 30% of data for training
     train_mask = torch.zeros_like(tx[0, :])
     train_mask[torch.randperm(tx.shape[1])[:int(train_ratio * tx.shape[1])]] = 1
     track_parameters = list(lfm.fenics_named_parameters.keys()) + ['gp_model.covar_module.raw_lengthscale']
+    warm_variational = params['warm_epochs'] if 'warm_epochs' in params else 10
     trainer = PDETrainer(lfm, optimizers, dataset,
                          clamp=params['clamp'],
                          track_parameters=track_parameters,
                          train_mask=train_mask.bool(),
-                         warm_variational=10)
+                         warm_variational=warm_variational)
     plotter = Plotter(lfm, dataset.gene_names)
     return lfm, trainer, plotter
 
