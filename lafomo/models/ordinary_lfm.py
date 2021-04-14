@@ -69,9 +69,10 @@ class OrdinaryLFM(VariationalLFM):
         if return_samples:
             return h_samples
 
-        h_mean = torch.mean(h_samples, dim=1).squeeze(-1).permute(1, 0) # shape was (#outputs, #T, 1) .permute(1, 0, 2)
-        h_var = torch.var(h_samples, dim=1).squeeze(-1).permute(1, 0) + 1e-7
+        h_mean = torch.mean(h_samples, dim=1).squeeze(-1).transpose(0, 1)  # shape was (#outputs, #T, 1)
+        h_var = torch.var(h_samples, dim=1).squeeze(-1).transpose(0, 1) + 1e-7
         h_mean = self.decode(h_mean)
+        h_var = self.decode(h_var)
         # TODO: make distribution something less constraining
         h_covar = torch.diag_embed(h_var)
         batch_mvn = gpytorch.distributions.MultivariateNormal(h_mean, h_covar)
