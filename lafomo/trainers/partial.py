@@ -68,18 +68,27 @@ class PDETrainer(VariationalTrainer):
         spatial_grid = discretise(spatial, num_discretised=num_discretised)
         return spatial_grid
 
-    def single_epoch(self, step_size=1e-1, epoch=0, **kwargs):
+    def single_epoch(self, step_size=1e-1, epoch=0, pretrain_target=None, pde_func=None, **kwargs):
         [optim.zero_grad() for optim in self.optimizers]
         y = self.y_target
-        output = self.lfm(self.tx, step_size=step_size)
+
+        if self.lfm.pretrain_mode:
+            for param in self.lfm.nonvariational_parameters():
+                param.requires_grad = True
+
+            output = self.lfm((self.tx, y), step_size=step_size, pde_func=pde_func)
+            y_target = pretrain_target.t()
+        else:
+            output = self.lfm(self.tx, step_size=step_size)
+            y_target = y.t()
+        print('output', output.mean.shape, y_target.shape)
         self.debug_out(self.tx, y, output)
 
-        log_likelihood, kl_divergence, _ = self.lfm.loss_fn(
-            output, y.permute(1, 0), mask=self.train_mask)
+        log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target, mask=self.train_mask)
         loss = - (log_likelihood - kl_divergence)
 
         loss.backward()
-        if epoch >= self.warm_variational:
+        if self.lfm.pretrain_mode or epoch >= self.warm_variational:
             [optim.step() for optim in self.optimizers]
         else:
             print(epoch, 'warming up')
@@ -129,7 +138,8 @@ class PDETrainer(VariationalTrainer):
 
     def after_epoch(self):
         super().after_epoch()
-        with torch.no_grad():
-            self.lfm.fenics_parameters[2].clamp_(-15, -2.25)
-            self.lfm.fenics_parameters[1].clamp_(-15, -2.25)
-            self.lfm.fenics_parameters[0].clamp_(-15, -2.25)
+        if self.clamp:
+            with torch.no_grad():
+                self.lfm.fenics_parameters[2].clamp_(-15, -2.25)
+                self.lfm.fenics_parameters[1].clamp_(-15, -2.25)
+                self.lfm.fenics_parameters[0].clamp_(-15, -2.25)
