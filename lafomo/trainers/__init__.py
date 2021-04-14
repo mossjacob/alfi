@@ -1,7 +1,7 @@
 from .trainer import Trainer
 from .exact import ExactTrainer
 from .variational import VariationalTrainer
-from .preestimator import ParameterPreEstimator
+from .preestimator import PreEstimator, PartialPreEstimator
 try:  # fenics may not be present
     from .partial import PDETrainer
 except ImportError:
@@ -13,5 +13,6 @@ __all__ = [
     'ExactTrainer',
     'VariationalTrainer',
     'PDETrainer',
-    'ParameterPreEstimator'
+    'PreEstimator',
+    'PartialPreEstimator',
 ]

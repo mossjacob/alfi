@@ -21,7 +21,7 @@ class VariationalTrainer(Trainer):
                  **kwargs):
         super().__init__(lfm, optimizers, dataset, batch_size=lfm.num_outputs, **kwargs)
         self.warm_variational = warm_variational
-        if warm_variational >= 0:
+        if warm_variational >= 0:  # Cold start: don't train non variational parameters initially.
             for param in self.lfm.nonvariational_parameters():
                 param.requires_grad = False
 

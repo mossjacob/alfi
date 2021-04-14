@@ -54,10 +54,6 @@ class PDETrainer(VariationalTrainer):
         self.tx = torch.stack([new_t, new_x])
         self.y_target = y_target
 
-        # Cold start: don't train non variational parameters initially.
-        for param in lfm.nonvariational_parameters():
-            param.requires_grad = False
-
     def discretise_spatial(self, tx):
         # whilst maintaining an inverse mapping to mask the output for
         # calculating the loss. shape (T, X_unique).
@@ -70,27 +66,20 @@ class PDETrainer(VariationalTrainer):
         spatial_grid = discretise(spatial, num_discretised=num_discretised)
         return spatial_grid
 
-    def single_epoch(self, step_size=1e-1, epoch=0, pretrain_target=None, pde_func=None, **kwargs):
+    def single_epoch(self, step_size=1e-1, epoch=0, **kwargs):
         [optim.zero_grad() for optim in self.optimizers]
         y = self.y_target
 
-        if self.lfm.pretrain_mode:
-            for param in self.lfm.nonvariational_parameters():
-                param.requires_grad = True
+        output = self.lfm(self.tx, step_size=step_size)
+        y_target = y.t()
 
-            output = self.lfm((self.tx, y), step_size=step_size, pde_func=pde_func)
-            y_target = pretrain_target.t()
-        else:
-            output = self.lfm(self.tx, step_size=step_size)
-            y_target = y.t()
-        print('output', output.mean.shape, y_target.shape)
-        self.debug_out(self.tx, y, output)
+        self.debug_out(self.tx, y_target, output)
 
         log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target, mask=self.train_mask)
         loss = - (log_likelihood - kl_divergence)
 
         loss.backward()
-        if self.lfm.pretrain_mode or epoch >= self.warm_variational:
+        if epoch >= self.warm_variational:
             [optim.step() for optim in self.optimizers]
         else:
             print(epoch, 'warming up')
