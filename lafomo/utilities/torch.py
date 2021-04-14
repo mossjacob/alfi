@@ -1,6 +1,8 @@
 import torch
 import math
 import numpy as np
+from torchcubicspline import(natural_cubic_spline_coeffs,
+                             NaturalCubicSpline)
 CUDA_AVAILABLE = False
 
 
@@ -8,18 +10,40 @@ def is_cuda():
     import torch
     return CUDA_AVAILABLE and torch.cuda.is_available()
 
+
+def discretisation_length(N, d):
+    """Returns the length of a linspace where there are N points with d intermediate (in-between) points."""
+    return (N - 1) * (d + 1) + 1
+
+
+def spline_interpolate_gradient(x: torch.Tensor, y: torch.Tensor, num_disc=9):
+    """
+    Returns x_interpolate, y_interpolate, y_grad, y_grad_2: the interpolated time, data and gradient
+    """
+    x_interpolate = torch.linspace(x.min(), x.max(), discretisation_length(x.shape[0], num_disc))
+    coeffs = natural_cubic_spline_coeffs(x, y)
+    spline = NaturalCubicSpline(coeffs)
+    y_interpolate = spline.evaluate(x_interpolate)
+    y_grad = spline.derivative(x_interpolate) #y_interpolate, denom, axis=1)
+    y_grad_2 = spline.derivative(x_interpolate, order=2)
+    return x_interpolate, y_interpolate, y_grad, y_grad_2
+
+
 """These metrics are translated from https://rdrr.io/cran/lineqGPR/man/errorMeasureRegress.html"""
 def smse(y_test, f_mean):
     """Standardised mean square error (standardised by variance)"""
     return (y_test - f_mean).square() / y_test.var()
 
+
 def q2(y_test, f_mean):
     y_mean = y_test.mean()
     return 1 - (y_test - f_mean).square().sum() / (y_test - y_mean).square().sum()
 
+
 def cia(y_test, f_mean, f_var):
     return ((y_test >= (f_mean - 1.98 * f_var.sqrt())) &
             (y_test <= (f_mean + 1.98 * f_var.sqrt()))).double().mean()
+
 
 def ceil(x):
     return int(math.ceil(x))
