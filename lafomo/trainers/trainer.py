@@ -35,7 +35,6 @@ class Trainer:
                  train_mask=None):
         self.lfm = lfm
         self.num_epochs = 0
-        self.kl_mult = 0
         self.optimizers = optimizers
         self.use_natural_gradient = len(self.optimizers) > 1
         self.batch_size = batch_size
