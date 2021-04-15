@@ -10,9 +10,9 @@ from lafomo.configuration import VariationalConfiguration
 from lafomo.models import MultiOutputGP, PartialLFM, generate_multioutput_rbf_gp
 from lafomo.models.pdes import ReactionDiffusion
 from lafomo.plot import Plotter, plot_spatiotemporal_data
-from lafomo.trainers import PDETrainer
+from lafomo.trainers import PDETrainer, PartialPreEstimator
 from lafomo.utilities.fenics import interval_mesh
-from lafomo.utilities.torch import cia, q2, smse, inv_softplus, softplus
+from lafomo.utilities.torch import cia, q2, smse, inv_softplus, softplus, spline_interpolate_gradient
 
 tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
 
@@ -107,6 +107,58 @@ def build_partial(dataset, params, reload=None):
                          warm_variational=warm_variational)
     plotter = Plotter(lfm, dataset.gene_names)
     return lfm, trainer, plotter
+
+
+def pretrain_partial(dataset, lfm, trainer):
+    tx = trainer.tx
+    num_t = tx[0, :].unique().shape[0]
+    num_x = tx[1, :].unique().shape[0]
+    print(num_t, num_x)
+    y_target = trainer.y_target[0]
+    y_matrix = y_target.view(num_t, num_x)
+
+    dy_t = list()
+    for i in range(num_x):
+        t = tx[0][::num_x]
+        y = y_matrix[:, i].unsqueeze(-1)
+        t_interpolate, y_interpolate, y_grad, _ = \
+            spline_interpolate_gradient(t, y)
+        plt.plot(t_interpolate, y_interpolate)
+        dy_t.append(y_grad)
+    dy_t = torch.stack(dy_t)
+
+    d2y_x = list()
+    dy_x = list()
+    for i in range(num_t):
+        t = tx[1][:num_x]
+        y = y_matrix[i].unsqueeze(-1)
+        t_interpolate, y_interpolate, y_grad, y_grad_2 = \
+            spline_interpolate_gradient(t, y)
+        d2y_x.append(y_grad_2)
+        dy_x.append(y_grad)
+
+    d2y_x = torch.stack(d2y_x)
+    dy_x = torch.stack(dy_x)[..., ::10, 0].reshape(1, -1)
+    d2y_x = d2y_x[..., ::10, 0].reshape(1, -1)
+    dy_t = dy_t[..., ::10, 0].t().reshape(1, -1)
+
+    def pde_func(y, u, sensitivity, decay, diffusion):
+        # y (1, 1681) u (25, 1, 41, 41) s (25, 1)
+        dy_t = (sensitivity * u.view(u.shape[0], -1) -
+                decay * y.view(1, -1) +
+                diffusion * d2y_x)
+        return dy_t
+
+    optimizers = [Adam(lfm.parameters(), lr=0.1)]
+
+    pre_estimator = PartialPreEstimator(
+        lfm, optimizers, dataset, pde_func,
+        input_pair=(trainer.tx, trainer.y_target), target=dy_t.t()
+    )
+
+    lfm.pretrain(True)
+    pre_estimator.train(100, report_interval=10)
+    lfm.pretrain(False)
 
 
 def plot_partial(dataset, lfm, trainer, plotter, filepath, params):

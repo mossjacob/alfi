@@ -18,7 +18,7 @@ class PDETrainer(VariationalTrainer):
         super().__init__(lfm, optimizers, dataset, **kwargs)
         self.debug_iteration = 0
         self.clamp = clamp
-        self.plot_outputs = False
+        self.plot_outputs = True
         self.plot_outputs_iter = 10
         data = next(iter(dataset))
         data_input, y = data
@@ -68,13 +68,11 @@ class PDETrainer(VariationalTrainer):
 
     def single_epoch(self, step_size=1e-1, epoch=0, **kwargs):
         [optim.zero_grad() for optim in self.optimizers]
-        y = self.y_target
 
         output = self.lfm(self.tx, step_size=step_size)
-        y_target = y.t()
+        y_target = self.y_target.t()
 
         self.debug_out(self.tx, y_target, output)
-
         log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target, mask=self.train_mask)
         loss = - (log_likelihood - kl_divergence)
 

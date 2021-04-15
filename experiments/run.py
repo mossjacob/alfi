@@ -11,7 +11,7 @@ from lafomo.datasets import (
     DeterministicLotkaVolterra,
 )
 try:
-    from .partial import build_partial, plot_partial
+    from .partial import build_partial, plot_partial, pretrain_partial
 except ImportError:
     build_partial, plot_partial = None, None
 from .variational import build_variational, plot_variational
@@ -68,8 +68,11 @@ plotters = {
     'variational': plot_variational,
     'lotka': plot_lotka,
 }
+
+
 train_pre_step = {
-    'exact': lambda model: model.likelihood.train(),
+    'exact': lambda _, model, __: model.likelihood.train(),
+    'partial': pretrain_partial
 }
 
 if __name__ == "__main__":
@@ -100,7 +103,7 @@ if __name__ == "__main__":
 
             # Train model with optional initial step
             if method in train_pre_step:
-                train_pre_step[method](model)
+                train_pre_step[method](dataset, model, trainer)
             print(TerminalColours.GREEN, 'Training...', TerminalColours.END)
             trainer.train(**experiment['train-params'])
 

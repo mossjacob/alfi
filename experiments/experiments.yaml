@@ -60,11 +60,12 @@ dros-kr:
         report_interval: 1
       model-params:
         lengthscale: 10
-        sensitivity: 0.1
-        diffusion: 0.01
-        decay: 0.1
+        sensitivity: 0.0970
+        diffusion: 0.0015
+        decay: 0.0764
+        parameter_grad: false
         natural: false
-        warmup-epochs: 20
+        warm_epochs: -1
         clamp: true
 dros-kni:
   num_latents: 1
