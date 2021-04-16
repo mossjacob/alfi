@@ -1,8 +1,10 @@
 import argparse
 import yaml
 import seaborn as sns
-from matplotlib import pyplot as plt
+import time
+import numpy as np
 
+from matplotlib import pyplot as plt
 from pathlib import Path
 
 from lafomo.datasets import (
@@ -41,6 +43,7 @@ dataset_choices = list(config.keys())
 parser = argparse.ArgumentParser()
 parser.add_argument('--data', type=str, choices=dataset_choices, default=dataset_choices[0])
 parser.add_argument('--reload', type=bool, default=False)
+parser.add_argument('--time', type=bool, default=False)
 
 datasets = {
     'p53': lambda: P53Data(replicate=0, data_dir='data'),
@@ -75,6 +78,75 @@ train_pre_step = {
     'partial': pretrain_partial
 }
 
+
+def time_models(builder, dataset, filepath, modelparams):
+    times_with = list()
+    loglosses_with = list()
+    times_without = list()
+    loglosses_without = list()
+
+    for i in range(5):
+        # Without pretraining
+        print(TerminalColours.GREEN, 'Without pretraining...', TerminalColours.END)
+        model, trainer, plotter = builder(dataset, modelparams)
+        trainer.plot_outputs = False
+
+        t0 = time.time()
+        model.pretrain(False)
+        train_times = trainer.train(**experiment['train-params'])
+        train_times = np.array(train_times)
+        train_time = (train_times[:, 0] - t0) / 60
+        logloss = train_times[:, 1]
+        times_without.append(train_time)
+        loglosses_without.append(logloss)
+
+        # With pretraining
+        print(TerminalColours.GREEN, 'With pretraining...', TerminalColours.END)
+        model, trainer, plotter = builder(dataset, modelparams)
+        trainer.plot_outputs = False
+
+        model.pretrain(True)
+        pretrain_times, t_start = train_pre_step[method](dataset, model, trainer)
+
+        t1 = time.time()
+        model.pretrain(False)
+        train_times = trainer.train(**experiment['train-params'])
+        pretrain_times = np.array(pretrain_times)
+        train_times = np.array(train_times)
+        pretrain_time = (pretrain_times[:, 0] - t_start) / 60
+        train_time = (train_times[:, 0] - t1 + pretrain_time[-1]) / 60
+        times_with.append(np.concatenate([pretrain_time, train_time]))
+        loglosses_with.append(np.concatenate([pretrain_times[:, 1], train_times[:, 1]]))
+
+        model.save(str(filepath / f'model_{i}'))
+
+    loglosses_with = np.array(loglosses_with)
+    loglosses_without = np.array(loglosses_without)
+    times_with = np.array(times_with)
+    times_without = np.array(times_without)
+    np.save(str(filepath / 'traintime_with.npy'), times_with)
+    np.save(str(filepath / 'trainloss_with.npy'), loglosses_with)
+    np.save(str(filepath / 'traintime_without.npy'), times_without)
+    np.save(str(filepath / 'trainloss_without.npy'), loglosses_without)
+
+
+def run_model(method, dataset, model, trainer, plotter, filepath, save_filepath, modelparams):
+    # Train model with optional initial step
+    if method in train_pre_step:
+        train_pre_step[method](dataset, model, trainer)
+    print(TerminalColours.GREEN, 'Training...', TerminalColours.END)
+    trainer.train(**experiment['train-params'])
+
+    # Plot results of model
+    if method in plotters:
+        print(TerminalColours.GREEN, 'Running plotter...', TerminalColours.END)
+        plotters[method](dataset, model, trainer, plotter, filepath, modelparams)
+    else:
+        print(TerminalColours.WARNING, 'Ignoring plotter for', method, 'since no plotter implemented.',
+              TerminalColours.END)
+    model.save(save_filepath)
+
+
 if __name__ == "__main__":
     args = parser.parse_args()
     key = args.data
@@ -101,19 +173,10 @@ if __name__ == "__main__":
             reload = save_filepath if args.reload else None
             model, trainer, plotter = builders[method](dataset, modelparams, reload=reload)
 
-            # Train model with optional initial step
-            if method in train_pre_step:
-                train_pre_step[method](dataset, model, trainer)
-            print(TerminalColours.GREEN, 'Training...', TerminalColours.END)
-            trainer.train(**experiment['train-params'])
-
-            # Plot results of model
-            if method in plotters:
-                print(TerminalColours.GREEN, 'Running plotter...', TerminalColours.END)
-                plotters[method](dataset, model, trainer, plotter, filepath, modelparams)
+            if args.timer:
+                time_models(builders[method], dataset, filepath, modelparams)
             else:
-                print(TerminalColours.WARNING, 'Ignoring plotter for', method, 'since no plotter implemented.', TerminalColours.END)
-            model.save(save_filepath)
+                run_model(method, dataset, model, trainer, plotter, filepath, save_filepath, modelparams)
             seen_methods[method] += 1
             print(TerminalColours.GREEN, f'{method} completed successfully.', TerminalColours.END)
         else:
