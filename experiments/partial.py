@@ -122,7 +122,6 @@ def pretrain_partial(dataset, lfm, trainer):
         y = y_matrix[:, i].unsqueeze(-1)
         t_interpolate, y_interpolate, y_grad, _ = \
             spline_interpolate_gradient(t, y)
-        plt.plot(t_interpolate, y_interpolate)
         dy_t.append(y_grad)
     dy_t = torch.stack(dy_t)
 
