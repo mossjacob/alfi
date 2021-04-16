@@ -1,4 +1,5 @@
 import torch
+from typing import Callable
 
 from gpytorch.models import ApproximateGP
 from gpytorch.distributions import MultivariateNormal, MultitaskMultivariateNormal
@@ -13,7 +14,7 @@ class PartialLFM(VariationalLFM):
     def __init__(self,
                  num_outputs,
                  gp_model: ApproximateGP,
-                 fenics_model: FEniCSModule,
+                 fenics_model_fn: Callable,
                  fenics_parameters: list,
                  config: VariationalConfiguration,
                  num_training_points=None,
@@ -21,10 +22,7 @@ class PartialLFM(VariationalLFM):
         super().__init__(num_outputs, gp_model, config, num_training_points, dtype)
         if self.config.initial_conditions:
             raise Exception('Initial conditions are not implemented for PartialLFM.')
-
-        self.time_steps = fenics_model.time_steps
-        self.mesh_cells = fenics_model.mesh.cells().shape[0]
-        self.fenics_module = fenics_model
+        self.fenics_model_fn = fenics_model_fn
         self.fenics_parameters = fenics_parameters
         self.fenics_named_parameters = dict()
         name = 0
@@ -45,7 +43,7 @@ class PartialLFM(VariationalLFM):
         Shape (num_genes, num_points).
         """
         self.nfe = 0
-
+        # self.gp_model.share_memory()
         # Get GP outputs
         if self.pretrain_mode:
             t_f = tx[0].transpose(0, 1)
@@ -60,7 +58,6 @@ class PartialLFM(VariationalLFM):
         u = q_u.rsample(torch.Size([self.config.num_samples])).permute(0, 2, 1)
         u = self.G(u)  # (S, num_outputs, tx)
         u = u.view(*u.shape[:2], num_t, num_x)
-
         if self.pretrain_mode:
             params = [softplus(param.repeat(self.config.num_samples, 1)) for param in self.fenics_parameters]
             outputs = kwargs['pde_func'](tx[1], u, *params)
@@ -77,30 +74,41 @@ class PartialLFM(VariationalLFM):
         batch_mvn = MultivariateNormal(f_mean, f_covar)
         return MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)
 
+    def func(self, i, u):
+        # i, u = iu
+        fenics_model = self.fenics_model_fn()
+        time_steps = fenics_model.time_steps
+        mesh_cells = fenics_model.mesh.cells().shape[0]
+
+        # Integrate forward from the initial positions h0.
+        outputs = list()
+        y_prev = torch.zeros((1, mesh_cells + 1), requires_grad=False, dtype=torch.float64)
+        params = [softplus(param) for param in self.fenics_parameters]
+
+        # t = df['t'].values[:41]
+        for n in range(time_steps + 1):
+            u_n = u[i, 0, n].unsqueeze(0)  # (S, t)
+            # print(u_n.shape, y_prev.shape, params[0].shape)
+            y_prev = fenics_model(y_prev, u_n, *params)
+
+            # y_prev shape (N, 21)
+            outputs.append(y_prev)
+
+        outputs = torch.stack(outputs).permute(1, 0, 2)  # (S, T, X)
+        return outputs
+
     def solve_pde(self, u):
         """
 
         @param u: Shape (S, 1, num_t, num_x)
         @return:
         """
-        # Integrate forward from the initial positions h0.
-        outputs = list()
-        y_prev = torch.zeros((self.config.num_samples, self.mesh_cells + 1), requires_grad=False, dtype=torch.float64)
+        # u.share_memory_()
+        outputs = [self.func(i, u) for i in range(self.config.num_samples)]
 
-        # print('yprev u', y_prev.shape, u.shape)
+        outputs = torch.cat(outputs)
+        # outputs = torch.cat(self.pool.map(self.func, [() for i in range(self.config.num_samples)]))  #self.pool
 
-        # t = df['t'].values[:41]
-        for n in range(self.time_steps + 1):
-            u_n = u[:, 0, n]  # (S, t)
-
-            params = [softplus(param.repeat(self.config.num_samples, 1)) for param in self.fenics_parameters]
-
-            y_prev = self.fenics_module(y_prev, u_n, *params)
-
-            # y_prev shape (N, 21)
-            outputs.append(y_prev)
-
-        outputs = torch.stack(outputs).permute(1, 0, 2) # (S, T, X)
         return outputs
 
     def G(self, u):

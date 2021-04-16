@@ -18,6 +18,8 @@ class PDETrainer(VariationalTrainer):
         super().__init__(lfm, optimizers, dataset, **kwargs)
         self.debug_iteration = 0
         self.clamp = clamp
+        self.plot_outputs = True
+        self.plot_outputs_iter = 10
         data = next(iter(dataset))
         data_input, y = data
         data_input = data_input.cuda() if is_cuda() else data_input
@@ -52,10 +54,6 @@ class PDETrainer(VariationalTrainer):
         self.tx = torch.stack([new_t, new_x])
         self.y_target = y_target
 
-        # Cold start: don't train non variational parameters initially.
-        for param in lfm.nonvariational_parameters():
-            param.requires_grad = False
-
     def discretise_spatial(self, tx):
         # whilst maintaining an inverse mapping to mask the output for
         # calculating the loss. shape (T, X_unique).
@@ -68,27 +66,18 @@ class PDETrainer(VariationalTrainer):
         spatial_grid = discretise(spatial, num_discretised=num_discretised)
         return spatial_grid
 
-    def single_epoch(self, step_size=1e-1, epoch=0, pretrain_target=None, pde_func=None, **kwargs):
+    def single_epoch(self, step_size=1e-1, epoch=0, **kwargs):
         [optim.zero_grad() for optim in self.optimizers]
-        y = self.y_target
 
-        if self.lfm.pretrain_mode:
-            for param in self.lfm.nonvariational_parameters():
-                param.requires_grad = True
+        output = self.lfm(self.tx, step_size=step_size)
+        y_target = self.y_target.t()
 
-            output = self.lfm((self.tx, y), step_size=step_size, pde_func=pde_func)
-            y_target = pretrain_target.t()
-        else:
-            output = self.lfm(self.tx, step_size=step_size)
-            y_target = y.t()
-        print('output', output.mean.shape, y_target.shape)
-        self.debug_out(self.tx, y, output)
-
+        self.debug_out(self.tx, y_target, output)
         log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target, mask=self.train_mask)
         loss = - (log_likelihood - kl_divergence)
 
         loss.backward()
-        if self.lfm.pretrain_mode or epoch >= self.warm_variational:
+        if epoch >= self.warm_variational:
             [optim.step() for optim in self.optimizers]
         else:
             print(epoch, 'warming up')
@@ -102,34 +91,36 @@ class PDETrainer(VariationalTrainer):
         return loss.item(), (-log_likelihood.item(), kl_divergence.item())
 
     def debug_out(self, data_input, y_target, output):
-        if (self.debug_iteration % 1) != 0:
+        if (self.debug_iteration % 10) != 0:
             self.debug_iteration += 1
             return
-        self.debug_iteration += 1
         print('Mean output variance:', output.variance.mean().item())
         if self.train_mask is not None:
             with torch.no_grad():
-                log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target.permute(1, 0), mask=~self.train_mask)
+                log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target, mask=~self.train_mask)
                 test_loss = - (log_likelihood - kl_divergence)
             print('Test loss:', test_loss.item())
-        print(f'Q2: {q2(y_target, output.mean.squeeze()).item():.03f}')
-        ts = self.tx[0, :].unique().numpy()
-        xs = self.tx[1, :].unique().numpy()
-        extent = [ts[0], ts[-1], xs[0], xs[-1]]
+        print(f'Q2: {q2(y_target.squeeze(), output.mean.squeeze()).item():.03f}')
+        if self.plot_outputs and (self.debug_iteration % self.plot_outputs_iter) == 0:
+            ts = self.tx[0, :].unique().numpy()
+            xs = self.tx[1, :].unique().numpy()
+            extent = [ts[0], ts[-1], xs[0], xs[-1]]
 
-        num_t = ts.shape[0]
-        num_x = xs.shape[0]
-        f_mean = output.mean.reshape(num_t, num_x).detach()
-        y_target = y_target.reshape(num_t, num_x)
-        axes = plot_spatiotemporal_data(
-            [f_mean.transpose(0, 1), y_target.transpose(0, 1)],
-            extent, titles=['Prediction', 'Ground truth']
-        )
-        xy = self.lfm.inducing_points.detach()[0]
-        axes[0].scatter(xy[:, 0], xy[:, 1], facecolors='none', edgecolors='r', s=3)
+            num_t = ts.shape[0]
+            num_x = xs.shape[0]
+            f_mean = output.mean.reshape(num_t, num_x).detach()
+            y_target = y_target.reshape(num_t, num_x)
+            axes = plot_spatiotemporal_data(
+                [f_mean.t(), y_target.t()],
+                extent, titles=['Prediction', 'Ground truth']
+            )
+            xy = self.lfm.inducing_points.detach()[0]
+            axes[0].scatter(xy[:, 0], xy[:, 1], facecolors='none', edgecolors='r', s=3)
 
-        plt.savefig(str(datetime.now().timestamp()) + '.png')
-        self.lfm.save('currentmodel')
+            plt.savefig(str(datetime.now().timestamp()) + '.png')
+            self.lfm.save('currentmodel')
+        self.debug_iteration += 1
+
 
     def print_extra(self):
         print(' s:', softplus(self.lfm.fenics_parameters[0][0]).item(),

@@ -13,7 +13,7 @@ plt.rcParams['font.serif'] = 'CMU Serif'
 sns.set(style='white', font="CMU Serif")
 
 
-def plot_spatiotemporal_data(images, extent, nrows=1, ncols=None, titles=None, figsize=(10, 5)):
+def plot_spatiotemporal_data(images, extent, nrows=1, ncols=None, titles=None, figsize=(10, 5), cticks=None):
     if ncols == None:
         ncols = len(images)
     fig = plt.figure(figsize=figsize)
@@ -29,18 +29,24 @@ def plot_spatiotemporal_data(images, extent, nrows=1, ncols=None, titles=None, f
                  )
     aspect = (extent[1]-extent[0]) / (extent[3]-extent[2])
     titles = [None] * len(images) if titles is None else titles
+    plotnum = 0
     for ax, cax, image, title in zip(grid, grid.cbar_axes, images, titles):
         im = ax.imshow(image, extent=extent, origin='lower', aspect=aspect)
         cb = plt.colorbar(im, cax=cax)
-        cb.ax.yaxis.set_major_locator(ticker.MaxNLocator(nbins=5, integer=True))
+        if cticks is None:
+            cb.ax.yaxis.set_major_locator(ticker.MaxNLocator(nbins=5, steps=[1, 2, 4, 5, 10], integer=True))
+        else:
+            cb.set_ticks(cticks)
         ax.set_xticks([np.ceil(extent[0]), np.floor(extent[1])])
         ax.set_yticks([np.ceil(extent[2]), np.floor(extent[3])])
         ax.set_xlim([extent[0], extent[1]])
         ax.set_ylim([extent[2], extent[3]])
+        if (plotnum % ncols) == 0:
+            ax.set_ylabel('x')
         ax.set_xlabel('t')
-        ax.set_ylabel('x')
         if title is not None:
             ax.set_title(title)
+        plotnum += 1
     return grid
 
 

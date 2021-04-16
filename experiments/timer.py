@@ -2,6 +2,8 @@ import argparse
 import yaml
 import seaborn as sns
 from matplotlib import pyplot as plt
+import time
+import numpy as np
 
 from pathlib import Path
 
@@ -40,7 +42,6 @@ dataset_choices = list(config.keys())
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--data', type=str, choices=dataset_choices, default=dataset_choices[0])
-parser.add_argument('--reload', type=bool, default=False)
 
 datasets = {
     'p53': lambda: P53Data(replicate=0, data_dir='data'),
@@ -78,43 +79,64 @@ train_pre_step = {
 if __name__ == "__main__":
     args = parser.parse_args()
     key = args.data
-
-    print(TerminalColours.GREEN, 'Running experiments for dataset:', key, TerminalColours.END)
     data_config = config[key]
     dataset = datasets[key]()
     experiments = data_config['experiments']
-    seen_methods = dict()
+    print(TerminalColours.GREEN, 'Running experiments for dataset:', key, TerminalColours.END)
     for experiment in experiments:
         method = experiment['method']
         print(TerminalColours.GREEN, 'Constructing method:', method, TerminalColours.END)
         if method in builders:
-            if method not in seen_methods:
-                seen_methods[method] = 0
-
             # Create experiments path
             filepath = Path('experiments', key, method)
             filepath.mkdir(parents=True, exist_ok=True)
-            save_filepath = str(filepath / (str(seen_methods[method]) + 'savedmodel'))
-
             # Construct model
             modelparams = experiment['model-params'] if 'model-params' in experiment else None
-            reload = save_filepath if args.reload else None
-            model, trainer, plotter = builders[method](dataset, modelparams, reload=reload)
+            model, trainer, plotter = builders[method](dataset, modelparams)
 
-            # Train model with optional initial step
-            if method in train_pre_step:
-                train_pre_step[method](dataset, model, trainer)
-            print(TerminalColours.GREEN, 'Training...', TerminalColours.END)
-            trainer.train(**experiment['train-params'])
+            times_with = list()
+            loglosses_with = list()
+            times_without = list()
+            loglosses_without = list()
+            trainer.plot_outputs = False
 
-            # Plot results of model
-            if method in plotters:
-                print(TerminalColours.GREEN, 'Running plotter...', TerminalColours.END)
-                plotters[method](dataset, model, trainer, plotter, filepath, modelparams)
-            else:
-                print(TerminalColours.WARNING, 'Ignoring plotter for', method, 'since no plotter implemented.', TerminalColours.END)
-            model.save(save_filepath)
-            seen_methods[method] += 1
+            for i in range(5):
+                # try without pretraining
+                print(TerminalColours.GREEN, 'Without pretraining...', TerminalColours.END)
+
+                t0 = time.time()
+                model.pretrain(False)
+                train_times = trainer.train(**experiment['train-params'])
+                train_times = np.array(train_times)
+                train_time = (train_times[:, 0] - t0) / 60
+                logloss = train_times[:, 1]
+                times_without.append(train_time)
+                loglosses_without.append(logloss)
+
+                # now with pretraining
+                print(TerminalColours.GREEN, 'With pretraining...', TerminalColours.END)
+                model.pretrain(True)
+                pretrain_times, t_start = train_pre_step[method](dataset, model, trainer)
+
+                t1 = time.time()
+                model.pretrain(False)
+                train_times = trainer.train(**experiment['train-params'])
+                pretrain_times = np.array(pretrain_times)
+                train_times = np.array(train_times)
+                pretrain_time = (pretrain_times[:, 0] - t_start) / 60
+                train_time = (train_times[:, 0] - t1 + pretrain_time[-1]) / 60
+                times_with.append(np.concatenate([pretrain_time, train_time]))
+                loglosses_with.append(np.concatenate([pretrain_times[:, 1], train_times[:, 1]]))
+
+            loglosses_with = np.array(loglosses_with)
+            loglosses_without = np.array(loglosses_without)
+            times_with = np.array(times_with)
+            times_without = np.array(times_without)
+            np.save(str(filepath / 'traintime_with.npy'), times_with)
+            np.save(str(filepath / 'trainloss_with.npy'), loglosses_with)
+            np.save(str(filepath / 'traintime_without.npy'), times_without)
+            np.save(str(filepath / 'trainloss_without.npy'), loglosses_without)
+
             print(TerminalColours.GREEN, f'{method} completed successfully.', TerminalColours.END)
         else:
             print(TerminalColours.WARNING, 'Ignoring method', method, 'since no builder implemented.', TerminalColours.END)
