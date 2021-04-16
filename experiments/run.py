@@ -46,7 +46,7 @@ datasets = {
     'p53': lambda: P53Data(replicate=0, data_dir='data'),
     'hafner': lambda: HafnerData(replicate=0, data_dir='data', extra_targets=False),
     'toy-spatial': lambda: ToySpatialTranscriptomics(data_dir='data'),
-    'dros-kr': lambda: DrosophilaSpatialTranscriptomics(gene='kr', data_dir='data'),
+    'dros-kr': lambda: DrosophilaSpatialTranscriptomics(gene='kr', data_dir='data', scale=True),
     'toy': lambda: ToyTimeSeries(),
     'lotka': lambda: DeterministicLotkaVolterra(alpha = 2./3, beta = 4./3,
                                                 gamma = 1., delta = 1.,

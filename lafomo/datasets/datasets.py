@@ -1,5 +1,6 @@
 import torch
 
+from sklearn.preprocessing import MinMaxScaler
 from scipy.integrate import odeint
 import numpy as np
 import pandas as pd
@@ -172,12 +173,16 @@ class DrosophilaSpatialTranscriptomics(LFMDataset):
     Reverse engineering post-transcriptional regulation of
     gap genes in Drosophila melanogaster
     """
-    def __init__(self, gene='kr', data_dir='../data/'):
+    def __init__(self, gene='kr', data_dir='../data/', scale=False):
         indents = {'kr': 64, 'kni': 56, 'gt': 60}
         assert gene in indents
         data = pd.read_csv(path.join(data_dir, f'clean_{gene}.csv'))
         data = data.iloc[indents[gene]:].values
         data = data[:, [0, 1, 3, 2]]
+        if scale:
+            scaler = MinMaxScaler()
+            data[:, 3:4] = scaler.fit_transform(data[:, 3:4])
+            data[:, 2:3] = scaler.transform(data[:, 2:3])
         self.orig_data = data
         self.num_outputs = 1
         self.num_discretised = 7

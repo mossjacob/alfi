@@ -27,8 +27,6 @@ def build_partial(dataset, params, reload=None):
     mesh = interval_mesh(spatial)
 
     # Define GP
-    ts = tx[0, :].unique().sort()[0].numpy()
-    xs = tx[1, :].unique().sort()[0].numpy()
     num_inducing = int(tx.shape[1] * 5/6)
     inducing_points = torch.stack([
         tx[0, torch.randperm(tx.shape[1])[:num_inducing]],
@@ -89,11 +87,11 @@ def build_partial(dataset, params, reload=None):
                        lfm_args=[1, lfm.fenics_model_fn, lfm.fenics_parameters, config])
 
     if params['natural']:
-        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.4)
+        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
         parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.09)
         optimizers = [variational_optimizer, parameter_optimizer]
     else:
-        optimizers = [Adam(lfm.parameters(), lr=0.1)]
+        optimizers = [Adam(lfm.parameters(), lr=0.05)]
 
     # As in Lopez-Lopera et al., we take 30% of data for training
     train_mask = torch.zeros_like(tx[0, :])
@@ -149,7 +147,7 @@ def pretrain_partial(dataset, lfm, trainer):
                 diffusion * d2y_x)
         return dy_t
 
-    optimizers = [Adam(lfm.parameters(), lr=0.1)]
+    optimizers = [Adam(lfm.parameters(), lr=0.05)]
 
     pre_estimator = PartialPreEstimator(
         lfm, optimizers, dataset, pde_func,
@@ -157,7 +155,7 @@ def pretrain_partial(dataset, lfm, trainer):
     )
 
     lfm.pretrain(True)
-    pre_estimator.train(100, report_interval=10)
+    pre_estimator.train(150, report_interval=10)
     lfm.pretrain(False)
 
 

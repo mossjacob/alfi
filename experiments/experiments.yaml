@@ -56,7 +56,7 @@ dros-kr:
   experiments:
     - method: partial
       train-params:
-        epochs: 120
+        epochs: 80
         report_interval: 1
       model-params:
         lengthscale: 10
@@ -72,7 +72,7 @@ dros-kni:
   experiments:
     - method: partial
       train-params:
-        epochs: 80
+        epochs: 300
         report_interval: 1
       model-params:
         lengthscale: 10
