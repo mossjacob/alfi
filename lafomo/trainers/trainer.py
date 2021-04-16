@@ -1,3 +1,4 @@
+import time
 from abc import abstractmethod
 from typing import List
 
@@ -58,11 +59,13 @@ class Trainer:
         self.lfm.train()
 
         losses = list()
+        times = list()
         end_epoch = self.num_epochs+epochs
 
         for epoch in range(epochs):
             epoch_loss, split_loss = self.single_epoch(epoch=self.num_epochs, **kwargs)
-
+            t = time.time()
+            times.append((t, epoch_loss))
             if (epoch % report_interval) == 0:
                 print('Epoch %03d/%03d - Loss: %.2f (' % (
                     self.num_epochs + 1, end_epoch, epoch_loss), end='')
@@ -82,6 +85,7 @@ class Trainer:
 
         losses = np.array(losses)
         self.losses = np.concatenate([self.losses, losses], axis=0)
+        return times
 
     @abstractmethod
     def single_epoch(self, epoch=0, **kwargs):

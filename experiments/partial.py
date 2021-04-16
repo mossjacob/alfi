@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 from torch.optim import Adam
 from gpytorch.optim import NGD
 import gpytorch
+import time
 
 from lafomo.configuration import VariationalConfiguration
 from lafomo.models import MultiOutputGP, PartialLFM, generate_multioutput_rbf_gp
@@ -91,7 +92,7 @@ def build_partial(dataset, params, reload=None):
         parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.09)
         optimizers = [variational_optimizer, parameter_optimizer]
     else:
-        optimizers = [Adam(lfm.parameters(), lr=0.05)]
+        optimizers = [Adam(lfm.parameters(), lr=0.04)]
 
     # As in Lopez-Lopera et al., we take 30% of data for training
     train_mask = torch.zeros_like(tx[0, :])
@@ -155,8 +156,10 @@ def pretrain_partial(dataset, lfm, trainer):
     )
 
     lfm.pretrain(True)
-    pre_estimator.train(150, report_interval=10)
+    t0 = time.time()
+    times = pre_estimator.train(150, report_interval=10)
     lfm.pretrain(False)
+    return times, t0
 
 
 def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
