@@ -12,3 +12,4 @@ class Colours:
     scatter_color = palette[3]
     bar1_color = palette[3]
     bar2_color = palette[2]
+    error_color = palette[1]

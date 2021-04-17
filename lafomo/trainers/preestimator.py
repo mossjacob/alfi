@@ -33,7 +33,7 @@ class PreEstimator(Trainer):
 
         output = self.lfm(self.input_pair, **self.model_kwargs)
         y_target = self.target
-        log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target)
+        log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target, mask=self.train_mask)
 
         loss = - (log_likelihood - kl_divergence)
         loss.backward()

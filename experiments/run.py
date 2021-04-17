@@ -99,6 +99,7 @@ def time_models(builder, dataset, filepath, modelparams):
         logloss = train_times[:, 1]
         times_without.append(train_time)
         loglosses_without.append(logloss)
+        model.save(str(filepath / f'model_without_{i}'))
 
         # With pretraining
         print(TerminalColours.GREEN, 'With pretraining...', TerminalColours.END)
@@ -118,7 +119,7 @@ def time_models(builder, dataset, filepath, modelparams):
         times_with.append(np.concatenate([pretrain_time, train_time]))
         loglosses_with.append(np.concatenate([pretrain_times[:, 1], train_times[:, 1]]))
 
-        model.save(str(filepath / f'model_{i}'))
+        model.save(str(filepath / f'model_with_{i}'))
 
     loglosses_with = np.array(loglosses_with)
     loglosses_without = np.array(loglosses_without)

@@ -92,12 +92,16 @@ def build_partial(dataset, params, reload=None):
         parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.09)
         optimizers = [variational_optimizer, parameter_optimizer]
     else:
-        optimizers = [Adam(lfm.parameters(), lr=0.04)]
+        optimizers = [Adam(lfm.parameters(), lr=0.05)]
 
     # As in Lopez-Lopera et al., we take 30% of data for training
     train_mask = torch.zeros_like(tx[0, :])
     train_mask[torch.randperm(tx.shape[1])[:int(train_ratio * tx.shape[1])]] = 1
-    track_parameters = list(lfm.fenics_named_parameters.keys()) + ['gp_model.covar_module.raw_lengthscale']
+    track_parameters = list(lfm.fenics_named_parameters.keys()) + [
+        'gp_model.covar_module.raw_lengthscale',
+        'gp_model.mean_module.constant',
+        *list(map(lambda s: f'gp_model.{s}', dict(lfm.gp_model.named_variational_parameters()).keys()))
+    ]
     warm_variational = params['warm_epochs'] if 'warm_epochs' in params else 10
     trainer = PDETrainer(lfm, optimizers, dataset,
                          clamp=params['clamp'],
@@ -151,7 +155,8 @@ def pretrain_partial(dataset, lfm, trainer):
 
     pre_estimator = PartialPreEstimator(
         lfm, optimizers, dataset, pde_func,
-        input_pair=(trainer.tx, trainer.y_target), target=dy_t.t()
+        input_pair=(trainer.tx, trainer.y_target), target=dy_t.t(),
+        train_mask=trainer.train_mask
     )
 
     lfm.pretrain(True)
@@ -173,7 +178,7 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
     ts = tx[0, :].unique().sort()[0].numpy()
     xs = tx[1, :].unique().sort()[0].numpy()
     extent = [ts[0], ts[-1], xs[0], xs[-1]]
-
+    torch.save(trainer.parameter_trace, filepath / 'parameter_trace.pt')
     with open(filepath / 'metrics.csv', 'w') as f:
         f.write('smse\tq2\tca\n')
         f_mean_test = f_mean[~trainer.train_mask].squeeze()
@@ -189,15 +194,16 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
     l_mean = l.mean.detach()
     plot_spatiotemporal_data(
         [
+            l_mean.view(num_t, num_x).t(),
+            l_target.view(num_t, num_x).t(),
             f_mean.view(num_t, num_x).t(),
             y_target.view(num_t, num_x).detach().t(),
-
-            l_mean.view(num_t, num_x).t(),
-            l_target.view(num_t, num_x).t()
         ],
         extent,
-        titles=None
+        titles=['Latent (Prediction)', 'Latent (Target)', 'Output (Prediction)', 'Output Target'],
+        cticks=None  # [0, 100, 200]
     )
+    plt.gca().get_figure().set_size_inches(15, 7)
 
     plt.savefig(filepath / 'beforeafter.pdf', **tight_kwargs)
 
