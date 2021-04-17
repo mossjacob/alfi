@@ -44,6 +44,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--data', type=str, choices=dataset_choices, default=dataset_choices[0])
 parser.add_argument('--reload', type=bool, default=False)
 parser.add_argument('--timer', type=bool, default=False)
+parser.add_argument('--timer_samples', type=int, default=5)
 
 datasets = {
     'p53': lambda: P53Data(replicate=0, data_dir='data'),
@@ -79,13 +80,13 @@ train_pre_step = {
 }
 
 
-def time_models(builder, dataset, filepath, modelparams):
+def time_models(builder, dataset, filepath, modelparams, num_samples):
     times_with = list()
     loglosses_with = list()
     times_without = list()
     loglosses_without = list()
 
-    for i in range(5):
+    for i in range(num_samples):
         # Without pretraining
         print(TerminalColours.GREEN, 'Without pretraining...', TerminalColours.END)
         model, trainer, plotter = builder(dataset, modelparams)
@@ -100,6 +101,7 @@ def time_models(builder, dataset, filepath, modelparams):
         times_without.append(train_time)
         loglosses_without.append(logloss)
         model.save(str(filepath / f'model_without_{i}'))
+        torch.save(trainer.parameter_trace, filepath / f'parameter_trace_without_{i}.pt')
 
         # With pretraining
         print(TerminalColours.GREEN, 'With pretraining...', TerminalColours.END)
@@ -120,6 +122,7 @@ def time_models(builder, dataset, filepath, modelparams):
         loglosses_with.append(np.concatenate([pretrain_times[:, 1], train_times[:, 1]]))
 
         model.save(str(filepath / f'model_with_{i}'))
+        torch.save(trainer.parameter_trace, filepath / f'parameter_trace_with_{i}.pt')
 
     loglosses_with = np.array(loglosses_with)
     loglosses_without = np.array(loglosses_without)
@@ -175,7 +178,7 @@ if __name__ == "__main__":
             model, trainer, plotter = builders[method](dataset, modelparams, reload=reload)
 
             if args.timer:
-                time_models(builders[method], dataset, filepath, modelparams)
+                time_models(builders[method], dataset, filepath, modelparams, args.timer_samples)
             else:
                 run_model(method, dataset, model, trainer, plotter, filepath, save_filepath, modelparams)
             seen_methods[method] += 1
