@@ -43,7 +43,7 @@ dataset_choices = list(config.keys())
 parser = argparse.ArgumentParser()
 parser.add_argument('--data', type=str, choices=dataset_choices, default=dataset_choices[0])
 parser.add_argument('--reload', type=bool, default=False)
-parser.add_argument('--time', type=bool, default=False)
+parser.add_argument('--timer', type=bool, default=False)
 
 datasets = {
     'p53': lambda: P53Data(replicate=0, data_dir='data'),
