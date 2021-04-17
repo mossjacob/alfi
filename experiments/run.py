@@ -3,6 +3,7 @@ import yaml
 import seaborn as sns
 import time
 import numpy as np
+import torch
 
 from matplotlib import pyplot as plt
 from pathlib import Path
@@ -94,7 +95,7 @@ def time_models(builder, dataset, filepath, modelparams, num_samples):
 
         t0 = time.time()
         model.pretrain(False)
-        train_times = trainer.train(**experiment['train-params'])
+        train_times = trainer.train(**experiment['train_params'])
         train_times = np.array(train_times)
         train_time = (train_times[:, 0] - t0) / 60
         logloss = train_times[:, 1]
@@ -113,7 +114,7 @@ def time_models(builder, dataset, filepath, modelparams, num_samples):
 
         t1 = time.time()
         model.pretrain(False)
-        train_times = trainer.train(**experiment['train-params'])
+        train_times = trainer.train(**experiment['train_params'])
         pretrain_times = np.array(pretrain_times)
         train_times = np.array(train_times)
         pretrain_time = (pretrain_times[:, 0] - t_start) / 60
@@ -139,7 +140,7 @@ def run_model(method, dataset, model, trainer, plotter, filepath, save_filepath,
     if method in train_pre_step:
         train_pre_step[method](dataset, model, trainer)
     print(TerminalColours.GREEN, 'Training...', TerminalColours.END)
-    trainer.train(**experiment['train-params'])
+    trainer.train(**experiment['train_params'])
 
     # Plot results of model
     if method in plotters:

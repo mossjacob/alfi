@@ -10,12 +10,10 @@ import time
 from lafomo.configuration import VariationalConfiguration
 from lafomo.models import MultiOutputGP, PartialLFM, generate_multioutput_rbf_gp
 from lafomo.models.pdes import ReactionDiffusion
-from lafomo.plot import Plotter, plot_spatiotemporal_data
+from lafomo.plot import Plotter, plot_spatiotemporal_data, tight_kwargs
 from lafomo.trainers import PDETrainer, PartialPreEstimator
 from lafomo.utilities.fenics import interval_mesh
 from lafomo.utilities.torch import cia, q2, smse, inv_softplus, softplus, spline_interpolate_gradient
-
-tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
 
 
 def build_partial(dataset, params, reload=None):
@@ -67,7 +65,7 @@ def build_partial(dataset, params, reload=None):
     parameter_grad = params['parameter_grad'] if 'parameter_grad' in params else True
     sensitivity = Parameter(
         inv_softplus(torch.tensor(params['sensitivity'])) * torch.ones((1, 1), dtype=torch.float64),
-        requires_grad=parameter_grad)
+        requires_grad=False)
     decay = Parameter(
         inv_softplus(torch.tensor(params['decay'])) * torch.ones((1, 1), dtype=torch.float64),
         requires_grad=parameter_grad)
@@ -161,7 +159,7 @@ def pretrain_partial(dataset, lfm, trainer):
 
     lfm.pretrain(True)
     t0 = time.time()
-    times = pre_estimator.train(150, report_interval=10)
+    times = pre_estimator.train(50, report_interval=10)
     lfm.pretrain(False)
     return times, t0
 

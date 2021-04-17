@@ -3,26 +3,26 @@
 p53:
   experiments:
     - method: exact
-      train-params:
+      train_params:
         epochs: 350
         report_interval: 5
     - method: variational
-      train-params:
+      train_params:
         epochs: 300
         report_interval: 10
     - method: mcmc
-      train-params:
+      train_params:
         epochs: 2000
 
 hafner:
   num_latents: 1
   experiments:
     - method: variational
-      train-params:
+      train_params:
         epochs: 300
         report_interval: 10
     - method: mcmc
-      train-params:
+      train_params:
         epochs: 2000
 
 # Toy datasets
@@ -30,19 +30,19 @@ toy:
   num_latents: 3
   experiments:
     - method: variational
-      train-params:
+      train_params:
         epochs: 300
     - method: mcmc
-      train-params:
+      train_params:
         epochs: 2000
 
 toy-spatial:
   num_latents: 1
   experiments:
     - method: partial
-      train-params:
+      train_params:
         epochs: 110
-        report_interval: 1
+        report_interval: 5
       model-params:
         lengthscale: 0.2
         sensitivity: 0.2
@@ -55,7 +55,7 @@ dros-kr:
   num_latents: 1
   experiments:
     - method: partial
-      train-params:
+      train_params:
         epochs: 100
         report_interval: 1
       model-params:
@@ -71,7 +71,7 @@ dros-kni:
   num_latents: 1
   experiments:
     - method: partial
-      train-params:
+      train_params:
         epochs: 300
         report_interval: 1
       model-params:
@@ -86,7 +86,7 @@ dros-gt:
   num_latents: 1
   experiments:
     - method: partial
-      train-params:
+      train_params:
         epochs: 80
         report_interval: 1
       model-params:
@@ -101,14 +101,14 @@ dros-gt:
 lotka:
   experiments:
     - method: lotka
-      train-params:
+      train_params:
         epochs: 1400
         report_interval: 20
       model-params:
         natural: false
         kernel: 'periodic'
     - method: lotka
-      train-params:
+      train_params:
         epochs: 1400
         report_interval: 20
       model-params:
