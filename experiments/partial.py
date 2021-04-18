@@ -86,8 +86,8 @@ def build_partial(dataset, params, reload=None):
                        lfm_args=[1, lfm.fenics_model_fn, lfm.fenics_parameters, config])
 
     if params['natural']:
-        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
-        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.09)
+        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.09)
+        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.05)
         optimizers = [variational_optimizer, parameter_optimizer]
     else:
         optimizers = [Adam(lfm.parameters(), lr=0.05)]
@@ -159,7 +159,7 @@ def pretrain_partial(dataset, lfm, trainer):
 
     lfm.pretrain(True)
     t0 = time.time()
-    times = pre_estimator.train(50, report_interval=10)
+    times = pre_estimator.train(80, report_interval=10)
     lfm.pretrain(False)
     return times, t0
 

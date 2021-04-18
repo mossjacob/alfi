@@ -48,7 +48,8 @@ toy-spatial:
         sensitivity: 0.2
         diffusion: 0.2
         decay: 0.2
-        natural: true
+        natural: false
+        warm_epochs: -1
         clamp: false
 # Drosophila Experiments
 dros-kr:

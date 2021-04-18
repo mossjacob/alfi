@@ -11,6 +11,7 @@ tf_reggae.egg-info/
 .DS_Store
 
 *.pt
+*.npy
 lafomo.egg-info/
 
 deprecated/saved_models/
