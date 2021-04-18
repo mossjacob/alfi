@@ -59,7 +59,7 @@ def build_partial(dataset, params, reload=None):
 
     config = VariationalConfiguration(
         initial_conditions=False,
-        num_samples=25
+        num_samples=5
     )
 
     parameter_grad = params['parameter_grad'] if 'parameter_grad' in params else True

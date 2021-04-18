@@ -45,7 +45,7 @@ toy-spatial:
         report_interval: 5
       model-params:
         lengthscale: 0.2
-        sensitivity: 0.2
+        sensitivity: 1.0
         diffusion: 0.2
         decay: 0.2
         natural: false
