@@ -79,3 +79,22 @@ def plot_phase(x_samples, y_samples,
     kdeplot(data=ndp_df, ax=ax, fill=True, x="Prey", y="Predator",
             color='pink', alpha=0.1, levels=3, thresh=.1, )
     plt.legend(loc='upper right')
+
+
+def plot_variational_dist(lfm):
+    from gpytorch.variational import CholeskyVariationalDistribution
+    plt.figure()
+    strat = lfm.gp_model.variational_strategy.base_variational_strategy
+    dist = strat._variational_distribution
+    if type(dist) is CholeskyVariationalDistribution:
+        mean = dist.variational_mean.detach()
+        covar = dist.chol_variational_covar.detach()
+    else:
+        mean = dist.natural_vec.detach()
+        covar = dist.natural_mat.detach()
+    xy = strat.inducing_points.squeeze()
+    plt.scatter(xy[:, 0], xy[:, 1], c=mean)
+    plt.colorbar()
+    plt.figure()
+    plt.imshow(covar.squeeze())
+    plt.colorbar()

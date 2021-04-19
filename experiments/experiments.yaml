@@ -41,13 +41,13 @@ toy-spatial:
   experiments:
     - method: partial
       train_params:
-        epochs: 110
+        epochs: 150
         report_interval: 5
       model-params:
         lengthscale: 0.2
         sensitivity: 1.0
         diffusion: 0.2
-        decay: 0.2
+        decay: 0.05
         natural: false
         warm_epochs: -1
         clamp: false

@@ -26,11 +26,23 @@ def build_partial(dataset, params, reload=None):
     mesh = interval_mesh(spatial)
 
     # Define GP
-    num_inducing = int(tx.shape[1] * 5/6)
-    inducing_points = torch.stack([
-        tx[0, torch.randperm(tx.shape[1])[:num_inducing]],
-        tx[1, torch.randperm(tx.shape[1])[:num_inducing]]
-    ], dim=1).unsqueeze(0)
+    if tx.shape[1] > 1000:
+        num_inducing = int(tx.shape[1] * 3/6)
+    else:
+        num_inducing = int(tx.shape[1] * 5/6)
+    use_lhs = True
+    if use_lhs:
+        from smt.sampling_methods import LHS
+        ts = tx[0, :].unique().sort()[0].numpy()
+        xs = tx[1, :].unique().sort()[0].numpy()
+        xlimits = np.array([[xs[0], xs[-1]], [ts[0], ts[-1]]])
+        sampling = LHS(xlimits=xlimits)
+        inducing_points = torch.tensor(sampling(num_inducing)).unsqueeze(0)
+    else:
+        inducing_points = torch.stack([
+            tx[0, torch.randperm(tx.shape[1])[:num_inducing]],
+            tx[1, torch.randperm(tx.shape[1])[:num_inducing]]
+        ], dim=1).unsqueeze(0)
 
     gp_kwargs = dict(learn_inducing_locations=False,
                      natural=params['natural'],
@@ -158,9 +170,11 @@ def pretrain_partial(dataset, lfm, trainer):
     )
 
     lfm.pretrain(True)
+    lfm.config.num_samples = 50
     t0 = time.time()
     times = pre_estimator.train(80, report_interval=10)
     lfm.pretrain(False)
+    lfm.config.num_samples = 5
     return times, t0
 
 
