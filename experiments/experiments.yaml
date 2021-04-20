@@ -3,26 +3,26 @@
 p53:
   experiments:
     - method: exact
-      train-params:
+      train_params:
         epochs: 350
         report_interval: 5
     - method: variational
-      train-params:
+      train_params:
         epochs: 300
         report_interval: 10
     - method: mcmc
-      train-params:
+      train_params:
         epochs: 2000
 
 hafner:
   num_latents: 1
   experiments:
     - method: variational
-      train-params:
+      train_params:
         epochs: 300
         report_interval: 10
     - method: mcmc
-      train-params:
+      train_params:
         epochs: 2000
 
 # Toy datasets
@@ -30,39 +30,40 @@ toy:
   num_latents: 3
   experiments:
     - method: variational
-      train-params:
+      train_params:
         epochs: 300
     - method: mcmc
-      train-params:
+      train_params:
         epochs: 2000
 
 toy-spatial:
   num_latents: 1
   experiments:
     - method: partial
-      train-params:
-        epochs: 110
-        report_interval: 1
+      train_params:
+        epochs: 200
+        report_interval: 5
       model-params:
         lengthscale: 0.2
-        sensitivity: 0.2
-        diffusion: 0.2
+        sensitivity: 1.0
         decay: 0.2
-        natural: true
+        diffusion: 0.05
+        natural: false
+        warm_epochs: -1
         clamp: false
 # Drosophila Experiments
 dros-kr:
   num_latents: 1
   experiments:
     - method: partial
-      train-params:
-        epochs: 80
+      train_params:
+        epochs: 100
         report_interval: 1
       model-params:
         lengthscale: 10
         sensitivity: 0.0970
-        diffusion: 0.0015
         decay: 0.0764
+        diffusion: 0.0015
         parameter_grad: false
         natural: false
         warm_epochs: -1
@@ -71,7 +72,7 @@ dros-kni:
   num_latents: 1
   experiments:
     - method: partial
-      train-params:
+      train_params:
         epochs: 300
         report_interval: 1
       model-params:
@@ -86,7 +87,7 @@ dros-gt:
   num_latents: 1
   experiments:
     - method: partial
-      train-params:
+      train_params:
         epochs: 80
         report_interval: 1
       model-params:
@@ -101,14 +102,14 @@ dros-gt:
 lotka:
   experiments:
     - method: lotka
-      train-params:
+      train_params:
         epochs: 1400
         report_interval: 20
       model-params:
         natural: false
         kernel: 'periodic'
     - method: lotka
-      train-params:
+      train_params:
         epochs: 1400
         report_interval: 20
       model-params:

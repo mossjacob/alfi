@@ -10,12 +10,10 @@ import time
 from lafomo.configuration import VariationalConfiguration
 from lafomo.models import MultiOutputGP, PartialLFM, generate_multioutput_rbf_gp
 from lafomo.models.pdes import ReactionDiffusion
-from lafomo.plot import Plotter, plot_spatiotemporal_data
+from lafomo.plot import Plotter, plot_spatiotemporal_data, tight_kwargs
 from lafomo.trainers import PDETrainer, PartialPreEstimator
 from lafomo.utilities.fenics import interval_mesh
 from lafomo.utilities.torch import cia, q2, smse, inv_softplus, softplus, spline_interpolate_gradient
-
-tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
 
 
 def build_partial(dataset, params, reload=None):
@@ -28,11 +26,23 @@ def build_partial(dataset, params, reload=None):
     mesh = interval_mesh(spatial)
 
     # Define GP
-    num_inducing = int(tx.shape[1] * 5/6)
-    inducing_points = torch.stack([
-        tx[0, torch.randperm(tx.shape[1])[:num_inducing]],
-        tx[1, torch.randperm(tx.shape[1])[:num_inducing]]
-    ], dim=1).unsqueeze(0)
+    if tx.shape[1] > 1000:
+        num_inducing = int(tx.shape[1] * 3/6)
+    else:
+        num_inducing = int(tx.shape[1] * 5/6)
+    use_lhs = True
+    if use_lhs:
+        from smt.sampling_methods import LHS
+        ts = tx[0, :].unique().sort()[0].numpy()
+        xs = tx[1, :].unique().sort()[0].numpy()
+        xlimits = np.array([[xs[0], xs[-1]], [ts[0], ts[-1]]])
+        sampling = LHS(xlimits=xlimits)
+        inducing_points = torch.tensor(sampling(num_inducing)).unsqueeze(0)
+    else:
+        inducing_points = torch.stack([
+            tx[0, torch.randperm(tx.shape[1])[:num_inducing]],
+            tx[1, torch.randperm(tx.shape[1])[:num_inducing]]
+        ], dim=1).unsqueeze(0)
 
     gp_kwargs = dict(learn_inducing_locations=False,
                      natural=params['natural'],
@@ -61,13 +71,13 @@ def build_partial(dataset, params, reload=None):
 
     config = VariationalConfiguration(
         initial_conditions=False,
-        num_samples=25
+        num_samples=5
     )
 
     parameter_grad = params['parameter_grad'] if 'parameter_grad' in params else True
     sensitivity = Parameter(
         inv_softplus(torch.tensor(params['sensitivity'])) * torch.ones((1, 1), dtype=torch.float64),
-        requires_grad=parameter_grad)
+        requires_grad=False)
     decay = Parameter(
         inv_softplus(torch.tensor(params['decay'])) * torch.ones((1, 1), dtype=torch.float64),
         requires_grad=parameter_grad)
@@ -88,16 +98,20 @@ def build_partial(dataset, params, reload=None):
                        lfm_args=[1, lfm.fenics_model_fn, lfm.fenics_parameters, config])
 
     if params['natural']:
-        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
-        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.09)
+        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.09)
+        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.05)
         optimizers = [variational_optimizer, parameter_optimizer]
     else:
-        optimizers = [Adam(lfm.parameters(), lr=0.04)]
+        optimizers = [Adam(lfm.parameters(), lr=0.02)]
 
     # As in Lopez-Lopera et al., we take 30% of data for training
     train_mask = torch.zeros_like(tx[0, :])
     train_mask[torch.randperm(tx.shape[1])[:int(train_ratio * tx.shape[1])]] = 1
-    track_parameters = list(lfm.fenics_named_parameters.keys()) + ['gp_model.covar_module.raw_lengthscale']
+    track_parameters = list(lfm.fenics_named_parameters.keys()) + [
+        'gp_model.covar_module.raw_lengthscale',
+        'gp_model.mean_module.constant',
+        *list(map(lambda s: f'gp_model.{s}', dict(lfm.gp_model.named_variational_parameters()).keys()))
+    ]
     warm_variational = params['warm_epochs'] if 'warm_epochs' in params else 10
     trainer = PDETrainer(lfm, optimizers, dataset,
                          clamp=params['clamp'],
@@ -122,7 +136,6 @@ def pretrain_partial(dataset, lfm, trainer):
         y = y_matrix[:, i].unsqueeze(-1)
         t_interpolate, y_interpolate, y_grad, _ = \
             spline_interpolate_gradient(t, y)
-        plt.plot(t_interpolate, y_interpolate)
         dy_t.append(y_grad)
     dy_t = torch.stack(dy_t)
 
@@ -145,20 +158,23 @@ def pretrain_partial(dataset, lfm, trainer):
         # y (1, 1681) u (25, 1, 41, 41) s (25, 1)
         dy_t = (sensitivity * u.view(u.shape[0], -1) -
                 decay * y.view(1, -1) +
-                diffusion * d2y_x)
+                diffusion * 0)
         return dy_t
 
     optimizers = [Adam(lfm.parameters(), lr=0.05)]
 
     pre_estimator = PartialPreEstimator(
         lfm, optimizers, dataset, pde_func,
-        input_pair=(trainer.tx, trainer.y_target), target=dy_t.t()
+        input_pair=(trainer.tx, trainer.y_target), target=dy_t.t(),
+        train_mask=trainer.train_mask
     )
 
     lfm.pretrain(True)
+    lfm.config.num_samples = 50
     t0 = time.time()
-    times = pre_estimator.train(150, report_interval=10)
+    times = pre_estimator.train(80, report_interval=10)
     lfm.pretrain(False)
+    lfm.config.num_samples = 5
     return times, t0
 
 
@@ -174,7 +190,7 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
     ts = tx[0, :].unique().sort()[0].numpy()
     xs = tx[1, :].unique().sort()[0].numpy()
     extent = [ts[0], ts[-1], xs[0], xs[-1]]
-
+    torch.save(trainer.parameter_trace, filepath / 'parameter_trace.pt')
     with open(filepath / 'metrics.csv', 'w') as f:
         f.write('smse\tq2\tca\n')
         f_mean_test = f_mean[~trainer.train_mask].squeeze()
@@ -190,15 +206,16 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
     l_mean = l.mean.detach()
     plot_spatiotemporal_data(
         [
+            l_mean.view(num_t, num_x).t(),
+            l_target.view(num_t, num_x).t(),
             f_mean.view(num_t, num_x).t(),
             y_target.view(num_t, num_x).detach().t(),
-
-            l_mean.view(num_t, num_x).t(),
-            l_target.view(num_t, num_x).t()
         ],
         extent,
-        titles=None
+        titles=['Latent (Prediction)', 'Latent (Target)', 'Output (Prediction)', 'Output Target'],
+        cticks=None  # [0, 100, 200]
     )
+    plt.gca().get_figure().set_size_inches(15, 7)
 
     plt.savefig(filepath / 'beforeafter.pdf', **tight_kwargs)
 

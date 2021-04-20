@@ -1,5 +1,5 @@
 from typing import List, Callable
-
+from matplotlib import pyplot as plt
 import torch
 
 from .trainer import Trainer
@@ -33,13 +33,16 @@ class PreEstimator(Trainer):
 
         output = self.lfm(self.input_pair, **self.model_kwargs)
         y_target = self.target
-        log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target)
+        log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target, mask=self.train_mask)
 
         loss = - (log_likelihood - kl_divergence)
         loss.backward()
         [optim.step() for optim in self.optimizers]
-
+        self.debug_out(output, y_target)
         return loss.item(), (-log_likelihood.item(), kl_divergence.item())
+
+    def debug_out(self, output, y_target):
+        pass
 
 
 class PartialPreEstimator(PreEstimator):
@@ -57,3 +60,9 @@ class PartialPreEstimator(PreEstimator):
         self.input_pair = input_pair
         self.target = target
         self.model_kwargs = dict(pde_func=self.pde_func)
+
+    def debug_out(self, output, y_target):
+        # plt.figure()
+        # plt.imshow(output.mean.detach().view(41, 41).t())
+        # plt.colorbar()
+        pass

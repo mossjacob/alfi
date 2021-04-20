@@ -3,6 +3,7 @@ import yaml
 import seaborn as sns
 import time
 import numpy as np
+import torch
 
 from matplotlib import pyplot as plt
 from pathlib import Path
@@ -43,7 +44,8 @@ dataset_choices = list(config.keys())
 parser = argparse.ArgumentParser()
 parser.add_argument('--data', type=str, choices=dataset_choices, default=dataset_choices[0])
 parser.add_argument('--reload', type=bool, default=False)
-parser.add_argument('--time', type=bool, default=False)
+parser.add_argument('--timer', type=bool, default=False)
+parser.add_argument('--timer_samples', type=int, default=5)
 
 datasets = {
     'p53': lambda: P53Data(replicate=0, data_dir='data'),
@@ -78,14 +80,22 @@ train_pre_step = {
     'partial': pretrain_partial
 }
 
+def get_mean_trace(trace):
+    mean_trace = dict()
+    for key in trace.keys():
+        params = torch.stack(trace[key])
+        for i in range(1, params.ndim):
+            params = params.mean(-1)
+        mean_trace[key] = params
+    return mean_trace
 
-def time_models(builder, dataset, filepath, modelparams):
+def time_models(builder, dataset, filepath, modelparams, num_samples):
     times_with = list()
     loglosses_with = list()
     times_without = list()
     loglosses_without = list()
 
-    for i in range(5):
+    for i in range(num_samples):
         # Without pretraining
         print(TerminalColours.GREEN, 'Without pretraining...', TerminalColours.END)
         model, trainer, plotter = builder(dataset, modelparams)
@@ -93,13 +103,14 @@ def time_models(builder, dataset, filepath, modelparams):
 
         t0 = time.time()
         model.pretrain(False)
-        train_times = trainer.train(**experiment['train-params'])
+        train_times = trainer.train(**experiment['train_params'])
         train_times = np.array(train_times)
         train_time = (train_times[:, 0] - t0) / 60
         logloss = train_times[:, 1]
         times_without.append(train_time)
         loglosses_without.append(logloss)
-
+        model.save(str(filepath / f'model_without_{i}'))
+        torch.save(get_mean_trace(trainer.parameter_trace), filepath / f'parameter_trace_without_{i}.pt')
         # With pretraining
         print(TerminalColours.GREEN, 'With pretraining...', TerminalColours.END)
         model, trainer, plotter = builder(dataset, modelparams)
@@ -110,7 +121,7 @@ def time_models(builder, dataset, filepath, modelparams):
 
         t1 = time.time()
         model.pretrain(False)
-        train_times = trainer.train(**experiment['train-params'])
+        train_times = trainer.train(**experiment['train_params'])
         pretrain_times = np.array(pretrain_times)
         train_times = np.array(train_times)
         pretrain_time = (pretrain_times[:, 0] - t_start) / 60
@@ -118,16 +129,17 @@ def time_models(builder, dataset, filepath, modelparams):
         times_with.append(np.concatenate([pretrain_time, train_time]))
         loglosses_with.append(np.concatenate([pretrain_times[:, 1], train_times[:, 1]]))
 
-        model.save(str(filepath / f'model_{i}'))
+        model.save(str(filepath / f'model_with_{i}'))
+        torch.save(get_mean_trace(trainer.parameter_trace), filepath / f'parameter_trace_with_{i}.pt')
 
     loglosses_with = np.array(loglosses_with)
     loglosses_without = np.array(loglosses_without)
     times_with = np.array(times_with)
     times_without = np.array(times_without)
-    np.save(str(filepath / 'traintime_with.npy'), times_with)
-    np.save(str(filepath / 'trainloss_with.npy'), loglosses_with)
-    np.save(str(filepath / 'traintime_without.npy'), times_without)
-    np.save(str(filepath / 'trainloss_without.npy'), loglosses_without)
+    np.save(str(filepath / 'time_with.npy'), times_with)
+    np.save(str(filepath / 'loss_with.npy'), loglosses_with)
+    np.save(str(filepath / 'time_without.npy'), times_without)
+    np.save(str(filepath / 'loss_without.npy'), loglosses_without)
 
 
 def run_model(method, dataset, model, trainer, plotter, filepath, save_filepath, modelparams):
@@ -135,7 +147,7 @@ def run_model(method, dataset, model, trainer, plotter, filepath, save_filepath,
     if method in train_pre_step:
         train_pre_step[method](dataset, model, trainer)
     print(TerminalColours.GREEN, 'Training...', TerminalColours.END)
-    trainer.train(**experiment['train-params'])
+    trainer.train(**experiment['train_params'])
 
     # Plot results of model
     if method in plotters:
@@ -174,7 +186,7 @@ if __name__ == "__main__":
             model, trainer, plotter = builders[method](dataset, modelparams, reload=reload)
 
             if args.timer:
-                time_models(builders[method], dataset, filepath, modelparams)
+                time_models(builders[method], dataset, filepath, modelparams, args.timer_samples)
             else:
                 run_model(method, dataset, model, trainer, plotter, filepath, save_filepath, modelparams)
             seen_methods[method] += 1
