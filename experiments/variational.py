@@ -12,7 +12,7 @@ from lafomo.utilities.data import p53_ground_truth
 tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
 
 
-def build_variational(dataset, params):
+def build_variational(dataset, params, **kwargs):
     num_tfs = 1
     class TranscriptionLFM(OrdinaryLFM):
         def __init__(self, num_outputs, gp_model, config: VariationalConfiguration):

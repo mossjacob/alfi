@@ -2,3 +2,5 @@
 *.pdf
 *.txt
 *.csv
+*.pt
+*.npy

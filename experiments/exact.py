@@ -10,7 +10,7 @@ from lafomo.utilities.data import p53_ground_truth
 tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
 
 
-def build_exact(dataset, params):
+def build_exact(dataset, params, **kwargs):
     model = ExactLFM(dataset, dataset.variance.reshape(-1))
     optimizer = torch.optim.Adam(model.parameters(), lr=0.07)
 

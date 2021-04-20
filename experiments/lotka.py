@@ -22,7 +22,7 @@ plt.rcParams['font.serif'] = 'CMU Serif'
 sns.set(style='white', font="CMU Serif")
 
 
-def build_lotka(dataset, params, reload=None):
+def build_lotka(dataset, params, reload=None, **kwargs):
     x_min, x_max = min(dataset.times), max(dataset.times)
 
     num_latents = 1

@@ -103,3 +103,13 @@ def discretise(time, num_discretised=40):
     dp = t_range / num_discretised
     print('t_sorted, dp', t, dp)
     return np.arange(t[0], t[-1] + dp, dp)
+
+
+def get_mean_trace(trace):
+    mean_trace = dict()
+    for key in trace.keys():
+        params = torch.stack(trace[key])
+        for i in range(1, params.ndim):
+            params = params.mean(-1)
+        mean_trace[key] = params
+    return mean_trace

@@ -13,6 +13,7 @@ from lafomo.datasets import (
     ToySpatialTranscriptomics, DrosophilaSpatialTranscriptomics,
     DeterministicLotkaVolterra,
 )
+from lafomo.utilities.torch import get_mean_trace
 try:
     from .partial import build_partial, plot_partial, pretrain_partial
 except ImportError:
@@ -80,14 +81,6 @@ train_pre_step = {
     'partial': pretrain_partial
 }
 
-def get_mean_trace(trace):
-    mean_trace = dict()
-    for key in trace.keys():
-        params = torch.stack(trace[key])
-        for i in range(1, params.ndim):
-            params = params.mean(-1)
-        mean_trace[key] = params
-    return mean_trace
 
 def time_models(builder, dataset, filepath, modelparams, num_samples):
     times_with = list()
@@ -183,7 +176,7 @@ if __name__ == "__main__":
             # Construct model
             modelparams = experiment['model-params'] if 'model-params' in experiment else None
             reload = save_filepath if args.reload else None
-            model, trainer, plotter = builders[method](dataset, modelparams, reload=reload)
+            model, trainer, plotter = builders[method](dataset, modelparams, reload=reload, checkpoint_dir=filepath)
 
             if args.timer:
                 time_models(builders[method], dataset, filepath, modelparams, args.timer_samples)

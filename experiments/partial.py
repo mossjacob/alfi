@@ -13,10 +13,10 @@ from lafomo.models.pdes import ReactionDiffusion
 from lafomo.plot import Plotter, plot_spatiotemporal_data, tight_kwargs
 from lafomo.trainers import PDETrainer, PartialPreEstimator
 from lafomo.utilities.fenics import interval_mesh
-from lafomo.utilities.torch import cia, q2, smse, inv_softplus, softplus, spline_interpolate_gradient
+from lafomo.utilities.torch import cia, q2, smse, inv_softplus, softplus, spline_interpolate_gradient, get_mean_trace
 
 
-def build_partial(dataset, params, reload=None):
+def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
     data = next(iter(dataset))
     tx, y_target = data
     lengthscale = params['lengthscale']
@@ -117,7 +117,8 @@ def build_partial(dataset, params, reload=None):
                          clamp=params['clamp'],
                          track_parameters=track_parameters,
                          train_mask=train_mask.bool(),
-                         warm_variational=warm_variational)
+                         warm_variational=warm_variational,
+                         checkpoint_dir=checkpoint_dir)
     plotter = Plotter(lfm, dataset.gene_names)
     return lfm, trainer, plotter
 
@@ -190,7 +191,7 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
     ts = tx[0, :].unique().sort()[0].numpy()
     xs = tx[1, :].unique().sort()[0].numpy()
     extent = [ts[0], ts[-1], xs[0], xs[-1]]
-    torch.save(trainer.parameter_trace, filepath / 'parameter_trace.pt')
+    torch.save(get_mean_trace(trainer.parameter_trace), filepath / 'parameter_trace.pt')
     with open(filepath / 'metrics.csv', 'w') as f:
         f.write('smse\tq2\tca\n')
         f_mean_test = f_mean[~trainer.train_mask].squeeze()
