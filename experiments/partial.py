@@ -158,7 +158,7 @@ def pretrain_partial(dataset, lfm, trainer):
         # y (1, 1681) u (25, 1, 41, 41) s (25, 1)
         dy_t = (sensitivity * u.view(u.shape[0], -1) -
                 decay * y.view(1, -1) +
-                diffusion * d2y_x)
+                diffusion * 0)
         return dy_t
 
     optimizers = [Adam(lfm.parameters(), lr=0.05)]
