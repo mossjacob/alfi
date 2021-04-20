@@ -33,7 +33,8 @@ class Trainer:
                  batch_size=1,
                  give_output=False,
                  track_parameters=None,
-                 train_mask=None):
+                 train_mask=None,
+                 checkpoint_dir=None):
         self.lfm = lfm
         self.num_epochs = 0
         self.optimizers = optimizers
@@ -43,6 +44,7 @@ class Trainer:
         self.losses = np.empty((0, 2))
         self.give_output = give_output
         self.train_mask = train_mask
+        self.checkpoint_dir = checkpoint_dir
         self.parameter_trace = None
         if track_parameters is not None:
             named_params = dict(lfm.named_parameters())
@@ -77,11 +79,12 @@ class Trainer:
                 else:
                     print(f') kernel: {self.lfm.summarise_gp_hyp()}', end='')
                 self.print_extra()
-
+                self.lfm.save(self.checkpoint_dir / f'epoch{epoch}')
             losses.append(split_loss)
 
             self.after_epoch()
             self.num_epochs += 1
+
 
         losses = np.array(losses)
         self.losses = np.concatenate([self.losses, losses], axis=0)

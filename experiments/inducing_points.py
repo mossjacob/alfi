@@ -7,7 +7,7 @@ import numpy as np
 from lafomo.datasets import P53Data
 from lafomo.configuration import VariationalConfiguration
 from lafomo.models import OrdinaryLFM, MultiOutputGP
-from lafomo.trainer import TranscriptionalTrainer
+from lafomo.trainers import VariationalTrainer
 
 
 """ Experiment for plotting the ideal inducing point """
@@ -40,7 +40,7 @@ class TranscriptionLFM(OrdinaryLFM):
         return h
 
 
-class P53ConstrainedTrainer(TranscriptionalTrainer):
+class P53ConstrainedTrainer(VariationalTrainer):
     def extra_constraints(self):
         self.lfm.sensitivity[3] = np.float64(1.)
         self.lfm.decay_rate[3] = np.float64(0.8)
@@ -52,10 +52,8 @@ num_tfs = 1
 config = VariationalConfiguration(
     preprocessing_variance=dataset.variance,
     num_samples=80,
-    kernel_scale=False,
     initial_conditions=False
 )
-
 
 
 def diff(lfm: TranscriptionLFM):
