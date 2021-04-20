@@ -79,7 +79,8 @@ class Trainer:
                 else:
                     print(f') kernel: {self.lfm.summarise_gp_hyp()}', end='')
                 self.print_extra()
-                self.lfm.save(self.checkpoint_dir / f'epoch{epoch}')
+                if self.checkpoint_dir is not None:
+                    self.lfm.save(self.checkpoint_dir / f'epoch{epoch}')
             losses.append(split_loss)
 
             self.after_epoch()
