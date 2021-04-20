@@ -67,6 +67,7 @@ dros-kr:
         parameter_grad: false
         natural: false
         warm_epochs: -1
+        zero_mean: true
         clamp: true
 dros-kni:
   num_latents: 1

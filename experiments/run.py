@@ -176,7 +176,8 @@ if __name__ == "__main__":
             # Construct model
             modelparams = experiment['model-params'] if 'model-params' in experiment else None
             reload = save_filepath if args.reload else None
-            model, trainer, plotter = builders[method](dataset, modelparams, reload=reload, checkpoint_dir=filepath)
+            model, trainer, plotter = builders[method](
+                dataset, modelparams, reload=reload, checkpoint_dir=filepath)
 
             if args.timer:
                 time_models(builders[method], dataset, filepath, modelparams, args.timer_samples)

@@ -20,7 +20,7 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
     data = next(iter(dataset))
     tx, y_target = data
     lengthscale = params['lengthscale']
-
+    zero_mean = params['zero_mean'] if 'zero_mean' in params else False
     # Define mesh
     spatial = np.unique(tx[1, :])
     mesh = interval_mesh(spatial)
@@ -48,7 +48,7 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
                      natural=params['natural'],
                      use_tril=True)
 
-    gp_model = generate_multioutput_rbf_gp(1, inducing_points, ard_dims=2, zero_mean=False, gp_kwargs=gp_kwargs)
+    gp_model = generate_multioutput_rbf_gp(1, inducing_points, ard_dims=2, zero_mean=zero_mean, gp_kwargs=gp_kwargs)
     gp_model.covar_module.lengthscale = lengthscale
     # lengthscale_constraint=Interval(0.1, 0.3),
     gp_model.double()
@@ -102,7 +102,7 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
         parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.05)
         optimizers = [variational_optimizer, parameter_optimizer]
     else:
-        optimizers = [Adam(lfm.parameters(), lr=0.02)]
+        optimizers = [Adam(lfm.parameters(), lr=0.01)]
 
     # As in Lopez-Lopera et al., we take 30% of data for training
     train_mask = torch.zeros_like(tx[0, :])
@@ -202,7 +202,7 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
             str(cia(y_target[~trainer.train_mask], f_mean_test, f_var_test).item())
         ]) + '\n')
 
-    l_target = torch.tensor(dataset.orig_data[:, 2])
+    l_target = torch.tensor(dataset.orig_data[trainer.t_sorted, 2])
     l = lfm.gp_model(tx.t())
     l_mean = l.mean.detach()
     plot_spatiotemporal_data(
@@ -213,7 +213,7 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
             y_target.view(num_t, num_x).detach().t(),
         ],
         extent,
-        titles=['Latent (Prediction)', 'Latent (Target)', 'Output (Prediction)', 'Output Target'],
+        titles=['Latent (Prediction)', 'Latent (Target)', 'Output (Prediction)', 'Output (Target)'],
         cticks=None  # [0, 100, 200]
     )
     plt.gca().get_figure().set_size_inches(15, 7)
