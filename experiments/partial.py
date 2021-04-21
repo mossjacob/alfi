@@ -214,7 +214,8 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
         ],
         extent,
         titles=['Latent (Prediction)', 'Latent (Target)', 'Output (Prediction)', 'Output (Target)'],
-        cticks=None  # [0, 100, 200]
+        cticks=None,  # [0, 100, 200]
+        clim=[(l_target.min(), l_target.max())] * 2 + [(y_target.min(), y_target.max())] * 2,
     )
     plt.gca().get_figure().set_size_inches(15, 7)
 

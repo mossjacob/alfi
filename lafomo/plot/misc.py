@@ -13,7 +13,7 @@ plt.rcParams['font.serif'] = 'CMU Serif'
 sns.set(style='white', font="CMU Serif")
 
 
-def plot_spatiotemporal_data(images, extent, nrows=1, ncols=None, titles=None, figsize=(10, 5), cticks=None):
+def plot_spatiotemporal_data(images, extent, nrows=1, ncols=None, titles=None, figsize=(10, 5), cticks=None, clim=None):
     if ncols == None:
         ncols = len(images)
     fig = plt.figure(figsize=figsize)
@@ -37,6 +37,8 @@ def plot_spatiotemporal_data(images, extent, nrows=1, ncols=None, titles=None, f
             cb.ax.yaxis.set_major_locator(ticker.MaxNLocator(nbins=5, steps=[1, 2, 4, 5, 10], integer=True))
         else:
             cb.set_ticks(cticks)
+        if clim is not None:
+            im.set_clim(clim[plotnum])
         ax.set_xticks([np.ceil(extent[0]), np.floor(extent[1])])
         ax.set_yticks([np.ceil(extent[2]), np.floor(extent[3])])
         ax.set_xlim([extent[0], extent[1]])
