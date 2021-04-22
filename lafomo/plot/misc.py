@@ -54,7 +54,7 @@ def plot_spatiotemporal_data(images, extent, nrows=1, ncols=None, titles=None, f
 
 def plot_phase(x_samples, y_samples,
                x_target=None, y_target=None,
-               x_mean=None, y_mean=None, figsize=(4, 4), ax=None):
+               x_mean=None, y_mean=None, figsize=(4, 4), ax=None, pred_label='Prediction'):
     """
 
     @param x_samples:
@@ -70,7 +70,7 @@ def plot_phase(x_samples, y_samples,
     if ax is None:
         fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(1, 1, 1)
-    ax.plot(x_mean, y_mean, label='Prediction', color=Colours.line_color)
+    ax.plot(x_mean, y_mean, label=pred_label, color=Colours.line_color)
     if x_target is not None:
         ax.plot(x_target, y_target, label='Target', color=Colours.scatter_color)
 

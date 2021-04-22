@@ -98,25 +98,30 @@ class Plotter:
                 break
         return gp
 
-    def plot_double_bar(self, params, labels, ground_truths=None, figsize=(8.5, 3), yticks=None, max_plots=10):
-        real_bars = [None] * len(params) if ground_truths is None else ground_truths
-        vars = [0] * len(params)
-        fig, axes = plt.subplots(ncols=len(params), figsize=figsize)
+    def plot_double_bar(self, params_mean, labels,
+                        params_var=None, ground_truths=None, figsize=(8.5, 3), yticks=None, max_plots=10):
+        real_bars = [None] * len(params_mean) if ground_truths is None else ground_truths
+        vars = [0] * len(params_mean)
+        if params_var is not None:
+            vars = params_var
+        fig, axes = plt.subplots(ncols=len(params_mean), figsize=figsize)
         plotnum = 0
         num_bars = self.output_names.shape[0]
         num_bars = min(max_plots, num_bars)
-        for A, B, var, label in zip(params, real_bars, vars, labels):
-            if B is None:
-                axes[plotnum].bar(np.arange(num_bars), A[:num_bars],
+        for predicted, target, var, label in zip(params_mean, real_bars, vars, labels):
+            if target is None:
+                axes[plotnum].bar(np.arange(num_bars), predicted[:num_bars],
                                   width=0.4,
                                   tick_label=self.output_names[:num_bars],
                                   color=Colours.bar1_color)
             else:
-                axes[plotnum].bar(np.arange(num_bars) - 0.2, A[:num_bars],
+                axes[plotnum].bar(np.arange(num_bars) - 0.2, predicted[:num_bars],
                                   width=0.4,
                                   tick_label=self.output_names[:num_bars],
-                                  color=Colours.bar1_color)
-                axes[plotnum].bar(np.arange(num_bars) + 0.2, B[:num_bars],
+                                  color=Colours.bar1_color,
+                                  yerr=var[:num_bars],
+                                  capsize=2)
+                axes[plotnum].bar(np.arange(num_bars) + 0.2, target[:num_bars],
                                   width=0.4,
                                   color=Colours.bar2_color,
                                   align='center')

@@ -3,7 +3,12 @@ from matplotlib import pyplot as plt
 import torch
 
 from .trainer import Trainer
-from lafomo.models import VariationalLFM, PartialLFM
+from lafomo.models import VariationalLFM
+try:
+    from lafomo.models import PartialLFM
+except:
+    class PartialLFM:
+        pass
 from lafomo.utilities.torch import is_cuda, spline_interpolate_gradient
 
 

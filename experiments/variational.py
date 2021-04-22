@@ -2,9 +2,12 @@ import torch
 import numpy as np
 from torch.nn import Parameter
 from matplotlib import pyplot as plt
+from gpytorch.constraints import Positive
+from gpytorch.optim import NGD
+from torch.optim import Adam
 
 from lafomo.configuration import VariationalConfiguration
-from lafomo.models import OrdinaryLFM, MultiOutputGP
+from lafomo.models import OrdinaryLFM, generate_multioutput_rbf_gp
 from lafomo.plot import Plotter
 from lafomo.trainers import VariationalTrainer
 from lafomo.utilities.data import p53_ground_truth
@@ -15,11 +18,36 @@ tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
 def build_variational(dataset, params, **kwargs):
     num_tfs = 1
     class TranscriptionLFM(OrdinaryLFM):
-        def __init__(self, num_outputs, gp_model, config: VariationalConfiguration):
-            super().__init__(num_outputs, gp_model, config)
-            self.decay_rate = Parameter(0.1 + torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64))
-            self.basal_rate = Parameter(torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64))
-            self.sensitivity = Parameter(0.2 + torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64))
+        def __init__(self, num_outputs, gp_model, config: VariationalConfiguration, **kwargs):
+            super().__init__(num_outputs, gp_model, config, **kwargs)
+            self.positivity = Positive()
+            self.raw_decay = Parameter(0.1 + torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64))
+            self.raw_basal = Parameter(0.5 * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64))
+            self.raw_sensitivity = Parameter(torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64))
+
+        @property
+        def decay_rate(self):
+            return self.positivity.transform(self.raw_decay)
+
+        @decay_rate.setter
+        def decay_rate(self, value):
+            self.raw_decay = self.positivity.inverse_transform(value)
+
+        @property
+        def basal_rate(self):
+            return self.positivity.transform(self.raw_basal)
+
+        @basal_rate.setter
+        def basal_rate(self, value):
+            self.raw_basal = self.positivity.inverse_transform(value)
+
+        @property
+        def sensitivity(self):
+            return self.positivity.transform(self.raw_sensitivity)
+
+        @sensitivity.setter
+        def sensitivity(self, value):
+            self.raw_sensitivity = self.decay_constraint.inverse_transform(value)
 
         def initial_state(self):
             return self.basal_rate / self.decay_rate
@@ -27,55 +55,56 @@ def build_variational(dataset, params, **kwargs):
         def odefunc(self, t, h):
             """h is of shape (num_samples, num_outputs, 1)"""
             self.nfe += 1
-            # if (self.nfe % 100) == 0:
-            #     print(t)
 
-            decay = self.decay_rate * h
+            f = self.f
+            if not self.pretrain_mode:
+                f = self.f[:, :, self.t_index].unsqueeze(2)
+                if t > self.last_t:
+                    self.t_index += 1
+                self.last_t = t
 
-            f = self.f[:, :, self.t_index].unsqueeze(2)
-
-            h = self.basal_rate + self.sensitivity * f - decay
-            if t > self.last_t:
-                self.t_index += 1
-            self.last_t = t
-            return h
+            dh = self.basal_rate + self.sensitivity * f - self.decay_rate * h
+            return dh
 
     config = VariationalConfiguration(
         preprocessing_variance=dataset.variance,
         num_samples=80,
-        kernel_scale=False,
         initial_conditions=False
     )
 
     num_inducing = 12  # (I x m x 1)
     inducing_points = torch.linspace(0, 12, num_inducing).repeat(num_tfs, 1).view(num_tfs, num_inducing, 1)
+    num_training = dataset.m_observed.shape[-1]
+    use_natural = True
+    gp_model = generate_multioutput_rbf_gp(num_tfs, inducing_points, gp_kwargs=dict(natural=use_natural))
 
-    gp_model = MultiOutputGP(inducing_points, num_tfs)
-    lfm = TranscriptionLFM(dataset.num_outputs, gp_model, config)
+    lfm = TranscriptionLFM(dataset.num_outputs, gp_model, config, num_training_points=num_training)
     plotter = Plotter(lfm, dataset.gene_names, style='seaborn')
 
     class P53ConstrainedTrainer(VariationalTrainer):
         def after_epoch(self):
             super().after_epoch()
-            # self.cholS.append(self.lfm.q_cholS.detach().clone())
-            # self.mus.append(self.lfm.q_m.detach().clone())
             with torch.no_grad():
-                # TODO can we replace these with parameter transforms like we did with lengthscale
-                # self.lfm.sensitivity.clamp_(0, 20)
                 self.lfm.basal_rate.clamp_(0, 20)
                 self.lfm.decay_rate.clamp_(0, 20)
-                self.lfm.sensitivity[3] = np.float64(1.)
-                self.lfm.decay_rate[3] = np.float64(0.8)
+                sens = torch.tensor(1.)
+                dec = torch.tensor(0.8)
+                self.lfm.raw_sensitivity[3] = self.lfm.positivity.inverse_transform(sens)
+                self.lfm.raw_decay[3] = self.lfm.positivity.inverse_transform(dec)
 
     track_parameters = [
-        'basal_rate',
-        'decay_rate',
-        'sensitivity',
+        'raw_basal',
+        'raw_decay',
+        'raw_sensitivity',
         'gp_model.covar_module.raw_lengthscale',
     ]
-
-    optimizer = torch.optim.Adam(lfm.parameters(), lr=0.03)
-    trainer = P53ConstrainedTrainer(lfm, [optimizer], dataset, track_parameters=track_parameters)
+    if use_natural:
+        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
+        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.05)
+        optimizers = [variational_optimizer, parameter_optimizer]
+    else:
+        optimizers = [Adam(lfm.parameters(), lr=0.05)]
+    trainer = P53ConstrainedTrainer(lfm, optimizers, dataset, track_parameters=track_parameters)
 
     return lfm, trainer, plotter
 
@@ -87,7 +116,7 @@ def plot_variational(dataset, lfm, trainer, plotter, filepath, params):
 
     labels = ['Basal rates', 'Sensitivities', 'Decay rates']
     kinetics = list()
-    for key in ['basal_rate', 'sensitivity', 'decay_rate']:
+    for key in ['raw_basal', 'raw_sensitivity', 'raw_decay']:
         kinetics.append(trainer.parameter_trace[key][-1].squeeze().numpy())
 
     plotter.plot_double_bar(kinetics, labels, p53_ground_truth())

@@ -43,10 +43,9 @@ def build_lotka(dataset, params, reload=None, **kwargs):
                 self.positivity.inverse_transform(torch.ones(torch.Size([self.num_outputs, 1]), dtype=torch.float64)))
             self.raw_growth = Parameter(self.positivity.inverse_transform(
                 0.5 * torch.ones(torch.Size([self.num_outputs, 1]), dtype=torch.float64)))
-            self.raw_initial = Parameter(self.positivity.inverse_transform(
+            self.raw_initial = Parameter(self.decay_constraint.inverse_transform(
                 0.3 + torch.zeros(torch.Size([self.num_outputs, 1]), dtype=torch.float64)))
-            self.true_f = dataset.prey[::3].unsqueeze(0).repeat(self.config.num_samples, 1).unsqueeze(1)
-            print(self.true_f.shape)
+            # self.true_f = dataset.prey[::3].unsqueeze(0).repeat(self.config.num_samples, 1).unsqueeze(1)
 
         @property
         def decay_rate(self):
@@ -79,43 +78,47 @@ def build_lotka(dataset, params, reload=None, **kwargs):
             """h is of shape (num_samples, num_outputs, 1)"""
             self.nfe += 1
             # if (self.nfe % 100) == 0:
-            # print(t, self.t_index, self.f.shape, self.true_f.shape)
+            # print(t, self.t_index, self.f.shape)
             # f shape (num_samples, num_outputs, num_times)
             f = self.f[:, :, self.t_index].unsqueeze(2)
-            # f = self.true_f[:, :, self.t_index].unsqueeze(2)
-            dh = self.growth_rate * h * f - self.decay_rate * h
             if t > self.last_t:
                 self.t_index += 1
             self.last_t = t
 
+            dh = self.growth_rate * h * f - self.decay_rate * h
             return dh
 
         def G(self, f):
             return softplus(f).repeat(1, self.num_outputs, 1)
 
     use_natural = params['natural']
-    config = VariationalConfiguration(num_samples=70)
+    config = VariationalConfiguration(num_samples=150)
     inducing_points = torch.linspace(x_min, x_max, num_inducing).repeat(num_latents, 1).view(
         num_latents, num_inducing, 1)
 
     periodic = params['kernel'] == 'periodic'
     mean_module = gpytorch.means.ConstantMean(batch_shape=torch.Size([num_latents]))
     with torch.no_grad():
-        mean_module.constant -= 0.2
+        mean_module.constant += 0.1
     track_parameters = ['raw_growth', 'raw_decay']
 
     if periodic:
         covar_module = gpytorch.kernels.ScaleKernel(
             gpytorch.kernels.PeriodicKernel(batch_shape=torch.Size([num_latents])),
-            batch_shape=torch.Size([num_latents])
-        )  # * \
-        # gpytorch.kernels.RBFKernel(batch_shape=torch.Size([num_latents]))
+            # * gpytorch.kernels.RBFKernel(batch_shape=torch.Size([num_latents])),
+            batch_shape=torch.Size([num_latents]))
 
-        print(covar_module.base_kernel.period_length)
-        covar_module.base_kernel.lengthscale = 3
-        covar_module.base_kernel.period_length = 8
-        track_parameters.append('gp_model.covar_module.base_kernel.raw_lengthscale')
-        track_parameters.append('gp_model.covar_module.base_kernel.raw_period_length')
+
+        print(covar_module.base_kernel)
+        if type(covar_module.base_kernel) is gpytorch.kernels.ProductKernel:
+            print(covar_module.base_kernel.kernels)
+            covar_module.base_kernel.kernels[0].lengthscale = 3
+            covar_module.base_kernel.kernels[0].period_length = 8
+        else:
+            covar_module.base_kernel.lengthscale = 1.3
+            covar_module.base_kernel.period_length = 8
+            track_parameters.append('gp_model.covar_module.base_kernel.raw_lengthscale')
+            track_parameters.append('gp_model.covar_module.base_kernel.raw_period_length')
         # covar_module.kernels[1].lengthscale = 2
     else:
         covar_module = gpytorch.kernels.RBFKernel(
@@ -158,6 +161,7 @@ def build_lotka(dataset, params, reload=None, **kwargs):
 
 
 def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
+    f_transform = softplus
     lfm.eval()
     t_interval = (0, 20)
     t_predict = torch.linspace(*t_interval, 100, dtype=torch.float32)
@@ -180,8 +184,8 @@ def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
     axes[0].set_xlim(*t_interval)
     # axes[0].legend()
 
-    plotter.plot_gp(q_f, t_predict,
-                    transform=softplus,
+    plotter.plot_gp(q_f, t_predict, num_samples=5,
+                    transform=f_transform,
                     color=Colours.line2_color,
                     shade_color=Colours.shade2_color,
                     ylim=ylim,
@@ -202,11 +206,11 @@ def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
 
     prey_mean = prey.mean.detach().squeeze()
     predator_mean = predator.mean.detach().squeeze()
-    x_samples = softplus(prey.sample(torch.Size([50])).detach().squeeze())
+    x_samples = f_transform(prey.sample(torch.Size([50])).detach().squeeze())
     y_samples = predator.sample(torch.Size([50])).detach().squeeze()
 
     plot_phase(x_samples, y_samples,
-               x_mean=softplus(prey_mean),
+               x_mean=f_transform(prey_mean),
                y_mean=predator_mean,
                x_target=real_prey,
                y_target=real_pred,

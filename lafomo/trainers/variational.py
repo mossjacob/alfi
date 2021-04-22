@@ -21,9 +21,9 @@ class VariationalTrainer(Trainer):
                  **kwargs):
         super().__init__(lfm, optimizers, dataset, batch_size=lfm.num_outputs, **kwargs)
         self.warm_variational = warm_variational
-        if warm_variational >= 0:  # Cold start: don't train non variational parameters initially.
-            for param in self.lfm.nonvariational_parameters():
-                param.requires_grad = False
+        # if warm_variational >= 0:  # Cold start: don't train non variational parameters initially.
+        #     for param in self.lfm.nonvariational_parameters():
+        #         param.requires_grad = False
 
     def single_epoch(self, step_size=1e-1, epoch=0, **kwargs):
         epoch_loss = 0
@@ -56,9 +56,9 @@ class VariationalTrainer(Trainer):
             # if (epoch % 10) == 0:
             #     print(dict(self.lfm.gp_model.named_variational_parameters()))
             # Now we are warmed up, start training non variational parameters in the next epoch.
-            if epoch + 1 == self.warm_variational:
-                for param in self.lfm.nonvariational_parameters():
-                    param.requires_grad = True
+            # if epoch + 1 == self.warm_variational:
+            #     for param in self.lfm.nonvariational_parameters():
+            #         param.requires_grad = True
 
         return epoch_loss, (-epoch_ll, epoch_kl)
 
