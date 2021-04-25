@@ -17,9 +17,10 @@ class ToyTimeSeries(TranscriptomicTimeSeries):
     This dataset stochastically generates a toy transcriptional regulation dataset.
     """
 
-    def __init__(self, num_outputs=30, num_latents=3, num_times=10):
+    def __init__(self, num_outputs=30, num_latents=3, num_times=10, params=None, plot=True):
         super().__init__()
         self.num_disc = 9
+        self.plot = plot
         from lafomo.models import OrdinaryLFM, generate_multioutput_rbf_gp
         from lafomo.plot import Plotter
         class ToyLFM(OrdinaryLFM):
@@ -30,13 +31,15 @@ class ToyTimeSeries(TranscriptomicTimeSeries):
             def __init__(self, num_outputs, gp_model, config: VariationalConfiguration, **kwargs):
                 super().__init__(num_outputs, gp_model, config, **kwargs)
                 num_latents = gp_model.variational_strategy.num_tasks
-                self.decay_rate = Parameter(
-                    0.2 + 2 * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float32))
-                self.basal_rate = Parameter(
-                    0.1 + 0.3 * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float32))
-                self.sensitivity = Parameter(2 + 5 * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float32))
+                self.decay_rate = Parameter(params[2] if params is not None else
+                                            0.2 + 2 * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float32))
+                self.basal_rate = Parameter(params[0] if params is not None else
+                                            0.1 + 0.3 * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float32))
+                self.sensitivity = Parameter(params[1] if params is not None else
+                                             2 + 5 * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float32))
                 weight = 0.5 + 1 * torch.randn(torch.Size([self.num_outputs, num_latents]), dtype=torch.float32)
-                weight[torch.randperm(self.num_outputs)[:15], torch.randint(num_latents, [15])] = 0
+                num_remove = num_outputs // 2
+                weight[torch.randperm(self.num_outputs)[:num_remove], torch.randint(num_latents, [num_remove])] = 0
                 self.weight = Parameter(weight)
                 self.weight_bias = Parameter(torch.randn(torch.Size([self.num_outputs, 1]), dtype=torch.float32))
 
@@ -56,8 +59,9 @@ class ToyTimeSeries(TranscriptomicTimeSeries):
 
             def G(self, f):
                 f = softplus(f)
-                interactions = torch.matmul(self.weight, torch.log(f + 1e-100)) + self.weight_bias
-                f = torch.sigmoid(interactions)  # TF Activation Function (sigmoid)
+                if f.shape[1] > 1:
+                    interactions = torch.matmul(self.weight, torch.log(f + 1e-100)) + self.weight_bias
+                    f = torch.sigmoid(interactions)  # TF Activation Function (sigmoid)
                 return f
 
         self.num_outputs = num_outputs
@@ -79,23 +83,20 @@ class ToyTimeSeries(TranscriptomicTimeSeries):
                                                gp_kwargs=dict(natural=False))
         self.train_gp(gp_model, t_predict)
         with torch.no_grad():
-            lfm = ToyLFM(num_outputs, gp_model, config)
-            plotter = Plotter(lfm, np.arange(num_outputs))
-            q_m = plotter.plot_gp(lfm.predict_m(t_predict), t_predict)
+            self.lfm = ToyLFM(num_outputs, gp_model, config)
+            q_m = self.lfm.predict_m(t_predict)
             self.t_observed = t_predict[::self.num_disc]
             self.m_observed = q_m.mean[::self.num_disc].unsqueeze(0).permute(0, 2, 1)
-            print(self.m_observed.shape, self.f_observed.shape)
             self.data = [(self.t_observed, self.m_observed[0, i]) for i in range(num_outputs)]
 
     def train_gp(self, gp_model, t_predict):
         q_f = gp_model(t_predict)
-        samples = q_f.sample(torch.Size([1]))
-
-        fig, axes = plt.subplots(ncols=2, figsize=(7, 3))
-        for i in range(samples.shape[0]):
-            axes[0].plot(softplus(samples[i][:, 0]), color='blue')
-            axes[0].plot(softplus(samples[i][:, 1]), color='red')
-            axes[0].plot(softplus(samples[i][:, 2]), color='yellow')
+        samples = q_f.sample(torch.Size([1]))  # sample from the prior
+        if self.plot:
+            fig, axes = plt.subplots(ncols=2, figsize=(7, 3))
+            for i in range(samples.shape[0]):
+                for l in range(self.num_latents):
+                    axes[0].plot(softplus(samples[i][:, l]))
         train_y = samples[0]
         self.f_observed = train_y[::self.num_disc].unsqueeze(0).permute(0, 2, 1)
 
@@ -117,8 +118,7 @@ class ToyTimeSeries(TranscriptomicTimeSeries):
 
         q_f = gp_model(t_predict)
         samples = q_f.sample(torch.Size([1]))
-
-        for i in range(samples.shape[0]):
-            axes[1].plot(softplus(samples[i][:, 0]), color='blue')
-            axes[1].plot(softplus(samples[i][:, 1]), color='red')
-            axes[1].plot(softplus(samples[i][:, 2]), color='yellow')
+        if self.plot:
+            for i in range(samples.shape[0]):
+                for l in range(self.num_latents):
+                    axes[1].plot(softplus(samples[i][:, l]))
