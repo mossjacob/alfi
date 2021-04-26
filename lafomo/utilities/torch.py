@@ -113,3 +113,11 @@ def get_mean_trace(trace):
             params = params.mean(-1)
         mean_trace[key] = params
     return mean_trace
+
+def compl_mul1d(a, b):
+    # (batch, in_channel, x ), (in_channel, out_channel, x) -> (batch, out_channel, x)
+    return torch.einsum('bix,iox->box', a, b)
+
+def compl_mul2d(a, b):
+    # (batch, in_channel, x,y ), (in_channel, out_channel, x,y) -> (batch, out_channel, x,y)
+    return torch.einsum('bixy,ioxy->boxy', a, b)
