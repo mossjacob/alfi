@@ -1,5 +1,5 @@
 import torch
-
+from pathlib import Path
 from sklearn.preprocessing import MinMaxScaler
 from scipy.integrate import odeint
 import numpy as np
@@ -89,7 +89,7 @@ class HafnerData(TranscriptomicTimeSeries):
         # np.random.shuffle(target_genes)
         self.num_outputs = len(target_genes)
         tfs = ['TP53']
-        with open(path.join(data_dir, 'GSE100099_RNASeqGEO.tsv'), 'r', 1) as f:
+        with open(Path(data_dir) / 'GSE100099_RNASeqGEO.tsv', 'r', 1) as f:
             contents = f.buffer
             df = pd.read_table(contents, sep='\t', index_col=0)
 
@@ -156,14 +156,23 @@ class ToySpatialTranscriptomics(LFMDataset):
     https://arxiv.org/abs/1808.10026
     Data download: https://github.com/anfelopera/PhysicallyGPDrosophila
     """
-    def __init__(self, data_dir='../data/'):
-        data = pd.read_csv(path.join(data_dir, 'demToy1GPmRNA.csv'))
+    def __init__(self, data_dir='../data/', one_fixed_sample=True):
+        if one_fixed_sample:
+            data = pd.read_csv(Path(data_dir) / 'demToy1GPmRNA.csv')
+        else:
+            data = pd.read_csv(Path(data_dir) / 'toy_GPmRNA_N50.csv')
+            self.num_data = data.values.shape[0] // 1681
         self.orig_data = data.values
         self.num_outputs = 1
+        print(data.values.shape)
         x_observed = torch.tensor(data.values[:, 0:2]).permute(1, 0)
+        num_data = x_observed.shape[1] // 1681
         data = torch.tensor(data.values[:, 3]).unsqueeze(0)
         self.num_discretised = 40
-        self.data = [(x_observed, data)]
+        self.data = [
+            (x_observed[:, 1681*i:1681*(i+1)], data[:, 1681*i:1681*(i+1)])
+            for i in range(num_data)
+        ]
         self.gene_names = np.array(['toy'])
 
 

@@ -85,7 +85,9 @@ class ToyTimeSeries(TranscriptomicTimeSeries):
         with torch.no_grad():
             self.lfm = ToyLFM(num_outputs, gp_model, config)
             q_m = self.lfm.predict_m(t_predict)
+            self.t_observed_highres = t_predict
             self.t_observed = t_predict[::self.num_disc]
+            self.m_observed_highres = q_m.mean.unsqueeze(0).permute(0, 2, 1)
             self.m_observed = q_m.mean[::self.num_disc].unsqueeze(0).permute(0, 2, 1)
             self.data = [(self.t_observed, self.m_observed[0, i]) for i in range(num_outputs)]
 
