@@ -1,5 +1,7 @@
-from torch.nn import Module
+import operator
 
+from torch.nn import Module
+from functools import reduce
 from lafomo.nn import SimpleBlock1d, SimpleBlock2d
 
 

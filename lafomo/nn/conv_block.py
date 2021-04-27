@@ -1,4 +1,4 @@
-import torch.functional as F
+import torch.nn.functional as F
 
 from torch.nn import Module, Linear, Conv1d
 from .spectral_conv import SpectralConv1d, SpectralConv2d

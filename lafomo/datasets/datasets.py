@@ -160,7 +160,7 @@ class ToySpatialTranscriptomics(LFMDataset):
         if one_fixed_sample:
             data = pd.read_csv(Path(data_dir) / 'demToy1GPmRNA.csv')
         else:
-            data = pd.read_csv(Path(data_dir) / 'toy_GPmRNA_N50.csv')
+            data = pd.read_csv(Path(data_dir) / 'toy_GPmRNA_N1050.csv')
             self.num_data = data.values.shape[0] // 1681
         self.orig_data = data.values
         self.num_outputs = 1
