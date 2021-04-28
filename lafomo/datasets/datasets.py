@@ -156,21 +156,25 @@ class ToySpatialTranscriptomics(LFMDataset):
     https://arxiv.org/abs/1808.10026
     Data download: https://github.com/anfelopera/PhysicallyGPDrosophila
     """
-    def __init__(self, data_dir='../data/', one_fixed_sample=True):
+    def __init__(self, data_dir='../data/', one_fixed_sample=True, highres=False):
         if one_fixed_sample:
             data = pd.read_csv(Path(data_dir) / 'demToy1GPmRNA.csv')
         else:
-            data = pd.read_csv(Path(data_dir) / 'toy_GPmRNA_N1050.csv')
-            self.num_data = data.values.shape[0] // 1681
+            if highres:
+                data = pd.read_csv(Path(data_dir) / 'toy_GPmRNA_N50highres.csv')
+            else:
+                data = pd.read_csv(Path(data_dir) / 'toy_GPmRNA_N1050.csv')
+        num_per_data = np.unique(data.values[:, 0]).shape[0] * np.unique(data.values[:, 1]).shape[0]
+        self.num_data = data.values.shape[0] // num_per_data
         self.orig_data = data.values
         self.num_outputs = 1
         print(data.values.shape)
         x_observed = torch.tensor(data.values[:, 0:2]).permute(1, 0)
-        num_data = x_observed.shape[1] // 1681
+        num_data = x_observed.shape[1] // num_per_data
         data = torch.tensor(data.values[:, 3]).unsqueeze(0)
         self.num_discretised = 40
         self.data = [
-            (x_observed[:, 1681*i:1681*(i+1)], data[:, 1681*i:1681*(i+1)])
+            (x_observed[:, num_per_data*i:num_per_data*(i+1)], data[:, num_per_data*i:num_per_data*(i+1)])
             for i in range(num_data)
         ]
         self.gene_names = np.array(['toy'])
