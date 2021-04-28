@@ -100,7 +100,7 @@ def build_variational(dataset, params, **kwargs):
     ]
     if use_natural:
         variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
-        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.05)
+        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.03)
         optimizers = [variational_optimizer, parameter_optimizer]
     else:
         optimizers = [Adam(lfm.parameters(), lr=0.05)]

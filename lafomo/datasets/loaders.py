@@ -95,15 +95,15 @@ def load_barenco_puma(dir_path):
         '202284_s_at': 'p21',
         '218346_s_at': 'SESN1',
         '205780_at': 'BIK',
-        '209295_at': 'TNFRSF10b',
+        '209295_at': 'DR5',
         '211300_s_at': 'p53'
     }
     genes.rename(index=index, inplace=True)
     genes_se.rename(index=index, inplace=True)
 
     # Reorder genes
-    genes_df = genes.reindex(['DDB2', 'BIK', 'TNFRSF10b', 'p21', 'SESN1', 'p53'])
-    genes_se = genes_se.reindex(['DDB2', 'BIK', 'TNFRSF10b', 'p21', 'SESN1', 'p53'])
+    genes_df = genes.reindex(['DDB2', 'BIK', 'DR5', 'p21', 'SESN1', 'p53'])
+    genes_se = genes_se.reindex(['DDB2', 'BIK', 'DR5', 'p21', 'SESN1', 'p53'])
 
     tfs_df = genes_df.iloc[-1:]
     genes_df = genes_df.iloc[:-1]

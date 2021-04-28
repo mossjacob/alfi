@@ -8,7 +8,7 @@ p53:
         report_interval: 5
     - method: variational
       train_params:
-        epochs: 300
+        epochs: 450
         report_interval: 10
     - method: mcmc
       train_params:

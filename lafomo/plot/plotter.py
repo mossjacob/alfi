@@ -101,7 +101,7 @@ class Plotter:
     def plot_double_bar(self, params_mean, labels,
                         params_var=None, ground_truths=None, figsize=(8.5, 3), yticks=None, max_plots=10):
         real_bars = [None] * len(params_mean) if ground_truths is None else ground_truths
-        vars = [0] * len(params_mean)
+        vars = [None] * len(params_mean)
         if params_var is not None:
             vars = params_var
         fig, axes = plt.subplots(ncols=len(params_mean), figsize=figsize)
@@ -119,7 +119,7 @@ class Plotter:
                                   width=0.4,
                                   tick_label=self.output_names[:num_bars],
                                   color=Colours.bar1_color,
-                                  yerr=var[:num_bars],
+                                  yerr=var[:num_bars] if vars[0] is not None else None,
                                   capsize=2)
                 axes[plotnum].bar(np.arange(num_bars) + 0.2, target[:num_bars],
                                   width=0.4,
@@ -127,7 +127,7 @@ class Plotter:
                                   align='center')
 
             axes[plotnum].set_title(label)
-            axes[plotnum].tick_params(axis='x', labelrotation=45)
+            axes[plotnum].tick_params(axis='x', labelrotation=30)
             if yticks is not None:
                 axes[plotnum].set_yticks(yticks[plotnum])
             if num_bars == 1:

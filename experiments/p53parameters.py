@@ -68,5 +68,13 @@ if __name__ == "__main__":
     print(kinetics.shape, err.shape)
     labels = ['Basal rates', 'Sensitivities', 'Decay rates']
 
-    plotter.plot_double_bar(kinetics, labels, params_var=err, ground_truths=p53_ground_truth())
-    plt.savefig(filepath / 'test.pdf', **tight_kwargs)
+    plotter.plot_double_bar(kinetics, labels, params_var=err, ground_truths=p53_ground_truth(),
+                            figsize=(7.5, 2.6),
+                            yticks=[
+                                np.linspace(0, 0.12, 5),
+                                np.linspace(0, 1.2, 4),
+                                np.arange(0, 1.1, 0.2),
+                            ])
+    plt.tight_layout()
+
+    plt.savefig(filepath / 'linear-kinetics2.pdf', **tight_kwargs)
