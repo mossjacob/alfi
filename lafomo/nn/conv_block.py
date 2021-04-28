@@ -10,7 +10,7 @@ Fourier neural operator for parametric partial differential equations.
 arXiv preprint arXiv:2010.08895.
 """
 class SimpleBlock1d(Module):
-    def __init__(self, modes, width):
+    def __init__(self, in_channels, modes, width):
         super(SimpleBlock1d, self).__init__()
 
         """
@@ -28,7 +28,7 @@ class SimpleBlock1d(Module):
 
         self.modes1 = modes
         self.width = width
-        self.fc0 = Linear(11, self.width)
+        self.fc0 = Linear(in_channels, self.width)
 
         self.conv0 = SpectralConv1d(self.width, self.width, self.modes1)
         self.conv1 = SpectralConv1d(self.width, self.width, self.modes1)
@@ -75,7 +75,7 @@ class SimpleBlock1d(Module):
 
 
 class SimpleBlock2d(Module):
-    def __init__(self, modes1, modes2,  width):
+    def __init__(self, in_channels, modes1, modes2,  width):
         super(SimpleBlock2d, self).__init__()
 
         """
@@ -94,7 +94,7 @@ class SimpleBlock2d(Module):
         self.modes1 = modes1
         self.modes2 = modes2
         self.width = width
-        self.fc0 = Linear(3, self.width) # input channel is 3: (a(x, y), x, y)
+        self.fc0 = Linear(in_channels, self.width) # input channel is 3: (a(x, y), x, y)
 
         self.conv0 = SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
         self.conv1 = SpectralConv2d(self.width, self.width, self.modes1, self.modes2)

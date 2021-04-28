@@ -23,7 +23,7 @@ class SpectralConv1d(Module):
 
         self.scale = (1 / (in_channels*out_channels))
         self.weights1 = Parameter(
-            self.scale * torch.rand(in_channels, out_channels, self.modes1).type(torch.complex64))
+            self.scale * torch.rand(in_channels, out_channels, self.modes1, dtype=torch.complex64))
 
     def forward(self, x):
         batchsize = x.shape[0]
@@ -31,7 +31,8 @@ class SpectralConv1d(Module):
         x_ft = torch.fft.rfft(x)
 
         # Multiply relevant Fourier modes
-        out_ft = torch.zeros(batchsize, self.in_channels, x.size(-1)//2 + 1, device=x.device)
+        out_ft = torch.zeros(batchsize, self.in_channels, x.size(-1)//2 + 1,
+                             device=x.device, dtype=torch.complex64)
         out_ft[:, :, :self.modes1] = compl_mul1d(x_ft[:, :, :self.modes1], self.weights1)
 
         #Return to physical space
@@ -54,9 +55,9 @@ class SpectralConv2d(Module):
 
         self.scale = (1 / (in_channels * out_channels))
         self.weights1 = Parameter(
-            self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2).type(torch.complex64))
+            self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2, dtype=torch.complex64))
         self.weights2 = Parameter(
-            self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2).type(torch.complex64))
+            self.scale * torch.rand(in_channels, out_channels, self.modes1, self.modes2, dtype=torch.complex64))
 
     def forward(self, x):
         batchsize = x.shape[0]
@@ -64,12 +65,13 @@ class SpectralConv2d(Module):
         x_ft = torch.fft.rfft2(x)
 
         # Multiply relevant Fourier modes
-        out_ft = torch.zeros(batchsize, self.in_channels,  x.size(-2), x.size(-1)//2 + 1, device=x.device)
+        out_ft = torch.zeros(batchsize, self.in_channels,  x.size(-2), x.size(-1)//2 + 1,
+                             device=x.device, dtype=torch.complex64)
         out_ft[:, :, :self.modes1, :self.modes2] = \
             compl_mul2d(x_ft[:, :, :self.modes1, :self.modes2], self.weights1)
         out_ft[:, :, -self.modes1:, :self.modes2] = \
             compl_mul2d(x_ft[:, :, -self.modes1:, :self.modes2], self.weights2)
 
         #Return to physical space
-        x = torch.fft.irfft2(out_ft, s=( x.size(-2), x.size(-1)))
+        x = torch.fft.irfft2(out_ft, s=(x.size(-2), x.size(-1)))
         return x
