@@ -1,11 +1,11 @@
 import operator
 
-from torch.nn import Module
 from functools import reduce
 from lafomo.nn import SimpleBlock1d, SimpleBlock2d
+from lafomo.models import LFM
 
 
-class OperatorModel(Module):
+class NeuralOperator(LFM):
     def __init__(self, block_dim, modes, width):
         super().__init__()
         if block_dim == 1:
