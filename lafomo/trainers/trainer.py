@@ -41,7 +41,7 @@ class Trainer:
         self.use_natural_gradient = len(self.optimizers) > 1
         self.batch_size = batch_size
         self.data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
-        self.losses = np.empty((0, 2))
+        self.losses = None
         self.give_output = give_output
         self.train_mask = train_mask
         self.checkpoint_dir = checkpoint_dir
@@ -49,13 +49,6 @@ class Trainer:
         if track_parameters is not None:
             named_params = dict(lfm.named_parameters())
             self.parameter_trace = {key: [named_params[key].detach()] for key in track_parameters}
-
-    def initial_value(self, y):
-        initial_value = torch.zeros((self.batch_size, 1), dtype=torch.float64)
-        initial_value = initial_value.cuda() if is_cuda() else initial_value
-        if self.give_output:
-            initial_value = y[0]
-        return initial_value.repeat(self.lfm.config.num_samples, 1, 1)  # Add batch dimension for sampling
 
     def train(self, epochs=20, report_interval=1, **kwargs):
         self.lfm.train()
@@ -76,8 +69,10 @@ class Trainer:
                 if isinstance(self.lfm, gpytorch.models.GP):
                     kernel = self.lfm.covar_module
                     print(f') λ: {str(kernel.lengthscale.view(-1).detach().numpy())}', end='')
-                else:
+                elif hasattr(self.lfm, 'gp_model'):
                     print(f') kernel: {self.lfm.summarise_gp_hyp()}', end='')
+                else:
+                    print(')', end='')
                 self.print_extra()
                 if self.checkpoint_dir is not None:
                     self.lfm.save(self.checkpoint_dir / f'epoch{epoch}')
@@ -86,8 +81,9 @@ class Trainer:
             self.after_epoch()
             self.num_epochs += 1
 
-
         losses = np.array(losses)
+        if self.losses is None:
+            self.losses = np.empty((0, losses.shape[1]))
         self.losses = np.concatenate([self.losses, losses], axis=0)
         return times
 
