@@ -9,6 +9,7 @@ from .datasets import (
     DrosophilaSpatialTranscriptomics
 )
 from .lotkavolterra import DeterministicLotkaVolterra
+from .toy_spatial import ToyReactionDiffusion
 
 
 __all__ = [
@@ -23,6 +24,7 @@ __all__ = [
     'TranscriptomicTimeSeries',
     'ToyTimeSeries',
     'ToySpatialTranscriptomics',
+    'ToyReactionDiffusion',
     'DrosophilaSpatialTranscriptomics',
     'DeterministicLotkaVolterra',
 ]

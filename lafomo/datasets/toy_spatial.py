@@ -12,12 +12,13 @@ class ToyReactionDiffusion(LFMDataset):
 
     """
 
-    def __init__(self):
+    def __init__(self, lengthscale=None, decay=0.1, diffusion=0.01):
         super().__init__()
-        self.lengthscale = [0.3, 0.3]
+        l = [0.3, 0.3] if lengthscale is None else lengthscale
+        self.lengthscale = torch.tensor(l)
         self.sensitivity = torch.tensor(1.)
-        self.decay = torch.tensor(0.1)
-        self.diffusion = torch.tensor(0.01)
+        self.decay = torch.tensor(decay)
+        self.diffusion = torch.tensor(diffusion)
 
     def theta_x(self):
         return self.lengthscale[1]
@@ -36,8 +37,7 @@ class ToyReactionDiffusion(LFMDataset):
         arg2 = v - diff_t / self.theta_t()
 
         # computing the function H for the sim kernel
-        H = torch.erf(arg1).t() - torch.erf(arg2)
-        return H  # .real TODO
+        return torch.erf(arg1).t() - torch.erf(arg2)
 
     def hfun(self, t1, t2, beta_s, beta_q):
         # t1, t2 = vectors with  (time coordinates)
@@ -155,7 +155,6 @@ class ToyReactionDiffusion(LFMDataset):
         l = 1
         kern = 0
         for i in range(1, nterms + 1):
-            print(i)
             for j in range(1, nterms + 1):
                 if ((i + j) % 2) == 0:
                     # computing kernel

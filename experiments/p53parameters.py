@@ -69,7 +69,7 @@ if __name__ == "__main__":
     labels = ['Basal rates', 'Sensitivities', 'Decay rates']
 
     plotter.plot_double_bar(kinetics, labels, params_var=err, ground_truths=p53_ground_truth(),
-                            figsize=(7.5, 2.6),
+                            figsize=(6.5, 2.3),
                             yticks=[
                                 np.linspace(0, 0.12, 5),
                                 np.linspace(0, 1.2, 4),
