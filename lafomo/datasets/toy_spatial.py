@@ -1,15 +1,96 @@
 import torch
 import numpy as np
+import pandas as pd
+
+from pathlib import Path
+from scipy.special import wofz
 
 from lafomo.datasets import LFMDataset
-from scipy.special import wofz
+from lafomo.utilities.data import generate_neural_dataset
 
 PI = torch.tensor(np.pi, requires_grad=False)
 
 
-class ToyReactionDiffusion(LFMDataset):
+class ReactionDiffusion(LFMDataset):
     """
+    Reaction diffusion equations with different hyperparameter settings.
+    Generated using the `ReactionDiffusionGenerator`
+    'l1', 'l2', 'decay', 'diffusion'
+    """
+    def __init__(self, data_dir='../data/', max_n=2000, nn_format=True, ntest=50):
+        data = torch.load(Path(data_dir) / 'toydata.pt')
+        orig_data = data['orig_data']
+        x_observed = data['x_observed']
+        self.num_data = min(orig_data.shape[0], max_n)
+        self.num_outputs = 1
+        self.num_discretised = 40
+        self.orig_data = torch.cat([
+            x_observed.unsqueeze(0).repeat(self.num_data, 1, 1),
+            orig_data[:self.num_data]
+        ], dim=1)
+        params = data['params'][:self.num_data]
 
+        if nn_format:
+            train, test = generate_neural_dataset(self.orig_data, params, self.num_data - ntest, ntest)
+            self.data = train
+            self.train_data = train
+            self.test_data = test
+        else:
+            self.data = [(x_observed, orig_data[i], params[i])
+                         for i in range(self.num_data)]
+
+        self.gene_names = np.array(['toy'])
+
+
+class HomogeneousReactionDiffusion(LFMDataset):
+    """
+    Homogeneous meaning the decay, sensitivity, diffusion, and lengthscale hyperparameters are all fixed at:
+    S=1, l1=0.3, l2=0.3, λ=0.1, D=0.01
+    This is the toy dataset from López-Lopera et al. (2019)
+    https://arxiv.org/abs/1808.10026
+    Data download: https://github.com/anfelopera/PhysicallyGPDrosophila
+    nn_format is compatible with neural operator models.
+    """
+    def __init__(self, data_dir='../data/', one_fixed_sample=True, highres=False, nn_format=None, ntest=50, sub=1):
+        if one_fixed_sample:
+            data = pd.read_csv(Path(data_dir) / 'demToy1GPmRNA.csv')
+            nn_format = False
+        else:
+            if highres:
+                data = pd.read_csv(Path(data_dir) / 'toy_GPmRNA_N50highres.csv')
+            else:
+                data = pd.read_csv(Path(data_dir) / 'toy_GPmRNA_N1050.csv')
+            nn_format = True if nn_format is None else nn_format
+        num_per_data = np.unique(data.values[:, 0]).shape[0] * np.unique(data.values[:, 1]).shape[0]
+        self.num_data = data.values.shape[0] // num_per_data
+        print(data.values.shape)
+        self.orig_data = torch.tensor(data.values).reshape(self.num_data, num_per_data, 4).permute(0, 2, 1)
+        self.num_outputs = 1
+
+        x_observed = torch.tensor(data.values[:, 0:2]).permute(1, 0)
+        num_data = x_observed.shape[1] // num_per_data
+        data = torch.tensor(data.values[:, 3]).unsqueeze(0)
+        self.num_discretised = 40
+        self.gene_names = np.array(['toy'])
+
+        if nn_format:
+            params = torch.tensor([0.3, 0.3, 0.1, 0.01]).unsqueeze(0).repeat(self.orig_data.shape[0], 1)
+            train, test = generate_neural_dataset(self.orig_data, params, self.num_data - ntest, ntest, sub=sub)
+            self.data = train
+            self.train_data = train
+            self.test_data = test
+        else:
+            self.data = [
+                (x_observed[:, num_per_data*i:num_per_data*(i+1)], data[:, num_per_data*i:num_per_data*(i+1)])
+                for i in range(num_data)
+            ]
+
+
+class ReactionDiffusionGenerator:
+    """
+    Reaction Diffusion LFM generator (transcribed from R to Python by Jacob Moss).
+    The original author for the R code for the reaction diffusion equation is López-Lopera et al. (2019)
+    https://github.com/anfelopera/PhysicallyGPDrosophila
     """
 
     def __init__(self, lengthscale=None, decay=0.1, diffusion=0.01):
@@ -207,3 +288,30 @@ class ToyReactionDiffusion(LFMDataset):
         Kuy = self.kuy(tx1, tx2)
         Kyu = Kuy.t()  # self.kyu(tx1, tx2)
         return Kuu, Kyy, Kyu, Kuy
+
+    def save_dataset(self, data_dir='../data'):
+        """
+        data_dir: the directory where the toy data and intermediate data lies. Will also be saved here.
+        """
+        temp = pd.read_csv(Path(data_dir) / 'demToy1GPmRNA.csv').values
+        toydata = torch.load(Path(data_dir) / 'intermediate_toydata.pt')
+        params_list = list()
+        orig_data = list()
+        num_samples = toydata[0]['samples'].shape[0]
+        x_observed = torch.tensor(temp[:, 0:2]).permute(1, 0)
+
+        for i in range(len(toydata)):
+            params = torch.tensor([toydata[i][key] for key in ['l1', 'l2', 'decay', 'diffusion']])
+            samples = toydata[i]['samples']
+            for sample in range(num_samples):
+                lf = samples[sample, 1681:]
+                out = samples[sample, :1681]
+                lf_out = torch.stack([lf, out], dim=0)
+                orig_data.append(lf_out)
+                params_list.append(params)
+        params = torch.stack(params_list)
+        orig_data = torch.stack(orig_data)
+        shuffle = torch.randperm(orig_data.size()[0])
+        orig_data = orig_data[shuffle]
+        params = params[shuffle]
+        torch.save({'x_observed': x_observed, 'orig_data': orig_data, 'params': params}, Path(data_dir) / 'toydata.pt')

@@ -1,10 +1,8 @@
 import torch
 import numpy as np
 
-from lafomo.datasets import LFMDataset
 
-
-def flatten_dataset(dataset: LFMDataset):
+def flatten_dataset(dataset):
     num_genes = dataset.num_outputs
     train_t = dataset[0][0]
     num_times = train_t.shape[0]
@@ -36,3 +34,30 @@ def hafner_ground_truth():
         0.592101838, 0.284200056, 0.399638904, 0.463468107])
     b = np.zeros_like(d)
     return b, s, d
+
+
+def generate_neural_dataset(txf, params, ntrain, ntest, sub=1):
+    tx = txf[0, 0:2]
+    print(tx.shape, txf.shape, params.shape)
+    s = tx[0, :].unique().shape[0]
+    grid = tx.t()
+    grid = torch.tensor(grid.reshape(1, s, s, 2), dtype=torch.float)
+
+    data = txf.permute(0, 2, 1)
+    print('params', params.shape)
+    data = torch.tensor(data.reshape(data.shape[0], s, s, 4), dtype=torch.float)
+    grid = grid[:, ::sub, ::sub, :]
+    data = data[:, ::sub, ::sub, :]
+    s = data.shape[1]
+    y_train = data[:ntrain, ..., 2:3]
+    x_train = data[:ntrain, ..., 3]
+    y_test = data[ntrain:, ..., 2:3]
+    x_test = data[ntrain:, ..., 3]
+
+    x_train = torch.cat([x_train.reshape(ntrain, s, s, 1), grid.repeat(ntrain, 1, 1, 1)], dim=3)
+    x_test = torch.cat([x_test.reshape(ntest, s, s, 1), grid.repeat(ntest, 1, 1, 1)], dim=3)
+
+    train = [(x_train[i], y_train[i], params[i].type(torch.float)) for i in range(ntrain)]
+    test = [(x_test[i], y_test[i], params[i].type(torch.float)) for i in range(ntest)]
+
+    return train, test

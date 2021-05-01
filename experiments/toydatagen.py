@@ -29,7 +29,7 @@ if __name__ == '__main__':
                         eigval, eigvec = torch.symeig(kern, eigenvectors=True)
                         eigval_root = eigval.clamp_min(0.0).sqrt()
                         corr_matrix = (eigvec * eigval_root).transpose(-1, -2)
-                        a = torch.randn(torch.Size([10, 2 * 1681]))
+                        a = torch.randn(torch.Size([50, 2 * 1681]))
                         samples = a @ corr_matrix
 
                         obj = {

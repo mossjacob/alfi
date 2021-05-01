@@ -124,3 +124,18 @@ class ToyTimeSeries(TranscriptomicTimeSeries):
             for i in range(samples.shape[0]):
                 for l in range(self.num_latents):
                     axes[1].plot(softplus(samples[i][:, l]))
+
+
+class TranscriptomicGenerator:
+
+    def __init__(self):
+        basal_rate = 0.1 + 0.3 * torch.rand(torch.Size([num_outputs, 1]), dtype=torch.float32)
+        sensitivity = 2 + 5 * torch.rand(torch.Size([num_outputs, 1]), dtype=torch.float32)
+        decay_rate = 0.2 + 2 * torch.rand(torch.Size([num_outputs, 1]), dtype=torch.float32)
+
+    def generate(self):
+        num_outputs = 10
+        datasets = list()
+        for i in range(ntrain + ntest):
+            dataset = ToyTimeSeries(num_outputs, 1, 10, params=[basal_rate, sensitivity, decay_rate], plot=False)
+            datasets.append(dataset)

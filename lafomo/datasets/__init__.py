@@ -5,11 +5,10 @@ from .datasets import (
     TranscriptomicTimeSeries,
     P53Data,
     HafnerData,
-    ToySpatialTranscriptomics,
     DrosophilaSpatialTranscriptomics
 )
 from .lotkavolterra import DeterministicLotkaVolterra
-from .toy_spatial import ToyReactionDiffusion
+from .toy_spatial import HomogeneousReactionDiffusion, ReactionDiffusion, ReactionDiffusionGenerator
 
 
 __all__ = [
@@ -23,8 +22,9 @@ __all__ = [
     'HafnerData',
     'TranscriptomicTimeSeries',
     'ToyTimeSeries',
-    'ToySpatialTranscriptomics',
-    'ToyReactionDiffusion',
+    'HomogeneousReactionDiffusion',
+    'ReactionDiffusion',
+    'ReactionDiffusionGenerator',
     'DrosophilaSpatialTranscriptomics',
     'DeterministicLotkaVolterra',
 ]
