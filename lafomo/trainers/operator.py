@@ -40,17 +40,19 @@ class NeuralOperatorTrainer(Trainer):
         train_mse = 0
         train_l2 = 0
         batch_size = self.train_loader.batch_size
-        for x, y in self.train_loader:
+        for x, y, params in self.train_loader:
             if is_cuda():
-                x, y = x.cuda(), y.cuda()
+                x, y, params = x.cuda(), y.cuda(), params.cuda()
 
             self.optimizer.zero_grad()
-            out = self.lfm(x)
+            out, params_out = self.lfm(x)
 
-            mse = mse_loss(out, y, reduction='mean')
+            mse = mse_loss(out[..., 0:1], y, reduction='mean')
             # mse.backward()
-            l2 = self.loss_fn(out.view(batch_size, -1), y.view(batch_size, -1))
-            l2.backward() # use the l2 relative loss
+            l2 = self.loss_fn(out, y.view(batch_size, -1))
+            # print(mse_loss(params_out, params, reduction='mean').item(), l2.item())
+            l2 += mse_loss(params_out, params, reduction='mean')
+            l2.backward()  # use the l2 relative loss
 
             self.optimizer.step()
             train_mse += mse.item()
@@ -61,11 +63,11 @@ class NeuralOperatorTrainer(Trainer):
         test_l2 = 0.0
         test_mse = 0.0
         with torch.no_grad():
-            for x, y in self.test_loader:
+            for x, y, params in self.test_loader:
                 # x, y = x.cuda(), y.cuda()
 
-                out = self.lfm(x)
-                test_mse += mse_loss(out, y, reduction='mean')
+                out, params_out = self.lfm(x)
+                test_mse += mse_loss(out[..., 0:1], y, reduction='mean')
                 test_l2 += self.loss_fn(
                     out.view(self.test_loader.batch_size, -1),
                     y.view(self.test_loader.batch_size, -1)).item()

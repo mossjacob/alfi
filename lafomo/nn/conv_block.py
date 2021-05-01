@@ -95,7 +95,8 @@ class SimpleBlock2d(Module):
         self.modes2 = modes2
         self.width = width
         self.fc0 = Linear(in_channels, self.width) # input channel is 3: (a(x, y), x, y)
-
+        self.fc0_parameters = Linear(self.width * self.modes1 * self.modes2, 100)
+        self.fc1_parameters = Linear(100, 4)
         self.conv0 = SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
         self.conv1 = SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
         self.conv2 = SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
@@ -107,7 +108,7 @@ class SimpleBlock2d(Module):
 
 
         self.fc1 = Linear(self.width, 128)
-        self.fc2 = Linear(128, 1)
+        self.fc2 = Linear(128, 2)
 
     def forward(self, x):
         batchsize = x.shape[0]
@@ -115,28 +116,38 @@ class SimpleBlock2d(Module):
 
         x = self.fc0(x)
         x = x.permute(0, 3, 1, 2)
-
-        x1 = self.conv0(x)
+        out_fts = 0
+        x1, out_ft = self.conv0(x)
+        # out_ft = torch.zeros(batchsize, self.in_channels,  x.size(-2), x.size(-1)//2 + 1,
+        out_fts += out_ft
         x2 = self.w0(x.view(batchsize, self.width, -1)).view(batchsize, self.width, size_x, size_y)
         x = x1 + x2
         x = F.relu(x)
 
-        x1 = self.conv1(x)
+        x1, out_ft = self.conv1(x)
+        out_fts += out_ft
         x2 = self.w1(x.view(batchsize, self.width, -1)).view(batchsize, self.width, size_x, size_y)
         x = x1 + x2
         x = F.relu(x)
 
-        x1 = self.conv2(x)
+        x1, out_ft = self.conv2(x)
+        out_fts += out_ft
         x2 = self.w2(x.view(batchsize, self.width, -1)).view(batchsize, self.width, size_x, size_y)
         x = x1 + x2
         x = F.relu(x)
 
-        x1 = self.conv3(x)
+        x1, out_ft = self.conv3(x)
+        out_fts += out_ft
         x2 = self.w3(x.view(batchsize, self.width, -1)).view(batchsize, self.width, size_x, size_y)
         x = x1 + x2
+
+        params = self.fc0_parameters(out_fts[:, :, :self.modes1, :self.modes2].real.reshape(batchsize, -1))
+        params = self.fc1_parameters(params)
+        # print('params', params.shape)
+        # out_ft[:, :, -self.modes1:, :self.modes2] = \
 
         x = x.permute(0, 2, 3, 1)
         x = self.fc1(x)
         x = F.relu(x)
         x = self.fc2(x)
-        return x
+        return x, params
