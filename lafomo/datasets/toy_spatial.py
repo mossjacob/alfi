@@ -63,7 +63,7 @@ class HomogeneousReactionDiffusion(LFMDataset):
             nn_format = True if nn_format is None else nn_format
         num_per_data = np.unique(data.values[:, 0]).shape[0] * np.unique(data.values[:, 1]).shape[0]
         self.num_data = data.values.shape[0] // num_per_data
-        print(data.values.shape)
+
         self.orig_data = torch.tensor(data.values).reshape(self.num_data, num_per_data, 4).permute(0, 2, 1)
         self.num_outputs = 1
 
@@ -96,10 +96,10 @@ class ReactionDiffusionGenerator:
     def __init__(self, lengthscale=None, decay=0.1, diffusion=0.01):
         super().__init__()
         l = [0.3, 0.3] if lengthscale is None else lengthscale
-        self.lengthscale = torch.tensor(l)
-        self.sensitivity = torch.tensor(1.)
-        self.decay = torch.tensor(decay)
-        self.diffusion = torch.tensor(diffusion)
+        self.lengthscale = torch.tensor(l, dtype=torch.float64)
+        self.sensitivity = torch.tensor(1., dtype=torch.float64)
+        self.decay = torch.tensor(decay, dtype=torch.float64)
+        self.diffusion = torch.tensor(diffusion, dtype=torch.float64)
 
     def theta_x(self):
         return self.lengthscale[1]
@@ -235,14 +235,21 @@ class ReactionDiffusionGenerator:
         nterms = 10
         l = 1
         kern = 0
+        cache = dict()
         for i in range(1, nterms + 1):
             for j in range(1, nterms + 1):
                 if ((i + j) % 2) == 0:
                     # computing kernel
-                    kernt = self.simXsimKernCompute(tx1[:, 0], tx2[:, 0], i, j, l)
-                    kernx = self.sheatXsheatKernCompute(tx1[:, 1], tx2[:, 1], i, j, l)
-                    # print('kernt', kernt)
-                    # print(kernt.shape, kernx.shape)
+                    key = f'{j},{i}'
+                    if key in cache.keys():
+                        kernt = cache[key][0].t()
+                        kernx = cache[key][1].t()
+                    else:
+                        kernt = self.simXsimKernCompute(tx1[:, 0], tx2[:, 0], i, j, l)
+                        kernx = self.sheatXsheatKernCompute(tx1[:, 1], tx2[:, 1], i, j, l)
+                        key = f'{i},{j}'
+                        cache[key] = [kernt, kernx]
+
                     kern = kern + kernt * kernx
 
         kern = ((2 * self.sensitivity / l) ** 2) * kern
@@ -281,6 +288,8 @@ class ReactionDiffusionGenerator:
         return torch.exp(-dist_t - dist_x)
 
     def joint(self, tx1, tx2):
+        tx1 = tx1.type(torch.float64)
+        tx2 = tx2.type(torch.float64)
         Kuu = Kyy = Kuy = Kyu = torch.zeros(10)
         # Kuu = self.prior(tx1[:, :2], tx2[:, :2])
         Kuu = self.kuu(tx1, tx2)

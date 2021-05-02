@@ -1,5 +1,5 @@
 import torch
-
+from pathlib import Path
 from torch.nn import Parameter
 from gpytorch.likelihoods import MultitaskGaussianLikelihood
 from gpytorch.mlls import VariationalELBO
@@ -22,7 +22,7 @@ class ToyTimeSeries(TranscriptomicTimeSeries):
         self.num_disc = 9
         self.plot = plot
         from lafomo.models import OrdinaryLFM, generate_multioutput_rbf_gp
-        from lafomo.plot import Plotter
+
         class ToyLFM(OrdinaryLFM):
             """
             This LFM is to generate toy data.
@@ -126,6 +126,18 @@ class ToyTimeSeries(TranscriptomicTimeSeries):
                     axes[1].plot(softplus(samples[i][:, l]))
 
 
+class ToyTranscriptomics():
+    def __init__(self, data_dir='../data'):
+        data = torch.load(Path(data_dir) / 'toy_transcriptomics.pt')
+        train = data['train_x']
+
+        train = [(x_train[i], y_train[i], params[i].type(torch.float)) for i in range(ntrain)]
+        test = [(x_test[i], y_test[i], params[i].type(torch.float)) for i in range(ntest)]
+
+        self.train_data = train
+        self.test_data = test
+
+
 class TranscriptomicGenerator:
 
     def __init__(self):
@@ -133,9 +145,24 @@ class TranscriptomicGenerator:
         sensitivity = 2 + 5 * torch.rand(torch.Size([num_outputs, 1]), dtype=torch.float32)
         decay_rate = 0.2 + 2 * torch.rand(torch.Size([num_outputs, 1]), dtype=torch.float32)
 
-    def generate(self):
+    def generate(self, ntrain, ntest, data_dir):
         num_outputs = 10
         datasets = list()
         for i in range(ntrain + ntest):
+            basal_rate = 0.1 + 0.3 * torch.rand(torch.Size([num_outputs, 1]), dtype=torch.float32)
+            sensitivity = 2 + 5 * torch.rand(torch.Size([num_outputs, 1]), dtype=torch.float32)
+            decay_rate = 0.2 + 2 * torch.rand(torch.Size([num_outputs, 1]), dtype=torch.float32)
+
             dataset = ToyTimeSeries(num_outputs, 1, 10, params=[basal_rate, sensitivity, decay_rate], plot=False)
             datasets.append(dataset)
+        x_train = torch.cat([dataset.m_observed for dataset in datasets[:ntrain]]).permute(0, 2, 1)
+        x_test = torch.cat([dataset.m_observed for dataset in datasets[ntrain:]]).permute(0, 2, 1)
+        grid = datasets[0].t_observed.reshape(1, -1, 1).repeat(ntrain, 1, 1) # (1, 32, 32, 40, 1)
+        grid_test = datasets[0].t_observed.reshape(1, -1, 1).repeat(ntest, 1, 1) # (1, 32, 32, 40, 1)
+
+        x_train = torch.cat([grid, x_train], dim=-1)
+        x_test = torch.cat([grid_test, x_test], dim=-1)
+        y_train = torch.cat([dataset.f_observed for dataset in datasets[:ntrain]]).permute(0, 2, 1)
+        y_test = torch.cat([dataset.f_observed for dataset in datasets[ntrain:]]).permute(0, 2, 1)
+        torch.save({'x_train': x_train, 'x_test': x_test,
+                    'y_train': y_train, 'y_test': y_test}, Path(data_dir) / 'toy_transcriptomics.pt')
