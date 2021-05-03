@@ -1,11 +1,11 @@
 import torch
 import numpy as np
 
-from lafomo.datasets import ReactionDiffusion, ReactionDiffusionGenerator
+from lafomo.datasets import HomogeneousReactionDiffusion, ReactionDiffusionGenerator
 
 
 if __name__ == '__main__':
-    dataset = ReactionDiffusion(data_dir='./data/', nn_format=False)
+    dataset = HomogeneousReactionDiffusion(data_dir='./data/', nn_format=False)
     tx = torch.tensor(dataset.orig_data[0]).t()
     with torch.no_grad():
         tot = 4 * 4 * 5 * 5

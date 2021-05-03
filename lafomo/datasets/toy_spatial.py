@@ -24,9 +24,13 @@ class ReactionDiffusion(LFMDataset):
         self.num_data = min(orig_data.shape[0], max_n)
         self.num_outputs = 1
         self.num_discretised = 40
+
+        tx = x_observed.t()[:, 0:2]
+        t_sorted = np.argsort(tx[:, 0], kind='mergesort')
+        x_observed = x_observed[:, t_sorted]
         self.orig_data = torch.cat([
             x_observed.unsqueeze(0).repeat(self.num_data, 1, 1),
-            orig_data[:self.num_data]
+            orig_data[:self.num_data, :, t_sorted]
         ], dim=1)
         params = data['params'][:self.num_data]
 
@@ -36,7 +40,7 @@ class ReactionDiffusion(LFMDataset):
             self.train_data = train
             self.test_data = test
         else:
-            self.data = [(x_observed, orig_data[i], params[i])
+            self.data = [(x_observed, orig_data[i, :, t_sorted], params[i])
                          for i in range(self.num_data)]
 
         self.gene_names = np.array(['toy'])
@@ -54,7 +58,7 @@ class HomogeneousReactionDiffusion(LFMDataset):
     def __init__(self, data_dir='../data/', one_fixed_sample=True, highres=False, nn_format=None, ntest=50, sub=1):
         if one_fixed_sample:
             data = pd.read_csv(Path(data_dir) / 'demToy1GPmRNA.csv')
-            nn_format = False
+            nn_format = False if nn_format is None else nn_format
         else:
             if highres:
                 data = pd.read_csv(Path(data_dir) / 'toy_GPmRNA_N50highres.csv')
@@ -63,13 +67,17 @@ class HomogeneousReactionDiffusion(LFMDataset):
             nn_format = True if nn_format is None else nn_format
         num_per_data = np.unique(data.values[:, 0]).shape[0] * np.unique(data.values[:, 1]).shape[0]
         self.num_data = data.values.shape[0] // num_per_data
-
         self.orig_data = torch.tensor(data.values).reshape(self.num_data, num_per_data, 4).permute(0, 2, 1)
         self.num_outputs = 1
 
-        x_observed = torch.tensor(data.values[:, 0:2]).permute(1, 0)
+        tx = self.orig_data[0, 0:2, :]
+        t_sorted = np.argsort(tx[0, :], kind='mergesort')
+        values = data.values[t_sorted]
+        self.orig_data = self.orig_data[..., t_sorted]
+
+        x_observed = torch.tensor(values[:, 0:2]).permute(1, 0)
         num_data = x_observed.shape[1] // num_per_data
-        data = torch.tensor(data.values[:, 3]).unsqueeze(0)
+        data = torch.tensor(values[:, 3]).unsqueeze(0)
         self.num_discretised = 40
         self.gene_names = np.array(['toy'])
 

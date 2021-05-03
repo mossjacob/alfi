@@ -7,6 +7,7 @@ import pandas as pd
 from scipy.io import loadmat
 
 from lafomo.datasets import load_barenco_puma
+from lafomo.utilities.data import generate_neural_dataset
 from . import LFMDataset
 
 from tqdm import tqdm
@@ -156,7 +157,7 @@ class DrosophilaSpatialTranscriptomics(LFMDataset):
     Reverse engineering post-transcriptional regulation of
     gap genes in Drosophila melanogaster
     """
-    def __init__(self, gene='kr', data_dir='../data/', scale=False):
+    def __init__(self, gene='kr', data_dir='../data/', scale=False, nn_format=True):
         indents = {'kr': 64, 'kni': 56, 'gt': 60}
         assert gene in indents
         data = pd.read_csv(path.join(data_dir, f'clean_{gene}.csv'))
@@ -166,13 +167,23 @@ class DrosophilaSpatialTranscriptomics(LFMDataset):
             scaler = MinMaxScaler()
             data[:, 3:4] = scaler.fit_transform(data[:, 3:4])
             data[:, 2:3] = scaler.transform(data[:, 2:3])
-        self.orig_data = data
+            data[:, 0:1] = scaler.fit_transform(data[:, 0:1])
+            data[:, 1:2] = scaler.fit_transform(data[:, 1:2])
+
+        self.orig_data = torch.tensor(data)
         self.num_outputs = 1
         self.num_discretised = 7
         x_observed = torch.tensor(data[:, 0:2]).permute(1, 0)
         data = torch.tensor(data[:, 3]).unsqueeze(0)
-        self.data = [(x_observed, data)]
         self.gene_names = np.array([gene])
+        if nn_format:
+            params = torch.tensor([-1.]*4).unsqueeze(0)
+            train, test = generate_neural_dataset(self.orig_data.t().unsqueeze(0), params, 1, 0)
+            self.data = train
+            self.train_data = train
+            self.test_data = test
+        else:
+            self.data = [(x_observed, data)]
 
 
 class MarkovJumpProcess:
