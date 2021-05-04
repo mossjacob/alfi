@@ -1,13 +1,13 @@
 import torch
 from pathlib import Path
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from scipy.integrate import odeint
 import numpy as np
 import pandas as pd
 from scipy.io import loadmat
 
 from lafomo.datasets import load_barenco_puma
-from lafomo.utilities.data import generate_neural_dataset
+from lafomo.utilities.data import generate_neural_dataset_2d
 from . import LFMDataset
 
 from tqdm import tqdm
@@ -56,10 +56,17 @@ class P53Data(TranscriptomicTimeSeries):
         m_observed = torch.tensor(m_observed)
         self.t_observed = torch.linspace(f64(0), f64(12), 7)
         self.m_observed = m_observed
+        self.f_observed = torch.tensor([0.7116,0.7008,1.5933,0.7507,0.2346,0.3617,0.0673]).view(1, 1, 7)
+        self.params = torch.tensor([
+            0.06374478, 0.01870999, 0.0182909,  0.0223461,  0.08485352, 0.9133557, 0.9743523,
+            0.9850107,  1., 0.974792,   0.27596828, 0.367931, 0.35159853, 0.79999995, 0.34772962
+        ])
         if replicate is None:
             self.variance = np.array([f64(σ2_m_pre)[r, i] for r in range(num_replicates) for i in range(num_genes)])
             self.data = [(self.t_observed, m_observed[r, i]) for r in range(num_replicates) for i in range(num_genes)]
         else:
+            self.m_observed = self.m_observed[replicate:replicate+1]
+            self.f_observed = self.f_observed[replicate:replicate+1]
             self.variance = np.array([f64(σ2_m_pre)[replicate, i] for i in range(num_genes)])
             self.data = [(self.t_observed, m_observed[replicate, i]) for i in range(num_genes)]
 
@@ -164,9 +171,10 @@ class DrosophilaSpatialTranscriptomics(LFMDataset):
         data = data.iloc[indents[gene]:].values
         data = data[:, [0, 1, 3, 2]]
         if scale:
+            scaler = StandardScaler()
+            data[:, 2:3] = scaler.fit_transform(data[:, 2:3])
+            data[:, 3:4] = scaler.transform(data[:, 3:4])
             scaler = MinMaxScaler()
-            data[:, 3:4] = scaler.fit_transform(data[:, 3:4])
-            data[:, 2:3] = scaler.transform(data[:, 2:3])
             data[:, 0:1] = scaler.fit_transform(data[:, 0:1])
             data[:, 1:2] = scaler.fit_transform(data[:, 1:2])
 
@@ -178,7 +186,7 @@ class DrosophilaSpatialTranscriptomics(LFMDataset):
         self.gene_names = np.array([gene])
         if nn_format:
             params = torch.tensor([-1.]*4).unsqueeze(0)
-            train, test = generate_neural_dataset(self.orig_data.t().unsqueeze(0), params, 1, 0)
+            train, test = generate_neural_dataset_2d(self.orig_data.t().unsqueeze(0), params, 1, 0)
             self.data = train
             self.train_data = train
             self.test_data = test

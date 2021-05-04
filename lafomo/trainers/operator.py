@@ -33,12 +33,14 @@ class NeuralOperatorTrainer(Trainer):
 
         self.scheduler = StepLR(self.optimizer, step_size=step_size, gamma=gamma)
 
-        self.loss_fn = LpLoss(size_average=False)
+        self.loss_fn = LpLoss(size_average=True)
 
     def single_epoch(self, step_size=1e-1, epoch=0, **kwargs):
         self.lfm.train()
         train_mse = 0
         train_l2 = 0
+        train_loss = 0
+        train_params_mse = 0
         batch_size = self.train_loader.batch_size
         for x, y, params in self.train_loader:
             if is_cuda():
@@ -50,31 +52,40 @@ class NeuralOperatorTrainer(Trainer):
             mse = mse_loss(out[..., 0:1], y, reduction='mean')
             # mse.backward()
             l2 = self.loss_fn(out, y.view(batch_size, -1))
-            # print(mse_loss(params_out, params, reduction='mean').item(), l2.item())
-            l2 += mse_loss(params_out, params, reduction='mean')
-            l2.backward()  # use the l2 relative loss
+            params_mse = mse_loss(params_out, params.view(batch_size, -1), reduction='mean')
+            total_loss = l2 + params_mse
 
+            total_loss.backward()  # use the l2 relative loss
             self.optimizer.step()
+
             train_mse += mse.item()
             train_l2 += l2.item()
+            train_loss += total_loss.item()
+            train_params_mse += params_mse.item()
 
         self.scheduler.step()
         self.lfm.eval()
+
         test_l2 = 0.0
         test_mse = 0.0
+        test_params_mse = 0.0
+        test_loss = 0.0
         with torch.no_grad():
             for x, y, params in self.test_loader:
                 # x, y = x.cuda(), y.cuda()
-
                 out, params_out = self.lfm(x)
-                test_mse += mse_loss(out[..., 0:1], y, reduction='mean')
-                test_l2 += self.loss_fn(
-                    out.view(self.test_loader.batch_size, -1),
-                    y.view(self.test_loader.batch_size, -1)).item()
 
+                test_mse += mse_loss(out[..., 0:1], y, reduction='mean')
+                test_l2 += self.loss_fn(out, y.view(self.test_loader.batch_size, -1)).item()
+                test_params_mse += mse_loss(params_out, params.view(self.test_loader.batch_size, -1), reduction='mean')
+                test_loss += test_l2 + test_params_mse
         train_mse /= len(self.train_loader)
         train_l2 /= len(self.train_loader)
+        train_params_mse /= len(self.train_loader)
+        train_loss /= len(self.train_loader)
         test_l2 /= len(self.test_loader)
         test_mse /= len(self.test_loader)
+        test_params_mse /= len(self.test_loader)
+        test_loss /= len(self.test_loader)
 
-        return train_l2, (train_mse, test_mse, test_l2)
+        return train_loss, (test_loss, train_l2, test_l2, train_params_mse, test_params_mse)

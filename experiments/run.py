@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from pathlib import Path
 
 from lafomo.datasets import (
-    P53Data, HafnerData, ToyTimeSeries,
+    P53Data, HafnerData, ToyTimeSeries, ToyTranscriptomicGenerator,
     ToySpatialTranscriptomics, DrosophilaSpatialTranscriptomics,
     DeterministicLotkaVolterra,
 )
@@ -53,7 +53,7 @@ datasets = {
     'hafner': lambda: HafnerData(replicate=0, data_dir='data', extra_targets=False),
     'toy-spatial': lambda: ToySpatialTranscriptomics(data_dir='data'),
     'dros-kr': lambda: DrosophilaSpatialTranscriptomics(gene='kr', data_dir='data', scale=True),
-    'toy': lambda: ToyTimeSeries(),
+    'toy': lambda: ToyTranscriptomicGenerator().generate_single(),
     'lotka': lambda: DeterministicLotkaVolterra(alpha = 2./3, beta = 4./3,
                                                 gamma = 1., delta = 1.,
                                                 steps=13, end_time=12, fixed_initial=0.8),

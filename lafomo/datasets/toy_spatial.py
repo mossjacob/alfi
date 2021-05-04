@@ -6,7 +6,7 @@ from pathlib import Path
 from scipy.special import wofz
 
 from lafomo.datasets import LFMDataset
-from lafomo.utilities.data import generate_neural_dataset
+from lafomo.utilities.data import generate_neural_dataset_2d
 
 PI = torch.tensor(np.pi, requires_grad=False)
 
@@ -35,7 +35,7 @@ class ReactionDiffusion(LFMDataset):
         params = data['params'][:self.num_data]
 
         if nn_format:
-            train, test = generate_neural_dataset(self.orig_data, params, self.num_data - ntest, ntest)
+            train, test = generate_neural_dataset_2d(self.orig_data, params, self.num_data - ntest, ntest)
             self.data = train
             self.train_data = train
             self.test_data = test
@@ -83,7 +83,7 @@ class HomogeneousReactionDiffusion(LFMDataset):
 
         if nn_format:
             params = torch.tensor([0.3, 0.3, 0.1, 0.01]).unsqueeze(0).repeat(self.orig_data.shape[0], 1)
-            train, test = generate_neural_dataset(self.orig_data, params, self.num_data - ntest, ntest, sub=sub)
+            train, test = generate_neural_dataset_2d(self.orig_data, params, self.num_data - ntest, ntest, sub=sub)
             self.data = train
             self.train_data = train
             self.test_data = test

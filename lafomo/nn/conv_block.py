@@ -1,3 +1,4 @@
+import torch
 import torch.nn.functional as F
 
 from torch.nn import Module, Linear, Conv1d
@@ -29,6 +30,8 @@ class SimpleBlock1d(Module):
         self.modes1 = modes
         self.width = width
         self.fc0 = Linear(in_channels, self.width)
+        self.fc0_parameters = Linear(self.width * 4*self.modes1, 100)
+        self.fc1_parameters = Linear(100, 5*3)
 
         self.conv0 = SpectralConv1d(self.width, self.width, self.modes1)
         self.conv1 = SpectralConv1d(self.width, self.width, self.modes1)
@@ -39,39 +42,47 @@ class SimpleBlock1d(Module):
         self.w2 = Conv1d(self.width, self.width, 1)
         self.w3 = Conv1d(self.width, self.width, 1)
 
-
         self.fc1 = Linear(self.width, 128)
-        self.fc2 = Linear(128, 1)
+        self.fc2 = Linear(128, 2)
 
     def forward(self, x):
-
+        batchsize = x.shape[0]
         x = self.fc0(x)
         x = x.permute(0, 2, 1)
 
-        x1 = self.conv0(x)
+        out_fts = torch.zeros(batchsize, self.width, self.modes1*4)
+        x1, out_ft = self.conv0(x)
+        out_fts[..., :self.modes1] = out_ft[..., :self.modes1].real
         x2 = self.w0(x)
         x = x1 + x2
         x = F.relu(x)
 
-        x1 = self.conv1(x)
+        x1, out_ft = self.conv1(x)
+        out_fts[..., self.modes1:2*self.modes1] = out_ft[..., :self.modes1].real
         x2 = self.w1(x)
         x = x1 + x2
         x = F.relu(x)
 
-        x1 = self.conv2(x)
+        x1, out_ft = self.conv2(x)
+        out_fts[..., 2*self.modes1:3*self.modes1] = out_ft[..., :self.modes1].real
         x2 = self.w2(x)
         x = x1 + x2
         x = F.relu(x)
 
-        x1 = self.conv3(x)
+        x1, out_ft = self.conv3(x)
+        out_fts[..., 3*self.modes1:4*self.modes1] = out_ft[..., :self.modes1].real
         x2 = self.w3(x)
         x = x1 + x2
+
+        params = self.fc0_parameters(out_fts.reshape(batchsize, -1))
+        params = F.relu(params)
+        params = self.fc1_parameters(params)
 
         x = x.permute(0, 2, 1)
         x = self.fc1(x)
         x = F.relu(x)
         x = self.fc2(x)
-        return x
+        return x, params
 
 
 class SimpleBlock2d(Module):
@@ -95,8 +106,8 @@ class SimpleBlock2d(Module):
         self.modes2 = modes2
         self.width = width
         self.fc0 = Linear(in_channels, self.width) # input channel is 3: (a(x, y), x, y)
-        self.fc0_parameters = Linear(self.width * self.modes1 * self.modes2, 100)
-        self.fc1_parameters = Linear(100, 4)
+        self.fc0_parameters = Linear(self.width * 4*self.modes1 * 4*self.modes2, 200)
+        self.fc1_parameters = Linear(200, 4)
         self.conv0 = SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
         self.conv1 = SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
         self.conv2 = SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
@@ -105,7 +116,6 @@ class SimpleBlock2d(Module):
         self.w1 = Conv1d(self.width, self.width, 1)
         self.w2 = Conv1d(self.width, self.width, 1)
         self.w3 = Conv1d(self.width, self.width, 1)
-
 
         self.fc1 = Linear(self.width, 128)
         self.fc2 = Linear(128, 2)
@@ -116,32 +126,36 @@ class SimpleBlock2d(Module):
 
         x = self.fc0(x)
         x = x.permute(0, 3, 1, 2)
-        out_fts = 0
+        out_fts = torch.zeros(batchsize, self.width, self.modes1*4, self.modes2*4)
         x1, out_ft = self.conv0(x)
         # out_ft = torch.zeros(batchsize, self.in_channels,  x.size(-2), x.size(-1)//2 + 1,
-        out_fts += out_ft
+        out_fts[..., :self.modes1, :self.modes2] = out_ft[..., :self.modes1, :self.modes2].real
         x2 = self.w0(x.view(batchsize, self.width, -1)).view(batchsize, self.width, size_x, size_y)
         x = x1 + x2
         x = F.relu(x)
 
         x1, out_ft = self.conv1(x)
-        out_fts += out_ft
+        # out_fts += out_ft
+        out_fts[..., self.modes1:2*self.modes1, self.modes2:2*self.modes2] = out_ft[..., :self.modes1, :self.modes2].real
         x2 = self.w1(x.view(batchsize, self.width, -1)).view(batchsize, self.width, size_x, size_y)
         x = x1 + x2
         x = F.relu(x)
 
         x1, out_ft = self.conv2(x)
-        out_fts += out_ft
+        # out_fts += out_ft
+        out_fts[..., 2*self.modes1:3*self.modes1, 2*self.modes2:3*self.modes2] = out_ft[..., :self.modes1, :self.modes2].real
         x2 = self.w2(x.view(batchsize, self.width, -1)).view(batchsize, self.width, size_x, size_y)
         x = x1 + x2
         x = F.relu(x)
 
         x1, out_ft = self.conv3(x)
-        out_fts += out_ft
+        # out_fts += out_ft
+        out_fts[..., 3*self.modes1:, 3*self.modes2:] = out_ft[..., :self.modes1, :self.modes2].real
         x2 = self.w3(x.view(batchsize, self.width, -1)).view(batchsize, self.width, size_x, size_y)
         x = x1 + x2
 
-        params = self.fc0_parameters(out_fts[:, :, :self.modes1, :self.modes2].real.reshape(batchsize, -1))
+        params = self.fc0_parameters(out_fts.reshape(batchsize, -1))
+        params = F.relu(params)
         params = self.fc1_parameters(params)
         # print('params', params.shape)
         # out_ft[:, :, -self.modes1:, :self.modes2] = \

@@ -4,23 +4,76 @@ from torch.nn import Parameter
 from gpytorch.likelihoods import MultitaskGaussianLikelihood
 from gpytorch.mlls import VariationalELBO
 import numpy as np
+from tqdm import tqdm
 
 from matplotlib import pyplot as plt
 
-from .datasets import TranscriptomicTimeSeries
+from .datasets import TranscriptomicTimeSeries, LFMDataset
 from lafomo.configuration import VariationalConfiguration
-from lafomo.utilities.torch import softplus
+from lafomo.utilities.torch import softplus, discretisation_length
 
 
-class ToyTimeSeries(TranscriptomicTimeSeries):
-    """
-    This dataset stochastically generates a toy transcriptional regulation dataset.
-    """
+class ToyTranscriptomics(LFMDataset):
+    def __init__(self, data_dir='../data'):
+        data = torch.load(Path(data_dir) / 'toy_transcriptomics.pt')
+        x_train = data['x_train']
+        y_train = data['y_train']
+        x_test = data['x_test']
+        y_test = data['y_test']
+        params_train = data['params_train']
+        params_test = data['params_test']
+        ntrain = x_train.shape[0]
+        ntest = x_test.shape[0]
 
-    def __init__(self, num_outputs=30, num_latents=3, num_times=10, params=None, plot=True):
-        super().__init__()
+        train = [(x_train[i], y_train[i], params_train[i].type(torch.float)) for i in range(ntrain)]
+        test = [(x_test[i], y_test[i], params_test[i].type(torch.float)) for i in range(ntest)]
+
+        self.train_data = train
+        self.test_data = test
+
+
+class ToyTranscriptomicGenerator(LFMDataset):
+
+    def __init__(self, num_outputs=30, num_latents=3, num_times=10, plot=False):
+        self.num_outputs = num_outputs
+        self.num_latents = num_latents
+        self.num_times = num_times
+        basal_rate = 0.1 + 0.3 * torch.rand(torch.Size([num_outputs, 1]), dtype=torch.float32)
+        sensitivity = 2 + 5 * torch.rand(torch.Size([num_outputs, 1]), dtype=torch.float32)
+        decay_rate = 0.2 + 2 * torch.rand(torch.Size([num_outputs, 1]), dtype=torch.float32)
         self.num_disc = 9
         self.plot = plot
+
+    def generate(self, ntrain, ntest, data_dir):
+        datasets = list()
+        params = list()
+        for _ in tqdm(range(ntrain + ntest)):
+            basal_rate = 0.01 + 0.3 * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float32)
+            sensitivity = 0.1 + 3 * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float32)
+            decay_rate = 0.1 + 2 * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float32)
+            params.append(torch.stack([basal_rate, sensitivity, decay_rate]))
+            dataset = self.generate_single(basal_rate, sensitivity, decay_rate)
+            datasets.append([dataset.m_observed, dataset.f_observed])
+        x_train = torch.cat([obs[0] for obs in datasets[:ntrain]]).permute(0, 2, 1)
+        x_test = torch.cat([obs[0] for obs in datasets[ntrain:]]).permute(0, 2, 1)
+        grid = self.t_observed.reshape(1, -1, 1).repeat(ntrain, 1, 1)  # (1, 32, 32, 40, 1)
+        grid_test = self.t_observed.reshape(1, -1, 1).repeat(ntest, 1, 1)  # (1, 32, 32, 40, 1)
+
+        params = torch.stack(params, dim=0)
+        print(params.shape)
+        params_train = params[:ntrain].squeeze(-1)
+        params_test = params[ntrain:].squeeze(-1)
+
+        x_train = torch.cat([grid, x_train], dim=-1)
+        x_test = torch.cat([grid_test, x_test], dim=-1)
+        y_train = torch.cat([obs[1] for obs in datasets[:ntrain]]).permute(0, 2, 1)
+        y_test = torch.cat([obs[1] for obs in datasets[ntrain:]]).permute(0, 2, 1)
+
+        torch.save(dict(x_train=x_train, x_test=x_test,
+                        y_train=y_train, y_test=y_test,
+                        params_train=params_train, params_test=params_test), Path(data_dir) / 'toy_transcriptomics.pt')
+
+    def generate_single(self, basal=None, sensitivity=None, decay=None):
         from lafomo.models import OrdinaryLFM, generate_multioutput_rbf_gp
 
         class ToyLFM(OrdinaryLFM):
@@ -31,11 +84,11 @@ class ToyTimeSeries(TranscriptomicTimeSeries):
             def __init__(self, num_outputs, gp_model, config: VariationalConfiguration, **kwargs):
                 super().__init__(num_outputs, gp_model, config, **kwargs)
                 num_latents = gp_model.variational_strategy.num_tasks
-                self.decay_rate = Parameter(params[2] if params is not None else
+                self.decay_rate = Parameter(decay if decay is not None else
                                             0.2 + 2 * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float32))
-                self.basal_rate = Parameter(params[0] if params is not None else
+                self.basal_rate = Parameter(basal if basal is not None else
                                             0.1 + 0.3 * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float32))
-                self.sensitivity = Parameter(params[1] if params is not None else
+                self.sensitivity = Parameter(sensitivity if sensitivity is not None else
                                              2 + 5 * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float32))
                 weight = 0.5 + 1 * torch.randn(torch.Size([self.num_outputs, num_latents]), dtype=torch.float32)
                 num_remove = num_outputs // 2
@@ -64,32 +117,29 @@ class ToyTimeSeries(TranscriptomicTimeSeries):
                     f = torch.sigmoid(interactions)  # TF Activation Function (sigmoid)
                 return f
 
-        self.num_outputs = num_outputs
-        self.num_latents = num_latents
         config = VariationalConfiguration(
             num_samples=70,
             initial_conditions=False # TODO
         )
 
-        def calc(N, d):
-            return (N - 1) * (d + 1) + 1
 
         num_inducing = 10  # (I x m x 1)
-        inducing_points = torch.linspace(0, 12, num_inducing).repeat(num_latents, 1).view(num_latents, num_inducing, 1)
-        t_predict = torch.linspace(0, 12, calc(num_times, self.num_disc), dtype=torch.float32)
+        inducing_points = torch.linspace(0, 12, num_inducing).repeat(self.num_latents, 1).view(self.num_latents, num_inducing, 1)
+        t_predict = torch.linspace(0, 12, discretisation_length(self.num_times, self.num_disc), dtype=torch.float32)
 
-        gp_model = generate_multioutput_rbf_gp(num_latents, inducing_points,
+        gp_model = generate_multioutput_rbf_gp(self.num_latents, inducing_points,
                                                initial_lengthscale=2,
                                                gp_kwargs=dict(natural=False))
         self.train_gp(gp_model, t_predict)
         with torch.no_grad():
-            self.lfm = ToyLFM(num_outputs, gp_model, config)
+            self.lfm = ToyLFM(self.num_outputs, gp_model, config)
             q_m = self.lfm.predict_m(t_predict)
             self.t_observed_highres = t_predict
             self.t_observed = t_predict[::self.num_disc]
             self.m_observed_highres = q_m.mean.unsqueeze(0).permute(0, 2, 1)
             self.m_observed = q_m.mean[::self.num_disc].unsqueeze(0).permute(0, 2, 1)
-            self.data = [(self.t_observed, self.m_observed[0, i]) for i in range(num_outputs)]
+            self.data = [(self.t_observed, self.m_observed[0, i]) for i in range(self.num_outputs)]
+        return self
 
     def train_gp(self, gp_model, t_predict):
         q_f = gp_model(t_predict)
@@ -124,45 +174,3 @@ class ToyTimeSeries(TranscriptomicTimeSeries):
             for i in range(samples.shape[0]):
                 for l in range(self.num_latents):
                     axes[1].plot(softplus(samples[i][:, l]))
-
-
-class ToyTranscriptomics():
-    def __init__(self, data_dir='../data'):
-        data = torch.load(Path(data_dir) / 'toy_transcriptomics.pt')
-        train = data['train_x']
-
-        train = [(x_train[i], y_train[i], params[i].type(torch.float)) for i in range(ntrain)]
-        test = [(x_test[i], y_test[i], params[i].type(torch.float)) for i in range(ntest)]
-
-        self.train_data = train
-        self.test_data = test
-
-
-class TranscriptomicGenerator:
-
-    def __init__(self):
-        basal_rate = 0.1 + 0.3 * torch.rand(torch.Size([num_outputs, 1]), dtype=torch.float32)
-        sensitivity = 2 + 5 * torch.rand(torch.Size([num_outputs, 1]), dtype=torch.float32)
-        decay_rate = 0.2 + 2 * torch.rand(torch.Size([num_outputs, 1]), dtype=torch.float32)
-
-    def generate(self, ntrain, ntest, data_dir):
-        num_outputs = 10
-        datasets = list()
-        for i in range(ntrain + ntest):
-            basal_rate = 0.1 + 0.3 * torch.rand(torch.Size([num_outputs, 1]), dtype=torch.float32)
-            sensitivity = 2 + 5 * torch.rand(torch.Size([num_outputs, 1]), dtype=torch.float32)
-            decay_rate = 0.2 + 2 * torch.rand(torch.Size([num_outputs, 1]), dtype=torch.float32)
-
-            dataset = ToyTimeSeries(num_outputs, 1, 10, params=[basal_rate, sensitivity, decay_rate], plot=False)
-            datasets.append(dataset)
-        x_train = torch.cat([dataset.m_observed for dataset in datasets[:ntrain]]).permute(0, 2, 1)
-        x_test = torch.cat([dataset.m_observed for dataset in datasets[ntrain:]]).permute(0, 2, 1)
-        grid = datasets[0].t_observed.reshape(1, -1, 1).repeat(ntrain, 1, 1) # (1, 32, 32, 40, 1)
-        grid_test = datasets[0].t_observed.reshape(1, -1, 1).repeat(ntest, 1, 1) # (1, 32, 32, 40, 1)
-
-        x_train = torch.cat([grid, x_train], dim=-1)
-        x_test = torch.cat([grid_test, x_test], dim=-1)
-        y_train = torch.cat([dataset.f_observed for dataset in datasets[:ntrain]]).permute(0, 2, 1)
-        y_test = torch.cat([dataset.f_observed for dataset in datasets[ntrain:]]).permute(0, 2, 1)
-        torch.save({'x_train': x_train, 'x_test': x_test,
-                    'y_train': y_train, 'y_test': y_test}, Path(data_dir) / 'toy_transcriptomics.pt')

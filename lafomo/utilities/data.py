@@ -36,7 +36,7 @@ def hafner_ground_truth():
     return b, s, d
 
 
-def generate_neural_dataset(txf, params, ntrain, ntest, sub=1):
+def generate_neural_dataset_2d(txf, params, ntrain, ntest, sub=1):
     tx = txf[0, 0:2]
     s1 = tx[0, :].unique().shape[0]
     s2 = tx[1, :].unique().shape[0]
@@ -58,6 +58,32 @@ def generate_neural_dataset(txf, params, ntrain, ntest, sub=1):
     x_train = torch.cat([x_train.reshape(ntrain, s1, s2, 1), grid.repeat(ntrain, 1, 1, 1)], dim=3)
     x_test = torch.cat([x_test.reshape(ntest, s1, s2, 1), grid.repeat(ntest, 1, 1, 1)], dim=3)
 
+    train = [(x_train[i], y_train[i], params[i].type(torch.float)) for i in range(ntrain)]
+    test = [(x_test[i], y_test[i], params[i].type(torch.float)) for i in range(ntest)]
+
+    return train, test
+
+
+def generate_neural_dataset_1d(t_observed, datasets, params, ntrain=1, ntest=0):
+    x_train = torch.cat([obs[0] for obs in datasets[:ntrain]]).permute(0, 2, 1).type(torch.float32)
+    y_train = torch.cat([obs[1] for obs in datasets[:ntrain]]).permute(0, 2, 1).type(torch.float32)
+
+    x_test = x_train
+    y_test = x_test
+    if ntest > 0:
+        x_test = torch.cat([obs[0] for obs in datasets[ntrain:]]).permute(0, 2, 1).type(torch.float32)
+        y_test = torch.cat([obs[1] for obs in datasets[ntrain:]]).permute(0, 2, 1).type(torch.float32)
+
+    grid = t_observed.reshape(1, -1, 1).repeat(ntrain, 1, 1)  # (1, 32, 32, 40, 1)
+    grid_test = t_observed.reshape(1, -1, 1).repeat(max(ntest, 1), 1, 1)  # (1, 32, 32, 40, 1)
+
+    params = torch.stack(params, dim=0)
+    params_train = params[:ntrain].squeeze(-1)
+    params_test = params[ntrain:].squeeze(-1)
+    x_train = torch.cat([grid, x_train], dim=-1)
+    x_test = torch.cat([grid_test, x_test], dim=-1)
+
+    # return x_train, x_test, y_train, y_test, params_train, params_test
     train = [(x_train[i], y_train[i], params[i].type(torch.float)) for i in range(ntrain)]
     test = [(x_test[i], y_test[i], params[i].type(torch.float)) for i in range(ntest)]
 

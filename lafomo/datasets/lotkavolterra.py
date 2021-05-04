@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 
-from scipy.integrate import solve_ivp
+from lafomo.utilities.torch import discretisation_length
 from . import LFMDataset
 from tqdm import tqdm
 from torchdiffeq import odeint
@@ -96,14 +96,12 @@ class DeterministicLotkaVolterra(LFMDataset):
 
         def dX_dt(t, X):
             """ Return the growth rate of fox and rabbit populations. """
-            return torch.stack([ a*X[0] - b*X[0]*X[1],
-                                -c*X[1] + d*X[0]*X[1]])
+            return torch.stack([a * X[0] - b * X[0] * X[1],
+                               -c * X[1] + d * X[0] * X[1]])
 
-        def calc(N, d):
-            return (N - 1) * (d + 1) + 1
-
-        t = torch.linspace(0, self.end_time, calc(self.steps, self.num_disc))
-        X = odeint(dX_dt, torch.tensor(X_0), t, method='rk4', options=dict(step_size=1e-1))
+        t = torch.linspace(0, self.end_time, discretisation_length(self.steps, self.num_disc))
+        print(t[::self.num_disc+1])
+        X = odeint(dX_dt, torch.tensor(X_0), t, method='rk4', options=dict(step_size=5e-2))
         return t, X
 
     def __getitem__(self, index):

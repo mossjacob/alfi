@@ -37,7 +37,7 @@ class SpectralConv1d(Module):
 
         #Return to physical space
         x = torch.fft.irfft(out_ft, n=x.size(-1))
-        return x
+        return x, out_ft
 
 
 class SpectralConv2d(Module):

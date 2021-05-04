@@ -36,11 +36,12 @@ class LpLoss(object):
         x_mean = x[..., 0].view(num_examples, -1)
         x_var = softplus(x[..., 1]).view(num_examples, -1) + 1e-6
         # print(x.shape, x_mean.shape, x_var.shape)
-        diff_norms = torch.norm(x_mean.reshape(num_examples,-1) - y.reshape(num_examples,-1), self.p, 1)
-        y_norms = torch.norm(y, self.p, 1)
+        # diff_norms = torch.norm(x_mean.reshape(num_examples,-1) - y.reshape(num_examples,-1), self.p, 1)
+        # y_norms = torch.norm(y, self.p, 1)
+        # y_norms = y.square().mean(-1).sqrt()
         diff_norms = 0.5 * (torch.log(x_var) + (y - x_mean)**2 / x_var)
 
-        norms = diff_norms.sum(-1)/ y_norms# #
+        norms = diff_norms.mean(-1)#/ y_norms# #
 
         if self.reduction:
             if self.size_average:
