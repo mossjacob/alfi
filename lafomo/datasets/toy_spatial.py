@@ -131,7 +131,7 @@ class ReactionDiffusionGenerator:
     def hfun(self, t1, t2, beta_s, beta_q):
         # t1, t2 = vectors with  (time coordinates)
         v = 0.5 * self.theta_t() * beta_s
-        # print('v', v, self.theta_t(), beta_s)
+
         # diff_t = outer(t2, t1,'-')
         diff_t = t2.view(-1, 1) - t1.view(-1)
         t0 = 0. * t1
@@ -141,10 +141,7 @@ class ReactionDiffusionGenerator:
         # outer(beta_s*t2,beta_q*t1,'+')
 
         hpart2 = torch.exp(-thing) * self.Hfun(beta_s, t0, t2)
-        # print(self.Hfun(beta_s,t0,t2).min().item())
-        # print(self.Hfun(beta_s,t0,t2).max().item())
 
-        # print('sub', torch.exp(v**2), (hpart1 - hpart2)/(beta_s + beta_q))
         h = torch.exp(v ** 2) * (hpart1 - hpart2) / (beta_s + beta_q)
         return h  # .real
 
@@ -156,15 +153,9 @@ class ReactionDiffusionGenerator:
         beta_q = self.decay + self.diffusion * omega_n2
         beta_s = self.decay + self.diffusion * omega_m2
         # computing the sim kernel
-        # a = self.hfun(t1, t2, beta_s, beta_q).t()
-        # print(a.min())
-        # print(a.max())
         kern = self.hfun(t1, t2, beta_s, beta_q).t() + \
                self.hfun(t2, t1, beta_q, beta_s)
 
-        # print('hfun before1', self.hfun(t1, t2, beta_s, beta_q).t())
-        # print('hfun before2', self.hfun(t2, t1, beta_q, beta_s))
-        # print('kern hfun', kern)
         kern = 0.5 * np.sqrt(np.pi) * self.theta_t() * kern
 
         return kern
@@ -311,11 +302,12 @@ class ReactionDiffusionGenerator:
         data_dir: the directory where the toy data and intermediate data lies. Will also be saved here.
         """
         temp = pd.read_csv(Path(data_dir) / 'demToy1GPmRNA.csv').values
+        t_sorted = np.argsort(temp[:, 0], kind='mergesort')
         toydata = torch.load(Path(data_dir) / 'intermediate_toydata.pt')
         params_list = list()
         orig_data = list()
         num_samples = toydata[0]['samples'].shape[0]
-        x_observed = torch.tensor(temp[:, 0:2]).permute(1, 0)
+        x_observed = torch.tensor(temp[t_sorted, 0:2]).permute(1, 0)
 
         for i in range(len(toydata)):
             params = torch.tensor([toydata[i][key] for key in ['l1', 'l2', 'decay', 'diffusion']])
