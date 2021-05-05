@@ -101,11 +101,11 @@ class ReactionDiffusionGenerator:
     https://github.com/anfelopera/PhysicallyGPDrosophila
     """
 
-    def __init__(self, lengthscale=None, decay=0.1, diffusion=0.01):
+    def __init__(self, lengthscale=None, sensitivity=1.0, decay=0.1, diffusion=0.01):
         super().__init__()
         l = [0.3, 0.3] if lengthscale is None else lengthscale
         self.lengthscale = torch.tensor(l, dtype=torch.float64)
-        self.sensitivity = torch.tensor(1., dtype=torch.float64)
+        self.sensitivity = torch.tensor(sensitivity, dtype=torch.float64)
         self.decay = torch.tensor(decay, dtype=torch.float64)
         self.diffusion = torch.tensor(diffusion, dtype=torch.float64)
 

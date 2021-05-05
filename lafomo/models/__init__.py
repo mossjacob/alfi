@@ -11,6 +11,7 @@ modules = [
     'ExactLFM',
     'VariationalLFM',
     'OrdinaryLFM',
+    'NeuralOperator',
     'MultiOutputGP',
     'generate_multioutput_rbf_gp',
 ]
