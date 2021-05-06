@@ -11,7 +11,7 @@ Fourier neural operator for parametric partial differential equations.
 arXiv preprint arXiv:2010.08895.
 """
 class SimpleBlock1d(Module):
-    def __init__(self, in_channels, modes, width):
+    def __init__(self, in_channels, out_channels, modes, width):
         super(SimpleBlock1d, self).__init__()
 
         """
@@ -43,7 +43,7 @@ class SimpleBlock1d(Module):
         self.w3 = Conv1d(self.width, self.width, 1)
 
         self.fc1 = Linear(self.width, 128)
-        self.fc2 = Linear(128, 2)
+        self.fc2 = Linear(128, out_channels)
 
     def forward(self, x):
         batchsize = x.shape[0]
@@ -86,7 +86,7 @@ class SimpleBlock1d(Module):
 
 
 class SimpleBlock2d(Module):
-    def __init__(self, in_channels, modes1, modes2,  width):
+    def __init__(self, in_channels, out_channels, modes1, modes2,  width):
         super(SimpleBlock2d, self).__init__()
 
         """
@@ -118,7 +118,7 @@ class SimpleBlock2d(Module):
         self.w3 = Conv1d(self.width, self.width, 1)
 
         self.fc1 = Linear(self.width, 128)
-        self.fc2 = Linear(128, 2)
+        self.fc2 = Linear(128, out_channels)
 
     def forward(self, x):
         batchsize = x.shape[0]

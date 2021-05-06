@@ -38,9 +38,6 @@ class ToyTranscriptomicGenerator(LFMDataset):
         self.num_outputs = num_outputs
         self.num_latents = num_latents
         self.num_times = num_times
-        basal_rate = 0.1 + 0.3 * torch.rand(torch.Size([num_outputs, 1]), dtype=torch.float32)
-        sensitivity = 2 + 5 * torch.rand(torch.Size([num_outputs, 1]), dtype=torch.float32)
-        decay_rate = 0.2 + 2 * torch.rand(torch.Size([num_outputs, 1]), dtype=torch.float32)
         self.num_disc = 9
         self.plot = plot
 
@@ -51,8 +48,9 @@ class ToyTranscriptomicGenerator(LFMDataset):
             basal_rate = 0.01 + 0.3 * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float32)
             sensitivity = 0.1 + 3 * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float32)
             decay_rate = 0.1 + 2 * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float32)
+            lengthscale = 0.1 + 3 * torch.rand(torch.Size([1]), dtype=torch.float32)[0]
             params.append(torch.stack([basal_rate, sensitivity, decay_rate]))
-            dataset = self.generate_single(basal_rate, sensitivity, decay_rate)
+            dataset = self.generate_single(basal_rate, sensitivity, decay_rate, lengthscale=lengthscale)
             datasets.append([dataset.m_observed, dataset.f_observed])
         x_train = torch.cat([obs[0] for obs in datasets[:ntrain]]).permute(0, 2, 1)
         x_test = torch.cat([obs[0] for obs in datasets[ntrain:]]).permute(0, 2, 1)
@@ -73,7 +71,7 @@ class ToyTranscriptomicGenerator(LFMDataset):
                         y_train=y_train, y_test=y_test,
                         params_train=params_train, params_test=params_test), Path(data_dir) / 'toy_transcriptomics.pt')
 
-    def generate_single(self, basal=None, sensitivity=None, decay=None):
+    def generate_single(self, basal=None, sensitivity=None, decay=None, lengthscale=2.):
         from lafomo.models import OrdinaryLFM, generate_multioutput_rbf_gp
 
         class ToyLFM(OrdinaryLFM):
@@ -122,13 +120,12 @@ class ToyTranscriptomicGenerator(LFMDataset):
             initial_conditions=False # TODO
         )
 
-
         num_inducing = 10  # (I x m x 1)
         inducing_points = torch.linspace(0, 12, num_inducing).repeat(self.num_latents, 1).view(self.num_latents, num_inducing, 1)
         t_predict = torch.linspace(0, 12, discretisation_length(self.num_times, self.num_disc), dtype=torch.float32)
 
         gp_model = generate_multioutput_rbf_gp(self.num_latents, inducing_points,
-                                               initial_lengthscale=2,
+                                               initial_lengthscale=lengthscale,
                                                gp_kwargs=dict(natural=False))
         self.train_gp(gp_model, t_predict)
         with torch.no_grad():

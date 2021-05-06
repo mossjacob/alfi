@@ -3,11 +3,12 @@ from .exact_lfm import ExactLFM
 from .variational_lfm import VariationalLFM
 from .ordinary_lfm import OrdinaryLFM
 from .approximate_gp import MultiOutputGP, generate_multioutput_rbf_gp
-from .operator import NeuralOperator
+from .operator import NeuralOperator, NeuralLFM
 
 
 modules = [
     'LFM',
+    'NeuralLFM',
     'ExactLFM',
     'VariationalLFM',
     'OrdinaryLFM',
