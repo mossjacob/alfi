@@ -10,13 +10,13 @@ from lafomo.models import LFM
 
 
 class NeuralOperator(LFM):
-    def __init__(self, block_dim, in_channels, out_channels, modes, width):
+    def __init__(self, block_dim, in_channels, out_channels, modes, width, num_layers=4):
         super().__init__()
         self.num_outputs = 1
         if block_dim == 1:
-            self.conv = SimpleBlock1d(in_channels, out_channels, modes, width)
+            self.conv = SimpleBlock1d(in_channels, out_channels, modes, width, num_layers=num_layers)
         elif block_dim == 2:
-            self.conv = SimpleBlock2d(in_channels, out_channels, modes, modes, width)
+            self.conv = SimpleBlock2d(in_channels, out_channels, modes, modes, width, num_layers=num_layers)
         else:
             pass
 
@@ -92,9 +92,9 @@ class NeuralLFM(LFM):
         self.z_dim = z_dim
         self.block_dim = block_dim
         # Initialize networks
-        self.xy_to_r = NeuralOperator(block_dim, in_channels + 1, r_dim, modes, width)
+        self.xy_to_r = NeuralOperator(block_dim, in_channels + 1, r_dim, modes, width, num_layers=2)
         self.r_to_mu_sigma = MuSigmaEncoder(r_dim, z_dim)
-        self.xz_to_y = NeuralOperator(block_dim, in_channels + z_dim, 2, modes, width)
+        self.xz_to_y = NeuralOperator(block_dim, in_channels + z_dim, 2, modes, width, num_layers=2)
 
     def aggregate(self, r_i):
         """
@@ -106,7 +106,8 @@ class NeuralLFM(LFM):
         r_i : torch.Tensor
             Shape (batch_size, s, r_dim)
         """
-        return torch.mean(r_i, dim=1)
+        dim = list(range(1, r_i.ndim-1))
+        return torch.mean(r_i, dim=dim)
 
     def xy_to_mu_sigma(self, x, y):
         """
@@ -131,12 +132,14 @@ class NeuralLFM(LFM):
         # y_flat = y.contiguous().view(batch_size * num_points, self.y_dim)
         # Encode each point into a representation r_i
         xy = torch.cat([x, y], dim=-1)
+        # print('xy', xy.shape)
         r_i, params_i = self.xy_to_r(xy)
 
         # Reshape tensors into batches
         # r_i = r_i_flat.view(batch_size, num_points, self.r_dim)
         # Aggregate representations r_i into a single representation r
         r = self.aggregate(r_i)
+        # print('agg', r.shape)
         # Return parameters of distribution
         return self.r_to_mu_sigma(r)
 
@@ -167,9 +170,6 @@ class NeuralLFM(LFM):
         shown to work best empirically.
         """
         # Infer quantities from tensor dimensions
-        _, num_target, _ = x_target.size()
-        _, _, y_dim = y_context.size()
-
         if self.training:
             # Encode target and context (context needs to be encoded to
             # calculate kl term)
@@ -180,8 +180,14 @@ class NeuralLFM(LFM):
             q_context = Normal(mu_context, sigma_context)
             z_sample = q_target.rsample().unsqueeze(1)
             # Get parameters of output distribution
-            w = x_target.shape[1]
-            xz = torch.cat([x_target, z_sample.repeat(1, w, 1)], dim=-1)
+            w1 = x_target.shape[1]
+            w2 = x_target.shape[2]
+            if self.block_dim == 1:
+                xz = torch.cat([x_target, z_sample.repeat(1, w1, 1)], dim=-1)
+            else:
+                z_sample = z_sample.unsqueeze(1)
+                xz = torch.cat([x_target, z_sample.repeat(1, w1, w2, 1)], dim=-1)
+
             y_pred, y_params = self.xz_to_y(xz)
             sigma = 0.1 + 0.9 * torch.sigmoid(y_pred[..., 1])
             p_y_pred = Normal(y_pred[..., 0], sigma)
@@ -193,8 +199,14 @@ class NeuralLFM(LFM):
             q_context = Normal(mu_context, sigma_context)
             z_sample = q_context.rsample().unsqueeze(1)
             # Predict target points based on context
-            w = x_target.shape[1]
-            xz = torch.cat([x_target, z_sample.repeat(1, w, 1)], dim=-1)
+            w1 = x_target.shape[1]
+            w2 = x_target.shape[2]
+            if self.block_dim == 1:
+                xz = torch.cat([x_target, z_sample.repeat(1, w1, 1)], dim=-1)
+            else:
+                z_sample = z_sample.unsqueeze(1)
+                xz = torch.cat([x_target, z_sample.repeat(1, w1, w2, 1)], dim=-1)
+
             y_pred, y_params = self.xz_to_y(xz)
             sigma = 0.1 + 0.9 * torch.sigmoid(y_pred[..., 1])
             p_y_pred = Normal(y_pred[..., 0], sigma)

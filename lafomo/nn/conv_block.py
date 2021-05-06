@@ -11,7 +11,7 @@ Fourier neural operator for parametric partial differential equations.
 arXiv preprint arXiv:2010.08895.
 """
 class SimpleBlock1d(Module):
-    def __init__(self, in_channels, out_channels, modes, width):
+    def __init__(self, in_channels, out_channels, modes, width, num_layers=4):
         super(SimpleBlock1d, self).__init__()
 
         """
@@ -29,18 +29,15 @@ class SimpleBlock1d(Module):
 
         self.modes1 = modes
         self.width = width
+        self.num_layers = num_layers
         self.fc0 = Linear(in_channels, self.width)
-        self.fc0_parameters = Linear(self.width * 4*self.modes1, 100)
+        self.fc0_parameters = Linear(self.width * self.modes1 * num_layers * 2, 100)
         self.fc1_parameters = Linear(100, 5*3)
 
-        self.conv0 = SpectralConv1d(self.width, self.width, self.modes1)
-        self.conv1 = SpectralConv1d(self.width, self.width, self.modes1)
-        self.conv2 = SpectralConv1d(self.width, self.width, self.modes1)
-        self.conv3 = SpectralConv1d(self.width, self.width, self.modes1)
-        self.w0 = Conv1d(self.width, self.width, 1)
-        self.w1 = Conv1d(self.width, self.width, 1)
-        self.w2 = Conv1d(self.width, self.width, 1)
-        self.w3 = Conv1d(self.width, self.width, 1)
+        self.spectral_layers = [
+            (SpectralConv1d(self.width, self.width, self.modes1), Conv1d(self.width, self.width, 1))
+            for _ in range(num_layers)
+        ]
 
         self.fc1 = Linear(self.width, 128)
         self.fc2 = Linear(128, out_channels)
@@ -49,31 +46,18 @@ class SimpleBlock1d(Module):
         batchsize = x.shape[0]
         x = self.fc0(x)
         x = x.permute(0, 2, 1)
+        out_fts = torch.zeros(batchsize, self.width, self.modes1*self.num_layers, dtype=torch.complex64)
 
-        out_fts = torch.zeros(batchsize, self.width, self.modes1*4)
-        x1, out_ft = self.conv0(x)
-        out_fts[..., :self.modes1] = out_ft[..., :self.modes1].real
-        x2 = self.w0(x)
-        x = x1 + x2
-        x = F.relu(x)
+        for i, spectral_layer in enumerate(self.spectral_layers):
+            conv, w = spectral_layer
+            x1, out_ft = conv(x)
+            out_fts[..., i*self.modes1:(i+1)*self.modes1] = out_ft[..., :self.modes1]
+            x2 = w(x)
+            x = x1 + x2
+            if i < self.num_layers - 1:
+                x = F.relu(x)
 
-        x1, out_ft = self.conv1(x)
-        out_fts[..., self.modes1:2*self.modes1] = out_ft[..., :self.modes1].real
-        x2 = self.w1(x)
-        x = x1 + x2
-        x = F.relu(x)
-
-        x1, out_ft = self.conv2(x)
-        out_fts[..., 2*self.modes1:3*self.modes1] = out_ft[..., :self.modes1].real
-        x2 = self.w2(x)
-        x = x1 + x2
-        x = F.relu(x)
-
-        x1, out_ft = self.conv3(x)
-        out_fts[..., 3*self.modes1:4*self.modes1] = out_ft[..., :self.modes1].real
-        x2 = self.w3(x)
-        x = x1 + x2
-
+        out_fts = torch.stack([out_fts.real, out_fts.imag], dim=-1)
         params = self.fc0_parameters(out_fts.reshape(batchsize, -1))
         params = F.relu(params)
         params = self.fc1_parameters(params)
@@ -86,7 +70,7 @@ class SimpleBlock1d(Module):
 
 
 class SimpleBlock2d(Module):
-    def __init__(self, in_channels, out_channels, modes1, modes2,  width):
+    def __init__(self, in_channels, out_channels, modes1, modes2, width, num_layers=4):
         super(SimpleBlock2d, self).__init__()
 
         """
@@ -105,17 +89,15 @@ class SimpleBlock2d(Module):
         self.modes1 = modes1
         self.modes2 = modes2
         self.width = width
-        self.fc0 = Linear(in_channels, self.width) # input channel is 3: (a(x, y), x, y)
-        self.fc0_parameters = Linear(self.width * 4*self.modes1 * 4*self.modes2, 200)
+        self.num_layers = num_layers
+        self.fc0 = Linear(in_channels, self.width)
+        self.fc0_parameters = Linear(self.width * self.modes1 * self.modes2 * num_layers**2 * 2, 200)
         self.fc1_parameters = Linear(200, 4)
-        self.conv0 = SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
-        self.conv1 = SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
-        self.conv2 = SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
-        self.conv3 = SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
-        self.w0 = Conv1d(self.width, self.width, 1)
-        self.w1 = Conv1d(self.width, self.width, 1)
-        self.w2 = Conv1d(self.width, self.width, 1)
-        self.w3 = Conv1d(self.width, self.width, 1)
+        self.spectral_layers = [
+            (SpectralConv2d(self.width, self.width, self.modes1, self.modes2),
+             Conv1d(self.width, self.width, 1))
+            for _ in range(num_layers)
+        ]
 
         self.fc1 = Linear(self.width, 128)
         self.fc2 = Linear(128, out_channels)
@@ -126,34 +108,20 @@ class SimpleBlock2d(Module):
 
         x = self.fc0(x)
         x = x.permute(0, 3, 1, 2)
-        out_fts = torch.zeros(batchsize, self.width, self.modes1*4, self.modes2*4)
-        x1, out_ft = self.conv0(x)
-        # out_ft = torch.zeros(batchsize, self.in_channels,  x.size(-2), x.size(-1)//2 + 1,
-        out_fts[..., :self.modes1, :self.modes2] = out_ft[..., :self.modes1, :self.modes2].real
-        x2 = self.w0(x.view(batchsize, self.width, -1)).view(batchsize, self.width, size_x, size_y)
-        x = x1 + x2
-        x = F.relu(x)
+        out_fts = torch.zeros(batchsize, self.width, self.modes1*self.num_layers, self.modes2*self.num_layers,
+                              dtype=torch.complex64)
 
-        x1, out_ft = self.conv1(x)
-        # out_fts += out_ft
-        out_fts[..., self.modes1:2*self.modes1, self.modes2:2*self.modes2] = out_ft[..., :self.modes1, :self.modes2].real
-        x2 = self.w1(x.view(batchsize, self.width, -1)).view(batchsize, self.width, size_x, size_y)
-        x = x1 + x2
-        x = F.relu(x)
+        for i, spectral_layer in enumerate(self.spectral_layers):
+            conv, w = spectral_layer
+            x1, out_ft = conv(x)
+            out_fts[..., i*self.modes1:(i+1)*self.modes1, i*self.modes2:(i+1)*self.modes2] = \
+                out_ft[..., :self.modes1, :self.modes2]
+            x2 = w(x.view(batchsize, self.width, -1)).view(batchsize, self.width, size_x, size_y)
+            x = x1 + x2
+            if i < self.num_layers - 1:
+                x = F.relu(x)
 
-        x1, out_ft = self.conv2(x)
-        # out_fts += out_ft
-        out_fts[..., 2*self.modes1:3*self.modes1, 2*self.modes2:3*self.modes2] = out_ft[..., :self.modes1, :self.modes2].real
-        x2 = self.w2(x.view(batchsize, self.width, -1)).view(batchsize, self.width, size_x, size_y)
-        x = x1 + x2
-        x = F.relu(x)
-
-        x1, out_ft = self.conv3(x)
-        # out_fts += out_ft
-        out_fts[..., 3*self.modes1:, 3*self.modes2:] = out_ft[..., :self.modes1, :self.modes2].real
-        x2 = self.w3(x.view(batchsize, self.width, -1)).view(batchsize, self.width, size_x, size_y)
-        x = x1 + x2
-
+        out_fts = torch.stack([out_fts.real, out_fts.imag], dim=-1)
         params = self.fc0_parameters(out_fts.reshape(batchsize, -1))
         params = F.relu(params)
         params = self.fc1_parameters(params)

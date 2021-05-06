@@ -37,7 +37,7 @@ class NeuralOperatorTrainer(Trainer):
 
         self.loss_fn = LpLoss(size_average=True)
 
-    def single_epoch(self, step_size=1e-1, epoch=0, **kwargs):
+    def single_epoch(self, step_size=1e-1, epoch=0, num_context=7, num_target=4, **kwargs):
         self.lfm.train()
         train_mse = 0
         train_l2 = 0
@@ -47,8 +47,8 @@ class NeuralOperatorTrainer(Trainer):
         for x, y, params in self.train_loader:
             if is_cuda():
                 x, y, params = x.cuda(), y.cuda(), params.cuda()
+            x_context, y_context, x_target, y_target = cts(x, y, num_context, num_target)
 
-            x_context, y_context, x_target, y_target = cts(x, y, 7, 4)
             x_context = x_context
             y_context = y_context
             x_target = x_target
@@ -56,7 +56,6 @@ class NeuralOperatorTrainer(Trainer):
             self.optimizer.zero_grad()
             # out, params_out = self.lfm(x_context, y_context, x_target, y_target)
             p_y_pred, y_params, q_target, q_context = self.lfm(x_context, y_context, x_target, y_target)
-
 
             loss = self._loss(p_y_pred, y_target.squeeze(-1), q_target, q_context)
             mse = mse_loss(p_y_pred.mean, y.squeeze(-1), reduction='mean')
@@ -82,7 +81,7 @@ class NeuralOperatorTrainer(Trainer):
         with torch.no_grad():
             for x, y, params in self.test_loader:
                 # x, y = x.cuda(), y.cuda()
-                x_context, y_context, x_target, y_target = cts(x, y, 7, 4)
+                x_context, y_context, x_target, y_target = cts(x, y, num_context, num_target)
                 x_context = x_context
                 y_context = y_context
                 x_target = x_target
