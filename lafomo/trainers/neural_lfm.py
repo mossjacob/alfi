@@ -1,8 +1,6 @@
 import torch
 
 from typing import List
-
-from torch.distributions import Normal
 from torch.optim.lr_scheduler import StepLR
 from torch.optim import Optimizer
 from torch.nn.functional import mse_loss
@@ -49,25 +47,27 @@ class NeuralOperatorTrainer(Trainer):
         for x, y, params in self.train_loader:
             if is_cuda():
                 x, y, params = x.cuda(), y.cuda(), params.cuda()
+            x_context, y_context, x_target, y_target = cts(x, y, num_context, num_target)
 
+            x_context = x_context
+            y_context = y_context
+            x_target = x_target
+            y_target = y_target
             self.optimizer.zero_grad()
-            p_y_pred, params_out = self.lfm(x)
+            # out, params_out = self.lfm(x_context, y_context, x_target, y_target)
+            p_y_pred, y_params, q_target, q_context = self.lfm(x_context, y_context, x_target, y_target)
 
-            mu = p_y_pred[..., 0]
-            sigma = 0.1 + 0.9 * torch.sigmoid(p_y_pred[..., 1])
-            p_y_pred = Normal(mu, sigma)
-
+            loss = self._loss(p_y_pred, y_target.squeeze(-1), q_target, q_context)
             mse = mse_loss(p_y_pred.mean, y.squeeze(-1), reduction='mean')
-            # mse.backward()
-            l2 = self._loss(p_y_pred, y.squeeze(-1))
-            params_mse = mse_loss(params_out, params.view(batch_size, -1), reduction='mean')
-            total_loss = l2 + params_mse
-
+            # l2 = self.loss_fn(out, y.view(batch_size, -1))
+            params_mse = mse_loss(y_params, params.view(batch_size, -1), reduction='mean')
+            # total_loss = l2 + params_mse
+            total_loss = loss + params_mse
             total_loss.backward()  # use the l2 relative loss
             self.optimizer.step()
 
             train_mse += mse.item()
-            train_l2 += l2.item()
+            # train_l2 += l2.item()
             train_loss += total_loss.item()
             train_params_mse += params_mse.item()
 
@@ -81,19 +81,17 @@ class NeuralOperatorTrainer(Trainer):
         with torch.no_grad():
             for x, y, params in self.test_loader:
                 # x, y = x.cuda(), y.cuda()
-                p_y_pred, params_out = self.lfm(x)
-
-                mu = p_y_pred[..., 0]
-                sigma = 0.1 + 0.9 * torch.sigmoid(p_y_pred[..., 1])
-                p_y_pred = Normal(mu, sigma)
-
-                test_mse += mse_loss(p_y_pred.mean, y.squeeze(-1), reduction='mean').item()
-                loss = self._loss(p_y_pred, y.squeeze(-1))
-                test_l2 += loss
-                test_params_mse += mse_loss(params_out, params.view(self.test_loader.batch_size, -1), reduction='mean')
-                test_loss += test_l2 + test_params_mse
+                x_context, y_context, x_target, y_target = cts(x, y, num_context, num_target)
+                x_context = x_context
+                y_context = y_context
+                x_target = x_target
+                y_target = y_target
+                p_y_pred, y_params = self.lfm(x_context, y_context, x_target, y_target)
+                loss = -p_y_pred.log_prob(y_target.squeeze(-1)).mean(dim=0).sum()
+                test_mse += mse_loss(p_y_pred.mean, y.squeeze(-1), reduction='mean')
+                # test_mse += mse_loss(out[..., 0:1], y, reduction='mean')
                 # test_l2 += self.loss_fn(out, y.view(self.test_loader.batch_size, -1)).item()
-                params_mse = mse_loss(params_out, params.view(self.test_loader.batch_size, -1), reduction='mean')
+                params_mse = mse_loss(y_params, params.view(self.test_loader.batch_size, -1), reduction='mean')
                 test_params_mse += params_mse
                 test_loss += loss + params_mse
 
@@ -108,9 +106,9 @@ class NeuralOperatorTrainer(Trainer):
 
         return train_loss, (test_loss, train_l2, test_l2, train_params_mse, test_params_mse)
 
-    def _loss(self, p_y_pred, y_target):
+    def _loss(self, p_y_pred, y_target, q_target, q_context):
         """
-        Computes Neural Operator loss.
+        Computes Neural Process loss.
 
         Parameters
         ----------
@@ -120,6 +118,16 @@ class NeuralOperatorTrainer(Trainer):
         y_target : torch.Tensor
             Shape (batch_size, num_target, y_dim)
 
+        q_target : one of torch.distributions.Distribution
+            Latent distribution for target points.
+
+        q_context : one of torch.distributions.Distribution
+            Latent distribution for context points.
         """
-        nll = -p_y_pred.log_prob(y_target).mean()
-        return nll
+        # Log likelihood has shape (batch_size, num_target, y_dim). Take mean
+        # over batch and sum over number of targets and dimensions of y
+        nll = -p_y_pred.log_prob(y_target).mean(dim=0).sum()
+        # KL has shape (batch_size, r_dim). Take mean over batch and sum over
+        # r_dim (since r_dim is dimension of normal distribution)
+        kl = kl_divergence(q_target, q_context).mean(dim=0).sum()
+        return nll + kl
