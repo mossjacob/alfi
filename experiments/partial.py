@@ -123,10 +123,10 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
     return lfm, trainer, plotter
 
 
-def pretrain_partial(dataset, lfm, trainer):
+def pretrain_partial(dataset, lfm, trainer, modelparams):
     tx = trainer.tx
-    num_t = tx[0, :].unique().shape[0]
-    num_x = tx[1, :].unique().shape[0]
+    num_t = tx[0, :].unique_consecutive().shape[0]
+    num_x = tx[1, :].unique_consecutive().shape[0]
     print(num_t, num_x)
     y_target = trainer.y_target[0]
     y_matrix = y_target.view(num_t, num_x)
@@ -162,7 +162,15 @@ def pretrain_partial(dataset, lfm, trainer):
                 diffusion * 0)
         return dy_t
 
-    optimizers = [Adam(lfm.parameters(), lr=0.05)]
+    train_ratio = 0.3
+    num_training = int(train_ratio * tx.shape[1])
+    print('num training', num_training)
+    if modelparams['natural']:
+        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
+        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.05)
+        optimizers = [variational_optimizer, parameter_optimizer]
+    else:
+        optimizers = [Adam(lfm.parameters(), lr=0.05)]
 
     pre_estimator = PartialPreEstimator(
         lfm, optimizers, dataset, pde_func,

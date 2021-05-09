@@ -77,7 +77,7 @@ plotters = {
 
 
 train_pre_step = {
-    'exact': lambda _, model, __: model.likelihood.train(),
+    'exact': lambda _, model, __, ___: model.likelihood.train(),
     'partial': pretrain_partial
 }
 
@@ -110,7 +110,7 @@ def time_models(builder, dataset, filepath, modelparams, num_samples):
         trainer.plot_outputs = False
 
         model.pretrain(True)
-        pretrain_times, t_start = train_pre_step[method](dataset, model, trainer)
+        pretrain_times, t_start = train_pre_step[method](dataset, model, trainer, modelparams)
 
         t1 = time.time()
         model.pretrain(False)

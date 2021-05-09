@@ -67,14 +67,14 @@ class VariationalLFM(LFM, ABC):
         # return [named_parameters[key] for key in named_parameters.keys()
         #         if key[len('gp_model.'):] not in variational_keys]
         if self.gp_model.covar_module.lengthscale is not None:
-            return self.gp_model.covar_module.lengthscale.detach().numpy()
+            return self.gp_model.covar_module.lengthscale.detach().cpu().numpy()
         elif hasattr(self.gp_model.covar_module, 'base_kernel'):
             kernel = self.gp_model.covar_module.base_kernel
             if hasattr(kernel, 'kernels'):
                 if hasattr(kernel.kernels[0], 'lengthscale'):
-                    return kernel.kernels[0].lengthscale.detach().numpy()
+                    return kernel.kernels[0].lengthscale.detach().cpu().numpy()
             else:
-                return self.gp_model.covar_module.base_kernel.lengthscale.detach().numpy()
+                return self.gp_model.covar_module.base_kernel.lengthscale.detach().cpu().numpy()
         else:
             return ''
 

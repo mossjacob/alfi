@@ -3,7 +3,7 @@ import math
 import numpy as np
 from torchcubicspline import(natural_cubic_spline_coeffs,
                              NaturalCubicSpline)
-CUDA_AVAILABLE = True
+CUDA_AVAILABLE = False
 
 
 def is_cuda():
@@ -20,7 +20,7 @@ def spline_interpolate_gradient(x: torch.Tensor, y: torch.Tensor, num_disc=9):
     """
     Returns x_interpolate, y_interpolate, y_grad, y_grad_2: the interpolated time, data and gradient
     """
-    x_interpolate = torch.linspace(x.min(), x.max(), discretisation_length(x.shape[0], num_disc))
+    x_interpolate = torch.linspace(x.min(), x.max(), discretisation_length(x.shape[0], num_disc), device=x.device)
     coeffs = natural_cubic_spline_coeffs(x, y)
     spline = NaturalCubicSpline(coeffs)
     y_interpolate = spline.evaluate(x_interpolate)

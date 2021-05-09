@@ -26,7 +26,7 @@ class PDETrainer(VariationalTrainer):
 
         # 1. Ensure that time axis must be in ascending order:
         # We use mergesort to maintain relative order
-        self.t_sorted = torch.from_numpy(np.argsort(tx[0, :], kind='mergesort'))
+        self.t_sorted = np.argsort(tx[0, :], kind='mergesort')
         tx = tx[:, self.t_sorted]
         y_target = y_target[:, self.t_sorted]
 
