@@ -138,7 +138,7 @@ def time_models(builder, dataset, filepath, modelparams, num_samples):
 def run_model(method, dataset, model, trainer, plotter, filepath, save_filepath, modelparams):
     # Train model with optional initial step
     if method in train_pre_step:
-        train_pre_step[method](dataset, model, trainer)
+        train_pre_step[method](dataset, model, trainer, modelparams)
     print(TerminalColours.GREEN, 'Training...', TerminalColours.END)
     trainer.train(**experiment['train_params'])
 

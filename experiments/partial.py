@@ -125,8 +125,8 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
 
 def pretrain_partial(dataset, lfm, trainer, modelparams):
     tx = trainer.tx
-    num_t = tx[0, :].unique_consecutive().shape[0]
-    num_x = tx[1, :].unique_consecutive().shape[0]
+    num_t = tx[0, :].unique().shape[0]
+    num_x = tx[1, :].unique().shape[0]
     print(num_t, num_x)
     y_target = trainer.y_target[0]
     y_matrix = y_target.view(num_t, num_x)
@@ -210,7 +210,8 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
             str(cia(y_target[~trainer.train_mask], f_mean_test, f_var_test).item())
         ]) + '\n')
 
-    l_target = torch.tensor(dataset.orig_data[trainer.t_sorted, 2])
+    orig_data = dataset.orig_data.squeeze().t()
+    l_target = torch.tensor(orig_data[trainer.t_sorted, 2])
     l = lfm.gp_model(tx.t())
     l_mean = l.mean.detach()
     plot_spatiotemporal_data(
