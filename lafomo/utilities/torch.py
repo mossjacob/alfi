@@ -3,7 +3,7 @@ import math
 import numpy as np
 from torchcubicspline import(natural_cubic_spline_coeffs,
                              NaturalCubicSpline)
-CUDA_AVAILABLE = False
+CUDA_AVAILABLE = True
 
 
 def is_cuda():

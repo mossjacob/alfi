@@ -9,11 +9,11 @@ from matplotlib import pyplot as plt
 from pathlib import Path
 
 from lafomo.datasets import (
-    P53Data, HafnerData, ToyTimeSeries, ToyTranscriptomicGenerator,
-    ToySpatialTranscriptomics, DrosophilaSpatialTranscriptomics,
+    P53Data, HafnerData, ToyTranscriptomics, ToyTranscriptomicGenerator,
+    HomogeneousReactionDiffusion, DrosophilaSpatialTranscriptomics,
     DeterministicLotkaVolterra,
 )
-from lafomo.utilities.torch import get_mean_trace
+from lafomo.utilities.torch import get_mean_trace, is_cuda
 try:
     from .partial import build_partial, plot_partial, pretrain_partial
 except ImportError:
@@ -51,7 +51,7 @@ parser.add_argument('--timer_samples', type=int, default=5)
 datasets = {
     'p53': lambda: P53Data(replicate=0, data_dir='data'),
     'hafner': lambda: HafnerData(replicate=0, data_dir='data', extra_targets=False),
-    'toy-spatial': lambda: ToySpatialTranscriptomics(data_dir='data'),
+    'toy-spatial': lambda: HomogeneousReactionDiffusion(data_dir='data'),
     'dros-kr': lambda: DrosophilaSpatialTranscriptomics(gene='kr', data_dir='data', scale=True),
     'toy': lambda: ToyTranscriptomicGenerator().generate_single(),
     'lotka': lambda: DeterministicLotkaVolterra(alpha = 2./3, beta = 4./3,
@@ -178,7 +178,7 @@ if __name__ == "__main__":
             reload = save_filepath if args.reload else None
             model, trainer, plotter = builders[method](
                 dataset, modelparams, reload=reload, checkpoint_dir=filepath)
-
+            model = model.cuda() if is_cuda() else model
             if args.timer:
                 time_models(builders[method], dataset, filepath, modelparams, args.timer_samples)
             else:

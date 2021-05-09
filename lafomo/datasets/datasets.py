@@ -164,7 +164,7 @@ class DrosophilaSpatialTranscriptomics(LFMDataset):
     Reverse engineering post-transcriptional regulation of
     gap genes in Drosophila melanogaster
     """
-    def __init__(self, gene='kr', data_dir='../data/', scale=False, nn_format=True):
+    def __init__(self, gene='kr', data_dir='../data/', scale=False, nn_format=False):
         indents = {'kr': 64, 'kni': 56, 'gt': 60}
         assert gene in indents
         data = pd.read_csv(path.join(data_dir, f'clean_{gene}.csv'))
