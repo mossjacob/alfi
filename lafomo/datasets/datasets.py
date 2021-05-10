@@ -66,7 +66,7 @@ class P53Data(TranscriptomicTimeSeries):
             self.data = [(self.t_observed, m_observed[r, i]) for r in range(num_replicates) for i in range(num_genes)]
         else:
             self.m_observed = self.m_observed[replicate:replicate+1]
-            self.f_observed = self.f_observed[replicate:replicate+1]
+            self.f_observed = self.f_observed[0:1]
             self.variance = np.array([f64(σ2_m_pre)[replicate, i] for i in range(num_genes)])
             self.data = [(self.t_observed, m_observed[replicate, i]) for i in range(num_genes)]
 
@@ -185,7 +185,7 @@ class DrosophilaSpatialTranscriptomics(LFMDataset):
         data = torch.tensor(data[:, 3]).unsqueeze(0)
         self.gene_names = np.array([gene])
         if nn_format:
-            params = torch.tensor([-1.]*4).unsqueeze(0)
+            params = torch.tensor([-1.]*5).unsqueeze(0)
             train, test = generate_neural_dataset_2d(self.orig_data.t().unsqueeze(0), params, 1, 0)
             self.data = train
             self.train_data = train

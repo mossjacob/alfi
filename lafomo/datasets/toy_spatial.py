@@ -310,7 +310,7 @@ class ReactionDiffusionGenerator:
         x_observed = torch.tensor(temp[t_sorted, 0:2]).permute(1, 0)
 
         for i in range(len(toydata)):
-            params = torch.tensor([toydata[i][key] for key in ['l1', 'l2', 'decay', 'diffusion']])
+            params = torch.tensor([toydata[i][key] for key in ['l1', 'l2', 'sensitivity', 'decay', 'diffusion']])
             samples = toydata[i]['samples']
             for sample in range(num_samples):
                 lf = samples[sample, 1681:]

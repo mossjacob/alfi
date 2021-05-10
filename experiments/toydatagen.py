@@ -19,7 +19,8 @@ if __name__ == '__main__':
                             kernel = ReactionDiffusionGenerator(
                                 lengthscale=[l1, l2],
                                 decay=decay,
-                                diffusion=diffusion
+                                diffusion=diffusion,
+                                sensitivity=sensitivity
                             )
                             Kuu, Kyy, Kyu, Kuy = kernel.joint(tx, tx)
                             kern = torch.zeros((2 * 1681, 2 * 1681))
@@ -41,6 +42,7 @@ if __name__ == '__main__':
                             samples = a @ corr_matrix
                             obj = {
                                 'samples': samples.clone(),
+                                'sensitivity': sensitivity,
                                 'l1': l1,
                                 'l2': l2,
                                 'diffusion': diffusion,
