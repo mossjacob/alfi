@@ -25,8 +25,12 @@ class ToyTranscriptomics(LFMDataset):
         ntrain = x_train.shape[0]
         ntest = x_test.shape[0]
 
-        train = [(x_train[i], y_train[i], params_train[i].type(torch.float)) for i in range(ntrain)]
-        test = [(x_test[i], y_test[i], params_test[i].type(torch.float)) for i in range(ntest)]
+        train = [(x_train[i].type(torch.float),
+                  y_train[i].type(torch.float),
+                  params_train[i].type(torch.float)) for i in range(ntrain)]
+        test = [(x_test[i].type(torch.float),
+                 y_test[i].type(torch.float),
+                 params_test[i].type(torch.float)) for i in range(ntest)]
 
         self.train_data = train
         self.test_data = test
@@ -89,8 +93,9 @@ class ToyTranscriptomicGenerator(LFMDataset):
                         y_train=y_train, y_test=y_test,
                         params_train=params_train, params_test=params_test), Path(data_dir) / 'toy_transcriptomics.pt')
 
-    def generate_single(self, basal=None, sensitivity=None, decay=None, lengthscale=2.):
+    def generate_single(self, basal=None, sensitivity=None, decay=None, lengthscale=2., epochs=150):
         from lafomo.models import OrdinaryLFM, generate_multioutput_rbf_gp
+        self.epochs = epochs
         self.decay = decay if decay is not None else self.pick_decay()
         self.basal = basal if basal is not None else self.pick_basal()
         self.sensitivity = sensitivity if sensitivity is not None else self.pick_sensitivity()
@@ -136,6 +141,8 @@ class ToyTranscriptomicGenerator(LFMDataset):
                 if f.shape[1] > 1:
                     interactions = torch.matmul(self.weight, torch.log(f + 1e-100)) + self.weight_bias
                     f = torch.sigmoid(interactions)  # TF Activation Function (sigmoid)
+                else:
+                    f = f.repeat(1, self.num_outputs, 1)
                 return f
 
         config = VariationalConfiguration(
@@ -182,7 +189,7 @@ class ToyTranscriptomicGenerator(LFMDataset):
         ], lr=0.1)
 
         #train gp_model
-        for i in range(150):
+        for i in range(self.epochs):
             optimizer.zero_grad()
             output = gp_model(t_predict)
             loss = -mll(output, train_y)
@@ -190,6 +197,7 @@ class ToyTranscriptomicGenerator(LFMDataset):
             optimizer.step()
 
         q_f = gp_model(t_predict)
+        self.gp_model = gp_model
         samples = q_f.sample(torch.Size([1]))
         if self.plot:
             for i in range(samples.shape[0]):
