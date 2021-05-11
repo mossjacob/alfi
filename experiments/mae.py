@@ -180,7 +180,7 @@ if __name__ == '__main__':
             exact_lfm.likelihood.train()
 
             try:
-                m_mae_exact, f_mae_exact = train(exact_lfm, exact_trainer, m_targ, f_targ)
+                m_mae_exact, f_mae_exact = train(exact_lfm, exact_trainer, m_targ, f_targ, epochs=700)
             except Exception as e:
                 print('Exception:', e)
                 # raise e
@@ -219,7 +219,7 @@ if __name__ == '__main__':
 
             lfm.train()
             try:
-                m_mae_varia, f_mae_varia = train(lfm, trainer, m_targ, f_targ, epochs=350, step_size=5e-1)
+                m_mae_varia, f_mae_varia = train(lfm, trainer, m_targ, f_targ, epochs=700, step_size=5e-1)
             except Exception as e:
                 print(e)
                 continue
