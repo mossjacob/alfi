@@ -101,7 +101,6 @@ def discretise(time, num_discretised=40):
     t.sort()
     t_range = t[-1] - t[0]
     dp = t_range / num_discretised
-    print('t_sorted, dp', t, dp)
     return np.arange(t[0], t[-1] + dp, dp)
 
 
