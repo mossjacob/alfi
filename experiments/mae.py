@@ -40,7 +40,7 @@ def get_datasets(data_dir='.'):
 
     datasets = list()
     for i in range(10):
-        dataset_dict = torch.load(f'{data_dir}/dataset{i}.pt')
+        dataset_dict = torch.load(f'{data_dir}/experiments/dataset{i}.pt')
         lfm = namedtuple('lfm', ['basal_rate', 'sensitivity', 'decay_rate'])
         lfm = lfm(dataset_dict['basal'], dataset_dict['sensitivity'], dataset_dict['decay'])
         dataset = DSet(
@@ -108,7 +108,7 @@ def train(lfm, trainer, m_targ, f_targ, epochs=200, **train_kwargs):
 
 
 if __name__ == '__main__':
-    generate = False
+    generate = True
     if not generate:
         datasets = get_datasets()
     with open('experiments/mae.txt', 'w') as f:
@@ -232,10 +232,10 @@ if __name__ == '__main__':
 
             f.write(f'{i}\t{m_mae_exact}\t{m_mae_varia}\t{f_mae_exact}\t{f_mae_varia}\t{param_mae_exact}\t{param_mae_varia}\n')
             if generate:
-                save_dataset(dataset, f'./dataset{num_success}.pt')
+                save_dataset(dataset, f'./experiments/dataset{num_success}.pt')
             num_success += 1
         maes = np.array(maes)
-        np.save('./maes.npy', maes)
+        np.save('./experiments/maes.npy', maes)
         print(maes)
         print(maes.shape)
 
