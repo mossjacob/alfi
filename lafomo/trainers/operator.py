@@ -5,7 +5,7 @@ from typing import List
 from torch.distributions import Normal
 from torch.optim.lr_scheduler import StepLR
 from torch.optim import Optimizer
-from torch.nn.functional import mse_loss
+from torch.nn.functional import mse_loss, softplus
 from torch.distributions.kl import kl_divergence
 
 from lafomo.nn import LpLoss
@@ -39,7 +39,7 @@ class NeuralOperatorTrainer(Trainer):
 
         self.loss_fn = LpLoss(size_average=True)
 
-    def single_epoch(self, step_size=1e-1, epoch=0, num_context=7, num_target=4, **kwargs):
+    def single_epoch(self, step_size=1e-1, epoch=0, **kwargs):
         self.lfm.train()
         train_mse = 0
         train_l2 = 0
@@ -55,6 +55,7 @@ class NeuralOperatorTrainer(Trainer):
 
             mu = p_y_pred[..., 0]
             sigma = 0.1 + 0.9 * torch.sigmoid(p_y_pred[..., 1])
+            sigma = softplus(p_y_pred[..., 1]) + 1e-6
             p_y_pred = Normal(mu, sigma)
 
             mse = mse_loss(p_y_pred.mean, y.squeeze(-1), reduction='mean')
@@ -85,6 +86,8 @@ class NeuralOperatorTrainer(Trainer):
 
                 mu = p_y_pred[..., 0]
                 sigma = 0.1 + 0.9 * torch.sigmoid(p_y_pred[..., 1])
+                sigma = softplus(p_y_pred[..., 1]) + 1e-6
+
                 p_y_pred = Normal(mu, sigma)
 
                 test_mse += mse_loss(p_y_pred.mean, y.squeeze(-1), reduction='mean').item()

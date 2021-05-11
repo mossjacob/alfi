@@ -127,7 +127,7 @@ class Plotter:
                                   align='center')
 
             axes[plotnum].set_title(label)
-            axes[plotnum].tick_params(axis='x', labelrotation=30)
+            axes[plotnum].tick_params(axis='x', labelrotation=35)
             if yticks is not None:
                 axes[plotnum].set_yticks(yticks[plotnum])
             if num_bars == 1:

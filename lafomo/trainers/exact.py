@@ -31,12 +31,3 @@ class ExactTrainer(Trainer):
         print('')
         self.lfm.covar_module.lengthscale.item(),
         self.lfm.likelihood.noise.item()
-
-    def after_epoch(self):
-        with torch.no_grad():
-            sens = self.lfm.covar_module.sensitivity
-            sens[3] = np.float64(1.)
-            deca = self.lfm.covar_module.decay
-            deca[3] = np.float64(0.8)
-            self.lfm.covar_module.sensitivity = sens
-            self.lfm.covar_module.decay = deca

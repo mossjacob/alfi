@@ -99,7 +99,7 @@ class VariationalLFM(LFM, ABC):
         """
         return self(t_predict.view(-1), **kwargs)
 
-    def predict_f(self, t_predict) -> torch.distributions.MultivariateNormal:
+    def predict_f(self, t_predict, **kwargs) -> torch.distributions.MultivariateNormal:
         """
         Returns the latents
         """

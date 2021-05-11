@@ -27,7 +27,7 @@ class OrdinaryLFM(VariationalLFM):
         # if self.config.initial_conditions: TODO:
         #     h = self.initial_conditions.repeat(h.shape[0], 1, 1)
 
-    def forward(self, t, step_size=1e-1, return_samples=False):
+    def forward(self, t, step_size=1e-1, return_samples=False, **kwargs):
         """
         t : torch.Tensor
             Shape (num_times)
