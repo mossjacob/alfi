@@ -41,14 +41,14 @@ toy-spatial:
   experiments:
     - method: partial
       train_params:
-        epochs: 200
+        epochs: 180
         report_interval: 5
       model-params:
         lengthscale: 0.2
         sensitivity: 1.0
         decay: 0.2
         diffusion: 0.05
-        natural: false
+        natural: true
         warm_epochs: -1
         clamp: false
 # Drosophila Experiments

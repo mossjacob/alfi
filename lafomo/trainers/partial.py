@@ -22,8 +22,6 @@ class PDETrainer(VariationalTrainer):
         self.plot_outputs_iter = 10
         data = next(iter(dataset))
         data_input, y = data
-        data_input = data_input.cuda() if is_cuda() else data_input
-        y = y.cuda() if is_cuda() else y
         tx, y_target = data_input, y
 
         # 1. Ensure that time axis must be in ascending order:
@@ -52,13 +50,15 @@ class PDETrainer(VariationalTrainer):
 
         mask = torch.stack([t_mask, x_mask])
         self.tx = torch.stack([new_t, new_x])
-        self.y_target = y_target
+        self.y_target = y_target.cuda() if is_cuda() else y_target
+        self.tx = self.tx.cuda() if is_cuda() else self.tx
+        self.t_sorted = self.t_sorted.cuda() if is_cuda() else self.t_sorted
 
     def discretise_spatial(self, tx):
         # whilst maintaining an inverse mapping to mask the output for
         # calculating the loss. shape (T, X_unique).
         # For each time, for which spatial points do we have data for
-        spatial = np.unique(tx[1, :])
+        spatial = torch.unique(tx[1, :])
         range = spatial[-1] - spatial[0]
         x_dp = spatial[1] - spatial[0]
         print('x dp is set to', x_dp)

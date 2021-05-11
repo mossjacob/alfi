@@ -123,7 +123,7 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
     return lfm, trainer, plotter
 
 
-def pretrain_partial(dataset, lfm, trainer):
+def pretrain_partial(dataset, lfm, trainer, modelparams):
     tx = trainer.tx
     num_t = tx[0, :].unique().shape[0]
     num_x = tx[1, :].unique().shape[0]
@@ -162,7 +162,15 @@ def pretrain_partial(dataset, lfm, trainer):
                 diffusion * 0)
         return dy_t
 
-    optimizers = [Adam(lfm.parameters(), lr=0.05)]
+    train_ratio = 0.3
+    num_training = int(train_ratio * tx.shape[1])
+    print('num training', num_training)
+    if modelparams['natural']:
+        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
+        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.05)
+        optimizers = [variational_optimizer, parameter_optimizer]
+    else:
+        optimizers = [Adam(lfm.parameters(), lr=0.05)]
 
     pre_estimator = PartialPreEstimator(
         lfm, optimizers, dataset, pde_func,
@@ -202,7 +210,8 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
             str(cia(y_target[~trainer.train_mask], f_mean_test, f_var_test).item())
         ]) + '\n')
 
-    l_target = torch.tensor(dataset.orig_data[trainer.t_sorted, 2])
+    orig_data = dataset.orig_data.squeeze().t()
+    l_target = torch.tensor(orig_data[trainer.t_sorted, 2])
     l = lfm.gp_model(tx.t())
     l_mean = l.mean.detach()
     plot_spatiotemporal_data(
