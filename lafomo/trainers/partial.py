@@ -14,7 +14,7 @@ from lafomo.utilities.torch import cia, q2, smse, softplus
 
 class PDETrainer(VariationalTrainer):
 
-    def __init__(self, lfm: PartialLFM, optimizers: List[torch.optim.Optimizer], dataset, clamp=False, **kwargs):
+    def __init__(self, lfm: PartialLFM, optimizers: List[torch.optim.Optimizer], dataset, clamp=False, dp=None, **kwargs):
         super().__init__(lfm, optimizers, dataset, **kwargs)
         self.debug_iteration = 0
         self.clamp = clamp
@@ -38,29 +38,35 @@ class PDETrainer(VariationalTrainer):
         time = discretise(tx[0, :], num_discretised=num_discretised)
         time = torch.tensor(time)
         # 3. Discretise space
-        spatial_grid = self.discretise_spatial(tx)
+        spatial_grid = self.discretise_spatial(tx, dp=dp)
         spatial = torch.tensor(spatial_grid)
 
         # 4. Reconstruct dataset
         new_t = time.repeat(spatial.shape[0], 1).transpose(0, 1).reshape(-1)
-        t_mask = new_t == tx[0, :]
+        # t_mask = new_t == tx[0, :]
 
         new_x = spatial.repeat(time.shape[0])
-        x_mask = new_x == tx[1, :]
-
-        mask = torch.stack([t_mask, x_mask])
+        # x_mask = new_x == tx[1, :]
+        # mask = torch.stack([t_mask, x_mask])
         self.tx = torch.stack([new_t, new_x])
+
+        num_t = time.shape[0]
+        num_x = spatial.shape[0]
+        print(num_t, num_x)
+        spatial_ind = torch.arange(0, num_t, (num_t - 1) // (num_x-1))
+
+        y_target = y_target.view(num_t, -1)[:, spatial_ind].view(1, -1)
         self.y_target = y_target.cuda() if is_cuda() else y_target
         self.tx = self.tx.cuda() if is_cuda() else self.tx
         self.t_sorted = self.t_sorted.cuda() if is_cuda() else self.t_sorted
 
-    def discretise_spatial(self, tx):
+    def discretise_spatial(self, tx, dp=None):
         # whilst maintaining an inverse mapping to mask the output for
         # calculating the loss. shape (T, X_unique).
         # For each time, for which spatial points do we have data for
         spatial = torch.unique(tx[1, :])
         range = spatial[-1] - spatial[0]
-        x_dp = spatial[1] - spatial[0]
+        x_dp = spatial[1] - spatial[0] if dp is None else dp
         print('x dp is set to', x_dp)
         num_discretised = int(range / x_dp)
         spatial_grid = discretise(spatial, num_discretised=num_discretised)

@@ -13,7 +13,8 @@ from lafomo.models.pdes import ReactionDiffusion
 from lafomo.plot import Plotter, plot_spatiotemporal_data, tight_kwargs
 from lafomo.trainers import PDETrainer, PartialPreEstimator
 from lafomo.utilities.fenics import interval_mesh
-from lafomo.utilities.torch import cia, q2, smse, inv_softplus, softplus, spline_interpolate_gradient, get_mean_trace
+from lafomo.utilities.torch import cia, q2, smse, inv_softplus, softplus, \
+    spline_interpolate_gradient, get_mean_trace, discretise
 
 
 def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
@@ -21,9 +22,17 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
     tx, y_target = data
     lengthscale = params['lengthscale']
     zero_mean = params['zero_mean'] if 'zero_mean' in params else False
+
     # Define mesh
-    spatial = np.unique(tx[1, :])
-    mesh = interval_mesh(spatial)
+    dp = params['dp'] if 'dp' in params else None
+    spatial = torch.unique(tx[1, :])
+    x_range = spatial[-1] - spatial[0]
+    x_dp = spatial[1] - spatial[0] if dp is None else dp
+    print('x dp is set to', x_dp)
+    num_discretised = int(x_range / x_dp)
+    spatial_grid = discretise(spatial, num_discretised=num_discretised)
+    print('grid', spatial_grid)
+    mesh = interval_mesh(spatial_grid)
 
     # Define GP
     if tx.shape[1] > 1000:
@@ -58,10 +67,6 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
         # We calculate a mesh that contains all possible spatial locations in the dataset
         data = next(iter(dataset))
         tx, y_target = data
-
-        # Define mesh
-        spatial = np.unique(tx[1, :])
-        mesh = interval_mesh(spatial)
 
         # Define fenics model
         ts = tx[0, :].unique().sort()[0].numpy()
@@ -108,8 +113,15 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
                        list(map(lambda s: f'gp_model.{s}', dict(lfm.gp_model.named_hyperparameters()).keys()))
 
     # As in Lopez-Lopera et al., we take 30% of data for training
-    train_mask = torch.zeros_like(tx[0, :])
-    train_mask[torch.randperm(tx.shape[1])[:int(train_ratio * tx.shape[1])]] = 1
+    # train_mask = torch.zeros_like(tx[0, :])
+    # train_mask[torch.randperm(tx.shape[1])[:int(train_ratio * tx.shape[1])]] = 1
+    num_t = torch.unique(tx[0, :]).shape[0]
+    num_x = spatial_grid.shape[0]
+
+    train_times = torch.randperm(num_t)[:int(1 * num_t)]#train_ratio
+    train_mask = torch.zeros(num_t, num_x)
+    train_mask[train_times, :] = 1
+    train_mask = train_mask.view(-1)
 
 
     warm_variational = params['warm_epochs'] if 'warm_epochs' in params else 10
@@ -118,7 +130,8 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
                          track_parameters=track_parameters,
                          train_mask=train_mask.bool(),
                          warm_variational=warm_variational,
-                         checkpoint_dir=checkpoint_dir)
+                         checkpoint_dir=checkpoint_dir,
+                         dp=dp)
     plotter = Plotter(lfm, dataset.gene_names)
     return lfm, trainer, plotter
 
@@ -216,8 +229,8 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
     l_mean = l.mean.detach()
     plot_spatiotemporal_data(
         [
-            l_mean.view(num_t, num_x).t(),
-            l_target.view(num_t, num_x).t(),
+            l_mean.view(num_t, -1).t(),
+            l_target.view(num_t, -1).t(),
             f_mean.view(num_t, num_x).t(),
             y_target.view(num_t, num_x).detach().t(),
         ],
