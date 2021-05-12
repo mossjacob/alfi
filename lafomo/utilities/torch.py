@@ -40,9 +40,9 @@ def q2(y_test, f_mean):
     return 1 - (y_test - f_mean).square().sum() / (y_test - y_mean).square().sum()
 
 
-def cia(y_test, f_mean, f_var):
-    return ((y_test >= (f_mean - 1.98 * f_var.sqrt())) &
-            (y_test <= (f_mean + 1.98 * f_var.sqrt()))).double().mean()
+def cia(y_test, f_mean, f_var, n=1):
+    return ((y_test >= (f_mean - n * f_var.sqrt())) &
+            (y_test <= (f_mean + n * f_var.sqrt()))).double().mean()
 
 
 def ceil(x):

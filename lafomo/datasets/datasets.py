@@ -174,11 +174,11 @@ class DrosophilaSpatialTranscriptomics(LFMDataset):
             scaler = StandardScaler()
             data[:, 2:3] = scaler.fit_transform(data[:, 2:3])
             data[:, 3:4] = scaler.transform(data[:, 3:4])
-            scaler = MinMaxScaler()
-            data[:, 0:1] = scaler.fit_transform(data[:, 0:1])
-            data[:, 1:2] = scaler.fit_transform(data[:, 1:2])
+            # scaler = MinMaxScaler()
+            # data[:, 0:1] = scaler.fit_transform(data[:, 0:1])
+            # data[:, 1:2] = scaler.fit_transform(data[:, 1:2])
 
-        self.orig_data = torch.tensor(data)
+        self.orig_data = torch.tensor(data).t()
         self.num_outputs = 1
         self.num_discretised = 7
         x_observed = torch.tensor(data[:, 0:2]).permute(1, 0)

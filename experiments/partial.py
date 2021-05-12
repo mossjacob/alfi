@@ -32,10 +32,11 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
         num_inducing = int(tx.shape[1] * 5/6)
     use_lhs = True
     if use_lhs:
+        print('tx', tx.shape)
         from smt.sampling_methods import LHS
         ts = tx[0, :].unique().sort()[0].numpy()
         xs = tx[1, :].unique().sort()[0].numpy()
-        xlimits = np.array([[xs[0], xs[-1]], [ts[0], ts[-1]]])
+        xlimits = np.array([[ts[0], ts[-1]],[xs[0], xs[-1]]])
         sampling = LHS(xlimits=xlimits)
         inducing_points = torch.tensor(sampling(num_inducing)).unsqueeze(0)
     else:
@@ -102,7 +103,7 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
         parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.05)
         optimizers = [variational_optimizer, parameter_optimizer]
     else:
-        optimizers = [Adam(lfm.parameters(), lr=0.01)]
+        optimizers = [Adam(lfm.parameters(), lr=0.07)]
 
     track_parameters = list(lfm.fenics_named_parameters.keys()) +\
                        list(map(lambda s: f'gp_model.{s}', dict(lfm.gp_model.named_hyperparameters()).keys()))
@@ -113,12 +114,13 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
 
 
     warm_variational = params['warm_epochs'] if 'warm_epochs' in params else 10
+    orig_data = dataset.orig_data.squeeze().t()
     trainer = PDETrainer(lfm, optimizers, dataset,
                          clamp=params['clamp'],
                          track_parameters=track_parameters,
                          train_mask=train_mask.bool(),
                          warm_variational=warm_variational,
-                         checkpoint_dir=checkpoint_dir)
+                         checkpoint_dir=checkpoint_dir, lf_target=orig_data)
     plotter = Plotter(lfm, dataset.gene_names)
     return lfm, trainer, plotter
 
@@ -127,7 +129,6 @@ def pretrain_partial(dataset, lfm, trainer, modelparams):
     tx = trainer.tx
     num_t = tx[0, :].unique().shape[0]
     num_x = tx[1, :].unique().shape[0]
-    print(num_t, num_x)
     y_target = trainer.y_target[0]
     y_matrix = y_target.view(num_t, num_x)
 
@@ -211,7 +212,7 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
         ]) + '\n')
 
     orig_data = dataset.orig_data.squeeze().t()
-    l_target = torch.tensor(orig_data[trainer.t_sorted, 2])
+    l_target = orig_data[trainer.t_sorted, 2]
     l = lfm.gp_model(tx.t())
     l_mean = l.mean.detach()
     plot_spatiotemporal_data(

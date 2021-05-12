@@ -14,7 +14,7 @@ from lafomo.utilities.torch import cia, q2, smse, softplus
 
 class PDETrainer(VariationalTrainer):
 
-    def __init__(self, lfm: PartialLFM, optimizers: List[torch.optim.Optimizer], dataset, clamp=False, **kwargs):
+    def __init__(self, lfm: PartialLFM, optimizers: List[torch.optim.Optimizer], dataset, clamp=False, lf_target=None, **kwargs):
         super().__init__(lfm, optimizers, dataset, **kwargs)
         self.debug_iteration = 0
         self.clamp = clamp
@@ -53,6 +53,7 @@ class PDETrainer(VariationalTrainer):
         self.y_target = y_target.cuda() if is_cuda() else y_target
         self.tx = self.tx.cuda() if is_cuda() else self.tx
         self.t_sorted = self.t_sorted.cuda() if is_cuda() else self.t_sorted
+        self.lf_target = lf_target[self.t_sorted, 2]
 
     def discretise_spatial(self, tx):
         # whilst maintaining an inverse mapping to mask the output for
@@ -101,6 +102,14 @@ class PDETrainer(VariationalTrainer):
                 test_loss = - (log_likelihood - kl_divergence)
             print('Test loss:', test_loss.item())
         print(f'Q2: {q2(y_target.squeeze(), output.mean.squeeze()).item():.03f}')
+        with torch.no_grad():
+            gp = self.lfm.gp_model(self.tx.t())
+            lf_target = self.lf_target
+            f_mean = gp.mean.detach()
+            f_var = gp.variance.detach()
+        print('Q2', q2(lf_target.squeeze(), f_mean.squeeze()))
+        print('CA', cia(lf_target.squeeze(), f_mean.squeeze(), f_var.squeeze()))
+
         if self.plot_outputs and (self.debug_iteration % self.plot_outputs_iter) == 0:
             ts = self.tx[0, :].unique().numpy()
             xs = self.tx[1, :].unique().numpy()
