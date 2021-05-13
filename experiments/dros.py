@@ -21,7 +21,7 @@ mrna_cias = list()
 protein_q2s = list()
 protein_cias = list()
 
-kni_params = dict(sensitivity=0.183,
+kni_params = dict(sensitivity=0.0783,
                   decay=0.0770,
                   diffusion=0.0125)
 gt_params = dict(sensitivity=0.1107,
@@ -32,7 +32,7 @@ kr_params = dict(sensitivity=0.0970,
                  diffusion=0.0015)
 params = dict(kr=kr_params, kni=kni_params, gt=gt_params)
 gene = 'kni'
-data = 'dros-kni'
+
 dataset = DrosophilaSpatialTranscriptomics(
     gene=gene, data_dir='./data', scale=True)
 disc = dataset.disc
@@ -131,10 +131,10 @@ for i in range(5):
     lfm.pretrain(False)
     trainer.train(300, report_interval=10)
 
-    from lafomo.plot import tight_kwargs
-    plot_partial(dataset, lfm, trainer, plotter, Path('./'), params)
-
-    plt.savefig(Path('./') / f'kinetics-{gene}-{i}.pdf', **tight_kwargs)
+    # from lafomo.plot import tight_kwargs
+    # plot_partial(dataset, lfm, trainer, plotter, Path('./'), params)
+    #
+    # plt.savefig(Path('./') / f'kinetics-{gene}-{i}.pdf', **tight_kwargs)
 
     # from lafomo.utilities.torch import q2, cia
     # f = lfm(tx)
@@ -172,7 +172,13 @@ protein_cias = torch.tensor(protein_cias)
 mrna_q2s = torch.tensor(mrna_q2s)
 mrna_cias = torch.tensor(mrna_cias)
 print('Final')
+
 print(f'Protein Q2: {protein_q2s.mean(0):.04f} pm {protein_q2s.std(0):.04f}')
 print(f'Protein CIA: {protein_cias.mean(0):.04f} pm {protein_cias.std(0):.04f}')
 print(f'mRNA Q2: {mrna_q2s.mean(0):.04f} pm {mrna_q2s.std(0):.04f}')
 print(f'mRNA CIA: {mrna_cias.mean(0):.04f} pm {mrna_cias.std(0):.04f}')
+
+torch.save(protein_q2s, f'experiments/{gene}_protein_q2')
+torch.save(protein_cias, f'experiments/{gene}_protein_cia')
+torch.save(mrna_q2s, f'experiments/{gene}_mrna_q2')
+torch.save(mrna_cias, f'experiments/{gene}_mrna_cia')

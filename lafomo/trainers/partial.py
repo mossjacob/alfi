@@ -101,7 +101,7 @@ class PDETrainer(VariationalTrainer):
         return loss.item(), (-log_likelihood.item(), kl_divergence.item())
 
     def debug_out(self, data_input, y_target, output):
-        if (self.debug_iteration % 5) != 0:
+        if (self.debug_iteration % 1) != 0:
             self.debug_iteration += 1
             return
         print('Mean output variance:', output.variance.mean().item())
@@ -130,9 +130,9 @@ class PDETrainer(VariationalTrainer):
                 self.prot_q2_best = prot_q2
                 self.cia = (mrna_cia, prot_cia)
             print(f'prot Q2: {prot_q2.item():.03f}')
-            print(f'prot Q2: {prot_cia.item():.03f}')
-            print('mrna Q2', mrna_q2.item())
-            print('mrna CA', mrna_cia.item())
+            print(f'prot CA: {prot_cia.item():.03f}')
+            print(f'mrna Q2: {mrna_q2.item():.03f}')
+            print(f'mrna CA: {mrna_cia.item():.03f}')
 
         if self.plot_outputs and (self.debug_iteration % self.plot_outputs_iter) == 0:
             ts = self.tx[0, :].unique().numpy()
