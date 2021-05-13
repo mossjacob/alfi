@@ -20,13 +20,24 @@ mrna_q2s = list()
 mrna_cias = list()
 protein_q2s = list()
 protein_cias = list()
-data = 'dros-kr'
+
+kni_params = dict(sensitivity=0.183,
+                  decay=0.0770,
+                  diffusion=0.0125)
+gt_params = dict(sensitivity=0.1107,
+                  decay=0.1110,
+                  diffusion=0.0159)
+kr_params = dict(sensitivity=0.0970,
+                 decay=0.0764,
+                 diffusion=0.0015)
+params = dict(kr=kr_params, kni=kni_params, gt=gt_params)
+gene = 'kni'
+data = 'dros-kni'
 dataset = DrosophilaSpatialTranscriptomics(
-    gene='kr', data_dir='./data', scale=True)
+    gene=gene, data_dir='../../../data', scale=True)
+
 params = dict(lengthscale=10,
-              sensitivity=0.0970,
-              decay=0.0764,
-              diffusion=0.0015,
+              **params[gene],
               parameter_grad=False,
               warm_epochs=-1,
               natural=False,
@@ -124,33 +135,33 @@ for i in range(5):
     from lafomo.plot import tight_kwargs
     plot_partial(dataset, lfm, trainer, plotter, Path('./'), params)
 
-    plt.savefig(Path('./') / f'kinetics-kr-{i}.pdf', **tight_kwargs)
+    plt.savefig(Path('./') / f'kinetics-{gene}-{i}.pdf', **tight_kwargs)
 
-    from lafomo.utilities.torch import q2, cia
-    tx = trainer.tx
-    num_t = tx[0, :].unique().shape[0]
-    num_x = tx[1, :].unique().shape[0]
-    f = lfm(tx)
-    f_mean = f.mean.detach()
-    f_var = f.variance.detach()
-    y_target = trainer.y_target[0]
+    # from lafomo.utilities.torch import q2, cia
+    # f = lfm(tx)
+    # f_mean = f.mean.detach()
+    # f_var = f.variance.detach()
+    # y_target = trainer.y_target[0]
 
-    print(f_mean.shape, y_target.shape, f_var.shape)
     print('Run ', i)
-    protein_q2 = q2(y_target.squeeze(), f_mean.squeeze())
-    protein_cia = cia(y_target.squeeze(), f_mean.squeeze(), f_var.squeeze())
+    # protein_q2 = q2(y_target.squeeze(), f_mean.squeeze())
+    protein_q2 = trainer.prot_q2_best
+    # protein_cia = cia(y_target.squeeze(), f_mean.squeeze(), f_var.squeeze())
+    protein_cia = trainer.cia[1]
     print('Protein Q2', protein_q2)
     print('Protein CA', protein_cia)
     protein_q2s.append(protein_q2.item())
     protein_cias.append(protein_cia.item())
 
-    gp = lfm.gp_model(tx.t())
-    lf_target = orig_data[trainer.t_sorted, 2]
-    f_mean = gp.mean.detach()
-    f_var = gp.variance.detach()
+    # gp = lfm.gp_model(tx.t())
+    # lf_target = orig_data[trainer.t_sorted, 2]
+    # f_mean = gp.mean.detach()
+    # f_var = gp.variance.detach()
 
-    mrna_q2 = q2(lf_target.squeeze(), f_mean.squeeze())
-    mrna_cia = cia(lf_target.squeeze(), f_mean.squeeze(), f_var.squeeze())
+    # mrna_q2 = q2(lf_target.squeeze(), f_mean.squeeze())
+    mrna_q2 = trainer.mrna_q2_best
+    # mrna_cia = cia(lf_target.squeeze(), f_mean.squeeze(), f_var.squeeze())
+    mrna_cia = trainer.cia[0]
     print('mRNA Q2', mrna_q2)
     print('mRNA CA', mrna_cia)
     mrna_q2s.append(mrna_q2.item())

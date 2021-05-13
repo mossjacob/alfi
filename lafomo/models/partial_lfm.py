@@ -31,7 +31,7 @@ class PartialLFM(VariationalLFM):
             self.fenics_named_parameters['fenics' + str(name)] = parameter
             name += 1
 
-    def forward(self, tx, step_size=1e-1, return_samples=False, **kwargs):
+    def forward(self, tx, step_size=1e-1, return_samples=False, step=1, **kwargs):
         """
         tx : torch.Tensor
             Shape (2, num_times) or, if in pretrain mode, then a tuple containing input and output
@@ -60,7 +60,7 @@ class PartialLFM(VariationalLFM):
         u = u.view(*u.shape[:2], num_t, num_x)
         if self.pretrain_mode:
             params = [softplus(param.repeat(self.config.num_samples, 1)) for param in self.fenics_parameters]
-            outputs = kwargs['pde_func'](tx[1], u, *params)
+            outputs = kwargs['pde_func'](tx[1], u[:, :, ::step].contiguous(), *params)
         else:
             outputs = self.solve_pde(u)
 
@@ -74,7 +74,7 @@ class PartialLFM(VariationalLFM):
         batch_mvn = MultivariateNormal(f_mean, f_covar)
         return MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)
 
-    def func(self, i, u):
+    def func(self, i, u, step):
         # i, u = iu
         fenics_model = self.fenics_model_fn()
         time_steps = fenics_model.time_steps
@@ -86,7 +86,7 @@ class PartialLFM(VariationalLFM):
         params = [softplus(param) for param in self.fenics_parameters]
 
         # t = df['t'].values[:41]
-        for n in range(time_steps + 1):
+        for n in range((time_steps + 1)):
             u_n = u[i, 0, n].unsqueeze(0)  # (S, t)
             # print(u_n.shape, y_prev.shape, params[0].shape)
             y_prev = fenics_model(y_prev, u_n, *params)
@@ -95,16 +95,17 @@ class PartialLFM(VariationalLFM):
             outputs.append(y_prev)
 
         outputs = torch.stack(outputs).permute(1, 0, 2)  # (S, T, X)
+        outputs = outputs[:, ::step, :]
         return outputs
 
-    def solve_pde(self, u):
+    def solve_pde(self, u, step=1):
         """
 
         @param u: Shape (S, 1, num_t, num_x)
         @return:
         """
         # u.share_memory_()
-        outputs = [self.func(i, u) for i in range(self.config.num_samples)]
+        outputs = [self.func(i, u, step) for i in range(self.config.num_samples)]
 
         outputs = torch.cat(outputs)
         # outputs = torch.cat(self.pool.map(self.func, [() for i in range(self.config.num_samples)]))  #self.pool

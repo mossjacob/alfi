@@ -180,7 +180,8 @@ class DrosophilaSpatialTranscriptomics(LFMDataset):
 
         self.orig_data = torch.tensor(data).t()
         self.num_outputs = 1
-        self.num_discretised = 7
+        self.num_discretised = 35
+        self.disc = 5
         x_observed = torch.tensor(data[:, 0:2]).permute(1, 0)
         data = torch.tensor(data[:, 3]).unsqueeze(0)
         self.gene_names = np.array([gene])

@@ -30,7 +30,7 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
         num_inducing = int(tx.shape[1] * 3/6)
     else:
         num_inducing = int(tx.shape[1] * 5/6)
-    use_lhs = True
+    use_lhs = False
     if use_lhs:
         print('tx', tx.shape)
         from smt.sampling_methods import LHS
@@ -212,15 +212,18 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
         ]) + '\n')
 
     orig_data = dataset.orig_data.squeeze().t()
+    num_t_orig = orig_data[:, 0].unique().shape[0]
+    num_x_orig = orig_data[:, 1].unique().shape[0]
+
     l_target = orig_data[trainer.t_sorted, 2]
     l = lfm.gp_model(tx.t())
     l_mean = l.mean.detach()
     plot_spatiotemporal_data(
         [
             l_mean.view(num_t, num_x).t(),
-            l_target.view(num_t, num_x).t(),
-            f_mean.view(num_t, num_x).t(),
-            y_target.view(num_t, num_x).detach().t(),
+            l_target.view(num_t_orig, num_x_orig).t(),
+            f_mean.view(num_t_orig, num_x_orig).t(),
+            y_target.view(num_t_orig, num_x_orig).detach().t(),
         ],
         extent,
         titles=['Latent (Prediction)', 'Latent (Target)', 'Output (Prediction)', 'Output (Target)'],
