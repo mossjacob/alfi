@@ -34,7 +34,8 @@ params = dict(kr=kr_params, kni=kni_params, gt=gt_params)
 gene = 'kni'
 data = 'dros-kni'
 dataset = DrosophilaSpatialTranscriptomics(
-    gene=gene, data_dir='../../../data', scale=True)
+    gene=gene, data_dir='./data', scale=True)
+disc = dataset.disc
 
 params = dict(lengthscale=10,
               **params[gene],
@@ -51,33 +52,34 @@ lfm, trainer, plotter = build_partial(
 sensitivity = (torch.tensor(params['sensitivity']))
 decay = (torch.tensor(params['decay']))
 diffusion = (torch.tensor(params['diffusion']))
+
 tx = trainer.tx
+orig_data = dataset.orig_data.squeeze().t()
 num_t = tx[0, :].unique().shape[0]
 num_x = tx[1, :].unique().shape[0]
+
+num_t_orig = orig_data[:, 0].unique().shape[0]
+num_x_orig = orig_data[:, 1].unique().shape[0]
+
 y_target = trainer.y_target[0]
-y_matrix = y_target.view(num_t, num_x)
-print(y_matrix.shape)
+y_matrix = y_target.view(num_t_orig, num_x_orig)
 dy_t = list()
-for i in range(num_x):
-    t = tx[0][::num_x]
+for i in range(num_x_orig):
+    t = tx[0][::disc][::num_x]
     y = y_matrix[:, i].unsqueeze(-1)
     t_interpolate, y_interpolate, y_grad, _ = \
         spline_interpolate_gradient(t, y)
     dy_t.append(y_grad)
 dy_t = torch.stack(dy_t)
 
-# fig, axes = plt.subplots(nrows=2, figsize=(5, 7))
 d2y_x = list()
 dy_x = list()
-for i in range(num_t):
-    t = tx[1][:num_x]
+for i in range(num_t_orig):
+    t = tx[1][::disc][:num_x]
     y = y_matrix[i].unsqueeze(-1)
     t_interpolate, y_interpolate, y_grad, y_grad_2 = \
         spline_interpolate_gradient(t, y)
     d2y_x.append(y_grad_2)
-    # axes[0].plot(t_interpolate, y_interpolate)
-    #
-    # axes[1].plot(y_grad_2)
     dy_x.append(y_grad)
 
 d2y_x = torch.stack(d2y_x)
@@ -85,15 +87,13 @@ dy_x = torch.stack(dy_x)[..., ::10, 0].reshape(1, -1)
 d2y_x = d2y_x[..., ::10, 0].reshape(1, -1)
 dy_t = dy_t[..., ::10, 0].t().reshape(1, -1)
 
-
 def pde_func(y, u, sensitivity, decay, diffusion):
     # y (1, 1681) u (25, 1, 41, 41) s (25, 1)
+    print(decay.shape, y.shape, u.shape, d2y_x.shape)
     dy_t = (sensitivity * u.view(u.shape[0], -1) -
             decay * y.view(1, -1) +
             diffusion * d2y_x)
     return dy_t
-
-orig_data = dataset.orig_data.squeeze().t()
 
 for i in range(5):
     lfm, trainer, plotter = build_partial(

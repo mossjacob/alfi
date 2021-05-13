@@ -64,7 +64,9 @@ class PartialPreEstimator(PreEstimator):
         self.pde_func = pde_func
         self.input_pair = input_pair
         self.target = target
-        self.model_kwargs = dict(pde_func=self.pde_func)
+        disc = dataset.disc if hasattr(dataset, 'disc') else 1
+
+        self.model_kwargs = dict(step=disc, pde_func=self.pde_func)
 
     def debug_out(self, output, y_target):
         # plt.figure()

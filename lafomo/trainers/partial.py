@@ -79,8 +79,7 @@ class PDETrainer(VariationalTrainer):
 
     def single_epoch(self, step_size=1e-1, epoch=0, **kwargs):
         [optim.zero_grad() for optim in self.optimizers]
-
-        output = self.lfm(self.tx, step_size=step_size, step=5)
+        output = self.lfm(self.tx, step_size=step_size, step=self.disc)
         y_target = self.y_target.t()
 
         self.debug_out(self.tx, y_target, output)
