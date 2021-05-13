@@ -62,7 +62,7 @@ class PartialLFM(VariationalLFM):
             params = [softplus(param.repeat(self.config.num_samples, 1)) for param in self.fenics_parameters]
             outputs = kwargs['pde_func'](tx[1], u[:, :, ::step].contiguous(), *params)
         else:
-            outputs = self.solve_pde(u)
+            outputs = self.solve_pde(u, step=step)
 
         if return_samples:
             return outputs

@@ -89,7 +89,6 @@ dy_t = dy_t[..., ::10, 0].t().reshape(1, -1)
 
 def pde_func(y, u, sensitivity, decay, diffusion):
     # y (1, 1681) u (25, 1, 41, 41) s (25, 1)
-    print(decay.shape, y.shape, u.shape, d2y_x.shape)
     dy_t = (sensitivity * u.view(u.shape[0], -1) -
             decay * y.view(1, -1) +
             diffusion * d2y_x)
