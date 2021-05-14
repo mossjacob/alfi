@@ -82,7 +82,7 @@ class HomogeneousReactionDiffusion(LFMDataset):
         self.gene_names = np.array(['toy'])
 
         if nn_format:
-            params = torch.tensor([0.3, 0.3, 0.1, 0.01]).unsqueeze(0).repeat(self.orig_data.shape[0], 1)
+            params = torch.tensor([0.3, 0.3, 1.0, 0.1, 0.01]).unsqueeze(0).repeat(self.orig_data.shape[0], 1)
             train, test = generate_neural_dataset_2d(self.orig_data, params, self.num_data - ntest, ntest, sub=sub)
             self.data = train
             self.train_data = train

@@ -31,10 +31,12 @@ if __name__ == '__main__':
                             try:
                                 eigval, eigvec = torch.symeig(kern, eigenvectors=True)
                             except:
+                                print('Failed for', l1, l2, sensitivity, decay, diffusion)
                                 continue
                             eps = -1e-5
                             num = torch.sum((~(eigval >= eps)).type(torch.int)).item()
                             if num > 30:
+                                print('Failed for', l1, l2, sensitivity, decay, diffusion)
                                 continue
                             eigval_root = eigval.clamp_min(0.0).sqrt()
                             corr_matrix = (eigvec * eigval_root).transpose(-1, -2)
