@@ -30,7 +30,7 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
         num_inducing = int(tx.shape[1] * 3/6)
     else:
         num_inducing = int(tx.shape[1] * 5/6)
-    use_lhs = False
+    use_lhs = True
     if use_lhs:
         print('tx', tx.shape)
         from smt.sampling_methods import LHS
