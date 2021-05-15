@@ -78,7 +78,7 @@ class VariationalLFM(LFM, ABC):
         else:
             return ''
 
-    def forward(self, x):
+    def forward(self, x, **kwargs):
         raise NotImplementedError
 
     def train(self, mode: bool = True):
