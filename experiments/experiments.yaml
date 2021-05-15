@@ -116,3 +116,11 @@ lotka:
       model-params:
         natural: false
         kernel: 'rbf'
+
+# Neural networks
+reaction-diffusion:
+  experiments:
+    - method: lfo-2d
+      train_params:
+        epochs: 100
+        report_interval: 1

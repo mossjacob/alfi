@@ -11,7 +11,7 @@ from pathlib import Path
 from lafomo.datasets import (
     P53Data, HafnerData, ToyTranscriptomics, ToyTranscriptomicGenerator,
     HomogeneousReactionDiffusion, DrosophilaSpatialTranscriptomics,
-    DeterministicLotkaVolterra,
+    DeterministicLotkaVolterra, ReactionDiffusion
 )
 from lafomo.utilities.torch import get_mean_trace, is_cuda
 try:
@@ -21,6 +21,8 @@ except ImportError:
 from .variational import build_variational, plot_variational
 from .exact import build_exact, plot_exact
 from .lotka import build_lotka, plot_lotka
+from .lfo import build_dataset, build_lfo
+
 
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = 'CMU Serif'
@@ -54,9 +56,12 @@ datasets = {
     'toy-spatial': lambda: HomogeneousReactionDiffusion(data_dir='data'),
     'dros-kr': lambda: DrosophilaSpatialTranscriptomics(gene='kr', data_dir='data', scale=True),
     'toy': lambda: ToyTranscriptomicGenerator().generate_single(),
-    'lotka': lambda: DeterministicLotkaVolterra(alpha = 2./3, beta = 4./3,
-                                                gamma = 1., delta = 1.,
+    'lotka': lambda: DeterministicLotkaVolterra(alpha=2./3, beta=4./3,
+                                                gamma=1., delta=1.,
                                                 steps=13, end_time=12, fixed_initial=0.8),
+    'reaction-diffusion': lambda: build_dataset(
+        ReactionDiffusion('../../../data', nn_format=True, max_n=4000, ntest=50), ntest=50
+    ),
 }
 
 
@@ -66,6 +71,7 @@ builders = {
     'exact': build_exact,
     'partial': build_partial,
     'lotka': build_lotka,
+    'lfo-2d': lambda *args, **kwargs: build_lfo(*args, **kwargs, block_dim=2)
 }
 
 plotters = {
