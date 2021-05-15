@@ -99,6 +99,7 @@ class ToyTranscriptomicGenerator(LFMDataset):
         self.decay = decay if decay is not None else self.pick_decay()
         self.basal = basal if basal is not None else self.pick_basal()
         self.sensitivity = sensitivity if sensitivity is not None else self.pick_sensitivity()
+        self.lengthscale = lengthscale
 
         class ToyLFM(OrdinaryLFM):
             """

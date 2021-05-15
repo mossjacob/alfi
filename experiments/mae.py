@@ -56,6 +56,7 @@ def save_dataset(dataset, path):
         'm_obs': dataset.m_observed_highres, 'high_disc': 10,
         't_obs': dataset.t_observed_highres,
         'f_obs': dataset.f_observed_highres,
+        'lengthscale': dataset.lfm.lengthscale,
         'basal': dataset.lfm.basal_rate,
         'sensitivity': dataset.lfm.sensitivity,
         'decay': dataset.lfm.decay_rate
