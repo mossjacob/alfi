@@ -62,7 +62,7 @@ class NeuralOperatorTrainer(Trainer):
             # mse.backward()
             l2 = self._loss(p_y_pred, y.squeeze(-1))
             params_mse = mse_loss(params_out, params.view(batch_size, -1), reduction='mean')
-            total_loss = l2 + params_mse
+            total_loss = l2 + 10 * params_mse
 
             total_loss.backward()  # use the l2 relative loss
             self.optimizer.step()

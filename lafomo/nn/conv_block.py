@@ -64,12 +64,25 @@ class SimpleBlock1d(Module):
             x1, out_ft = conv(x)
             out_fts[..., i*self.modes1:(i+1)*self.modes1] = out_ft[..., :self.modes1]
             x2 = w(x)
+            p_w = w_params(x)
+            if p is None:
+                p = p_w
+            else:
+                p = p_w + p
             x = x1 + x2
-            if i < self.num_layers - 1:
+            if i < (self.num_layers - 1):
                 x = F.relu(x)
 
         out_fts = torch.stack([out_fts.real, out_fts.imag], dim=-1)
-        params = self.fc0_parameters(out_fts.reshape(batchsize, -1))
+        # print(p.mean(-1).unsqueeze(-1).shape, out_fts.view(batchsize, self.width, -1).shape)
+        # params = self.fc0_parameters(out_fts.reshape(batchsize, -1))
+        # params = F.relu(params)
+        # params = self.fc1_parameters(params)
+        params = torch.cat([p.mean(-1).unsqueeze(-1), out_fts.view(batchsize, self.width, -1)], dim=-1)
+        # print(params.shape)
+        # print(self.fc0_parameters)
+        # params = p.mean(-1)
+        params = self.fc0_parameters(params.view(batchsize, -1))
         params = F.relu(params)
         params = self.fc1_parameters(params)
 
