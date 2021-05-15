@@ -8,7 +8,7 @@ from torch.optim import Adam
 
 from lafomo.configuration import VariationalConfiguration
 from lafomo.models import OrdinaryLFM, generate_multioutput_rbf_gp
-from lafomo.plot import Plotter
+from lafomo.plot import Plotter1d
 from lafomo.trainers import VariationalTrainer
 from lafomo.utilities.data import p53_ground_truth
 
@@ -81,7 +81,7 @@ def build_variational(dataset, params, **kwargs):
     gp_model = generate_multioutput_rbf_gp(num_tfs, inducing_points, gp_kwargs=dict(natural=use_natural))
 
     lfm = TranscriptionLFM(dataset.num_outputs, gp_model, config, num_training_points=num_training)
-    plotter = Plotter(lfm, dataset.gene_names, style='seaborn')
+    plotter = Plotter1d(lfm, dataset.gene_names, style='seaborn')
 
     class P53ConstrainedTrainer(VariationalTrainer):
         def after_epoch(self):

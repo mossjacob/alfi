@@ -3,7 +3,7 @@ from gpytorch.mlls import ExactMarginalLogLikelihood
 from matplotlib import pyplot as plt
 
 from lafomo.models import ExactLFM
-from lafomo.plot import Plotter
+from lafomo.plot import Plotter1d
 from lafomo.trainers import ExactTrainer
 from lafomo.utilities.data import p53_ground_truth
 
@@ -25,7 +25,7 @@ def build_exact(dataset, params, **kwargs):
     print(dict(model.named_parameters()))
 
     trainer = ExactTrainer(model, [optimizer], dataset, loss_fn=loss_fn, track_parameters=track_parameters)
-    plotter = Plotter(model, dataset.gene_names)
+    plotter = Plotter1d(model, dataset.gene_names)
     model.likelihood.train()
 
     return model, trainer, plotter

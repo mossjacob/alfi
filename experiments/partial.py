@@ -10,7 +10,7 @@ import time
 from lafomo.configuration import VariationalConfiguration
 from lafomo.models import MultiOutputGP, PartialLFM, generate_multioutput_rbf_gp
 from lafomo.models.pdes import ReactionDiffusion
-from lafomo.plot import Plotter, plot_spatiotemporal_data, tight_kwargs
+from lafomo.plot import Plotter1d, plot_spatiotemporal_data, tight_kwargs
 from lafomo.trainers import PDETrainer, PartialPreEstimator
 from lafomo.utilities.fenics import interval_mesh
 from lafomo.utilities.torch import cia, q2, smse, inv_softplus, softplus, spline_interpolate_gradient, get_mean_trace
@@ -119,7 +119,7 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
                          train_mask=train_mask.bool(),
                          warm_variational=warm_variational,
                          checkpoint_dir=checkpoint_dir)
-    plotter = Plotter(lfm, dataset.gene_names)
+    plotter = Plotter1d(lfm, dataset.gene_names)
     return lfm, trainer, plotter
 
 
