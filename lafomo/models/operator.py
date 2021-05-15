@@ -2,7 +2,7 @@ import operator
 import torch
 
 from functools import reduce
-from torch.distributions import MultivariateNormal
+from torch.distributions import Normal
 from torch.nn.functional import softplus
 
 from lafomo.nn import SimpleBlock1d, SimpleBlock2d
@@ -35,5 +35,8 @@ class NeuralOperator(LFM):
             y_pred, params_out = self(tx_predict)
             p_y_mean = y_pred[..., 0]
             p_y_var = softplus(y_pred[..., 1])
-            p_y_pred = MultivariateNormal(p_y_mean, p_y_var)
+            p_y_pred = Normal(p_y_mean, p_y_var)
             return p_y_pred, params_out
+
+    def save(self, filepath):
+        torch.save(self.state_dict(), str(filepath) + 'lfo.pt')

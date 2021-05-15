@@ -17,7 +17,7 @@ from lafomo.utilities.torch import get_mean_trace, is_cuda
 try:
     from .partial import build_partial, plot_partial, pretrain_partial
 except ImportError:
-    build_partial, plot_partial = None, None
+    build_partial, plot_partial, pretrain_partial = None, None, None
 from .variational import build_variational, plot_variational
 from .exact import build_exact, plot_exact
 from .lotka import build_lotka, plot_lotka
@@ -61,7 +61,7 @@ datasets = {
                                                 gamma=1., delta=1.,
                                                 steps=13, end_time=12, fixed_initial=0.8),
     'reaction-diffusion': lambda: build_dataset(
-        ReactionDiffusion('../../../data', nn_format=True, max_n=4000, ntest=50), ntest=50
+        ReactionDiffusion('data', nn_format=True, max_n=4000, ntest=50), ntest=50
     ),
 }
 

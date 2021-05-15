@@ -14,7 +14,7 @@ def build_dataset(dataset, ntest=50):
     return train_loader, test_loader
 
 
-def build_lfo(dataset, modelparams, block_dim=2):
+def build_lfo(dataset, modelparams, block_dim=2, **kwargs):
     train_loader, test_loader = dataset
     modes = 12
     width = 38
@@ -26,3 +26,6 @@ def build_lfo(dataset, modelparams, block_dim=2):
     trainer = NeuralOperatorTrainer(model, [optimizer], train_loader, test_loader)
 
     return model, trainer, None
+
+def plot_lfo(dataset, lfm, trainer, plotter, filepath, params):
+    pass
