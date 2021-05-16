@@ -10,7 +10,7 @@ from gpytorch.constraints import Positive, Interval
 
 from lafomo.models import OrdinaryLFM, MultiOutputGP
 from lafomo.utilities.torch import inv_softplus, softplus
-from lafomo.plot import Plotter, plot_phase, Colours
+from lafomo.plot import Plotter1d, plot_phase, Colours
 from lafomo.configuration import VariationalConfiguration
 from lafomo.trainers import VariationalTrainer
 

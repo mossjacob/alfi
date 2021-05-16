@@ -56,20 +56,19 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
     gp_model.double()
 
     # Define LFM
-    def fenics_fn():
-        # We calculate a mesh that contains all possible spatial locations in the dataset
-        data = next(iter(dataset))
-        tx, y_target = data
+    # We calculate a mesh that contains all possible spatial locations in the dataset
+    data = next(iter(dataset))
+    tx, y_target = data
 
-        # Define mesh
-        spatial = np.unique(tx[1, :])
-        mesh = interval_mesh(spatial)
+    # Define mesh
+    spatial = np.unique(tx[1, :])
+    mesh = interval_mesh(spatial)
 
-        # Define fenics model
-        ts = tx[0, :].unique().sort()[0].numpy()
-        t_range = (ts[0], ts[-1])
-        time_steps = dataset.num_discretised
-        return ReactionDiffusion(t_range, time_steps, mesh)
+    # Define fenics model
+    ts = tx[0, :].unique().sort()[0].numpy()
+    t_range = (ts[0], ts[-1])
+    time_steps = dataset.num_discretised
+    fenics_model = ReactionDiffusion(t_range, time_steps, mesh)
 
     config = VariationalConfiguration(
         initial_conditions=False,
@@ -93,7 +92,7 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
     train_ratio = 0.3
     num_training = int(train_ratio * tx.shape[1])
 
-    lfm = PartialLFM(1, gp_model, fenics_fn, fenics_params, config, num_training_points=num_training)
+    lfm = PartialLFM(1, gp_model, fenics_model, fenics_params, config, num_training_points=num_training)
     if reload is not None:
         lfm = lfm.load(reload,
                        gp_model=lfm.gp_model,
@@ -128,45 +127,13 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
 
 def pretrain_partial(dataset, lfm, trainer, modelparams):
     tx = trainer.tx
-    num_t = tx[0, :].unique().shape[0]
-    num_x = tx[1, :].unique().shape[0]
+    disc = dataset.disc if hasattr(dataset, 'disc') else 1
     y_target = trainer.y_target[0]
     orig_data = dataset.orig_data.squeeze().t()
     num_t_orig = orig_data[:, 0].unique().shape[0]
     num_x_orig = orig_data[:, 1].unique().shape[0]
     y_matrix = y_target.view(num_t_orig, num_x_orig)
-
-    dy_t = list()
-    for i in range(num_x):
-        t = tx[0][::num_x]
-        y = y_matrix[:, i].unsqueeze(-1)
-        t_interpolate, y_interpolate, y_grad, _ = \
-            spline_interpolate_gradient(t, y)
-        dy_t.append(y_grad)
-    dy_t = torch.stack(dy_t)
-
-    d2y_x = list()
-    dy_x = list()
-    for i in range(num_t):
-        t = tx[1][:num_x]
-        y = y_matrix[i].unsqueeze(-1)
-        t_interpolate, y_interpolate, y_grad, y_grad_2 = \
-            spline_interpolate_gradient(t, y)
-        d2y_x.append(y_grad_2)
-        dy_x.append(y_grad)
-
-    d2y_x = torch.stack(d2y_x)
-    dy_x = torch.stack(dy_x)[..., ::10, 0].reshape(1, -1)
-    d2y_x = d2y_x[..., ::10, 0].reshape(1, -1)
-    dy_t = dy_t[..., ::10, 0].t().reshape(1, -1)
-
-    def pde_func(y, u, sensitivity, decay, diffusion):
-        # y (1, 1681) u (25, 1, 41, 41) s (25, 1)
-        dy_t = (sensitivity * u.view(u.shape[0], -1) -
-                decay * y.view(1, -1) +
-                diffusion * d2y_x)
-        return dy_t
-
+    pde_func, pde_target = lfm.fenics_model.interpolated_gradient(tx, y_matrix, disc=disc)
     train_ratio = 0.3
     num_training = int(train_ratio * tx.shape[1])
     print('num training', num_training)
@@ -179,7 +146,7 @@ def pretrain_partial(dataset, lfm, trainer, modelparams):
 
     pre_estimator = PartialPreEstimator(
         lfm, optimizers, dataset, pde_func,
-        input_pair=(trainer.tx, trainer.y_target), target=dy_t.t(),
+        input_pair=(trainer.tx, trainer.y_target), target=pde_target,
         train_mask=trainer.train_mask
     )
 

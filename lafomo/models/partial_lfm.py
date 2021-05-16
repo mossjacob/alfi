@@ -14,7 +14,7 @@ class PartialLFM(VariationalLFM):
     def __init__(self,
                  num_outputs,
                  gp_model: ApproximateGP,
-                 fenics_model_fn: Callable,
+                 fenics_model: FEniCSModule,
                  fenics_parameters: list,
                  config: VariationalConfiguration,
                  num_training_points=None,
@@ -22,7 +22,7 @@ class PartialLFM(VariationalLFM):
         super().__init__(num_outputs, gp_model, config, num_training_points, dtype)
         if self.config.initial_conditions:
             raise Exception('Initial conditions are not implemented for PartialLFM.')
-        self.fenics_model_fn = fenics_model_fn
+        self.fenics_model = fenics_model
         self.fenics_parameters = fenics_parameters
         self.fenics_named_parameters = dict()
         name = 0
@@ -76,7 +76,7 @@ class PartialLFM(VariationalLFM):
 
     def func(self, i, u, step):
         # i, u = iu
-        fenics_model = self.fenics_model_fn()
+        fenics_model = self.fenics_model
         time_steps = fenics_model.time_steps
         mesh_cells = fenics_model.mesh.cells().shape[0]
 

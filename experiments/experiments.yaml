@@ -65,7 +65,7 @@ dros-kr:
         decay: 0.0764
         diffusion: 0.0015
         parameter_grad: false
-        natural: false
+        natural: true
         warm_epochs: -1
         zero_mean: true
         clamp: true
