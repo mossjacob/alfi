@@ -131,7 +131,10 @@ def pretrain_partial(dataset, lfm, trainer, modelparams):
     num_t = tx[0, :].unique().shape[0]
     num_x = tx[1, :].unique().shape[0]
     y_target = trainer.y_target[0]
-    y_matrix = y_target.view(num_t, num_x)
+    orig_data = dataset.orig_data.squeeze().t()
+    num_t_orig = orig_data[:, 0].unique().shape[0]
+    num_x_orig = orig_data[:, 1].unique().shape[0]
+    y_matrix = y_target.view(num_t_orig, num_x_orig)
 
     dy_t = list()
     for i in range(num_x):
@@ -161,7 +164,7 @@ def pretrain_partial(dataset, lfm, trainer, modelparams):
         # y (1, 1681) u (25, 1, 41, 41) s (25, 1)
         dy_t = (sensitivity * u.view(u.shape[0], -1) -
                 decay * y.view(1, -1) +
-                diffusion * 0)
+                diffusion * d2y_x)
         return dy_t
 
     train_ratio = 0.3
