@@ -21,6 +21,7 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
     tx, y_target = data
     lengthscale = params['lengthscale']
     zero_mean = params['zero_mean'] if 'zero_mean' in params else False
+    checkpoint_dir = checkpoint_dir if 'checkpoint' in params else None
     # Define mesh
     spatial = np.unique(tx[1, :])
     mesh = interval_mesh(spatial)
