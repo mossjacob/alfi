@@ -82,6 +82,9 @@ class NeuralOperatorTrainer(Trainer):
         with torch.no_grad():
             for x, y, params in self.test_loader:
                 # x, y = x.cuda(), y.cuda()
+                if is_cuda():
+                    x, y, params = x.cuda(), y.cuda(), params.cuda()
+
                 p_y_pred, params_out = self.lfm(x)
 
                 mu = p_y_pred[..., 0]

@@ -41,10 +41,10 @@ def generate_neural_dataset_2d(txf, params, ntrain, ntest, sub=1):
     s1 = tx[0, :].unique().shape[0]
     s2 = tx[1, :].unique().shape[0]
     grid = tx.t()
-    grid = torch.tensor(grid.reshape(1, s1, s2, 2), dtype=torch.float)
+    grid = grid.reshape(1, s1, s2, 2).type(torch.float)
 
     data = txf.permute(0, 2, 1)
-    data = torch.tensor(data.reshape(data.shape[0], s1, s2, 4), dtype=torch.float)
+    data = data.reshape(data.shape[0], s1, s2, 4).type(torch.float)
     grid = grid[:, ::sub, ::sub, :]
     data = data[:, ::sub, ::sub, :]
     s1 = data.shape[1]

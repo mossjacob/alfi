@@ -54,7 +54,8 @@ class SimpleBlock1d(Module):
         batchsize = x.shape[0]
         x = self.fc0(x)
         x = x.permute(0, 2, 1)
-        out_fts = torch.zeros(batchsize, self.width, self.modes1*self.num_layers, dtype=torch.complex64)
+        out_fts = torch.zeros(batchsize, self.width, self.modes1*self.num_layers,
+                              dtype=torch.complex64, device=x.device)
         out_p = torch.zeros(batchsize, self.width, x.shape[-1])
         p = None
         for i in range(self.num_layers):
@@ -136,7 +137,7 @@ class SimpleBlock2d(Module):
         x = self.fc0(x)
         x = x.permute(0, 3, 1, 2)
         out_fts = torch.zeros(batchsize, self.width, self.modes1*self.num_layers, self.modes2*self.num_layers,
-                              dtype=torch.complex64)
+                              dtype=torch.complex64, device=x.device)
 
         for i in range(self.num_layers):
             conv = self.spectral_layers[i]

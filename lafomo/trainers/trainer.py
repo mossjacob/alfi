@@ -81,7 +81,7 @@ class Trainer:
             self.after_epoch()
             self.num_epochs += 1
 
-        losses = np.array(losses)
+        losses = torch.tensor(losses).cpu().numpy()
         if self.losses is None:
             self.losses = np.empty((0, losses.shape[1]))
         self.losses = np.concatenate([self.losses, losses], axis=0)
