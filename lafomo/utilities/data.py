@@ -44,7 +44,6 @@ def generate_neural_dataset_2d(txf, params, ntrain, ntest, sub=1):
     grid = torch.tensor(grid.reshape(1, s1, s2, 2), dtype=torch.float)
 
     data = txf.permute(0, 2, 1)
-    print('params', params.shape)
     data = torch.tensor(data.reshape(data.shape[0], s1, s2, 4), dtype=torch.float)
     grid = grid[:, ::sub, ::sub, :]
     data = data[:, ::sub, ::sub, :]

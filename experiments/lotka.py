@@ -10,7 +10,7 @@ from gpytorch.constraints import Positive, Interval
 
 from lafomo.models import OrdinaryLFM, MultiOutputGP
 from lafomo.utilities.torch import inv_softplus, softplus
-from lafomo.plot import Plotter, plot_phase, Colours
+from lafomo.plot import Plotter1d, plot_phase, Colours
 from lafomo.configuration import VariationalConfiguration
 from lafomo.trainers import VariationalTrainer
 
@@ -140,7 +140,7 @@ def build_lotka(dataset, params, reload=None, **kwargs):
     else:
         lfm = LotkaVolterra(num_outputs, gp_model, config, **lfm_kwargs)
 
-    plotter = Plotter(lfm, np.array(['predator']))
+    plotter = Plotter1d(lfm, np.array(['predator']))
 
     if use_natural:
         variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)

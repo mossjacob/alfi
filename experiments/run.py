@@ -147,7 +147,8 @@ def run_model(method, dataset, model, trainer, plotter, filepath, save_filepath,
     if method in train_pre_step:
         train_pre_step[method](dataset, model, trainer, modelparams)
     print(TerminalColours.GREEN, 'Training...', TerminalColours.END)
-    trainer.train(**experiment['train_params'])
+    times = trainer.train(**experiment['train_params'])
+    np.save(save_filepath + '_times.npy', times)
 
     # Plot results of model
     if method in plotters:

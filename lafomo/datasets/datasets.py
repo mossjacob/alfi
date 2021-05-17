@@ -226,7 +226,7 @@ class DrosophilaSpatialTranscriptomics(LFMDataset):
         self.gene_names = np.array([gene])
         if nn_format:
             params = torch.tensor([-1.]*5).unsqueeze(0)
-            train, test = generate_neural_dataset_2d(self.orig_data.t().unsqueeze(0), params, 1, 0)
+            train, test = generate_neural_dataset_2d(self.orig_data.unsqueeze(0), params, 1, 0)
             self.data = train
             self.train_data = train
             self.test_data = test
