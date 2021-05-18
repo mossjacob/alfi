@@ -94,7 +94,7 @@ def pde_func(y, u, sensitivity, decay, diffusion):
             diffusion * d2y_x)
     return dy_t
 
-for i in range(5):
+for i in range(1):
     lfm, trainer, plotter = build_partial(
         dataset,
         params)
@@ -129,8 +129,8 @@ for i in range(5):
 
     trainer.plot_outputs = False
     lfm.pretrain(False)
-    trainer.train(300, report_interval=10)
-
+    trainer.train(100, report_interval=10)
+    lfm.save(f'./{gene}{i}')
     # from lafomo.plot import tight_kwargs
     # plot_partial(dataset, lfm, trainer, plotter, Path('./'), params)
     #
