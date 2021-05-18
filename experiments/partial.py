@@ -155,7 +155,7 @@ def pretrain_partial(dataset, lfm, trainer, modelparams):
     t0 = time.time()
     times = pre_estimator.train(80, report_interval=10)
     lfm.pretrain(False)
-    lfm.config.num_samples = 20
+    lfm.config.num_samples = 5
     return times, t0
 
 

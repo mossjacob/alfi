@@ -219,9 +219,6 @@ def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
     axes[1].set_ylabel('Predator population')
     axes[1].set_yticks([0, 1])
     plt.tight_layout()
-    v_targ = dataset.delta * real_prey - dataset.gamma * torch.log(real_prey) + dataset.beta * real_pred - dataset.alpha * torch.log(real_pred)
-    v_pred = dataset.delta * prey_mean - dataset.gamma * torch.log(prey_mean) + dataset.beta * predator_mean - dataset.alpha * torch.log(predator_mean)
-
 
     plt.savefig(filepath / (params['kernel'] + '-combined.pdf'), **tight_kwargs)
 
@@ -232,6 +229,3 @@ def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
     #
     # plotter.plot_double_bar(kinetics, labels)
     # plt.savefig(filepath / 'kinetics.pdf', **tight_kwargs)
-    plt.figure()
-    plt.plot(torch.linspace(0, 12, v_targ.shape[0]), v_targ, label='Target')
-    plt.plot(t_predict, v_pred, label='Prediction')
