@@ -20,7 +20,7 @@ For analytical Latent Force Models, have a look at these notebooks carrying out 
 Non-linear LFMs
 ---------------
 
-For non-linear Latent Force Models, two approaches are implemented: variational and MCMC-based methods.
+For non-linear Latent Force Models, the variational approach is used.
 
 .. toctree::
    :maxdepth: 1
@@ -36,4 +36,13 @@ Partial Differential Equations
    :glob:
 
    notebooks/pde/*
+
+
+Neural Latent Force Operator
+----------------------------
+.. toctree::
+   :maxdepth: 1
+   :glob:
+
+   notebooks/nn/*
 
