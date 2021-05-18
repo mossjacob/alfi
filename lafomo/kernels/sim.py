@@ -17,26 +17,26 @@ class SIMKernel(gpytorch.kernels.Kernel):
 
     is_stationary = True
 
-    def __init__(self, num_genes, variance, **kwargs):
+    def __init__(self, num_genes, variance, dtype=torch.float32, **kwargs):
         super().__init__(**kwargs)
         self.num_genes = num_genes
         self.pos_constraint = Positive()
-        self.lengthscale_constraint = Interval(0.5, 2.5)
+        self.lengthscale_constraint = Interval(0.5, 3.5)
 
         self.register_parameter(
             name='raw_lengthscale', parameter=torch.nn.Parameter(
-                self.lengthscale_constraint.inverse_transform(1.5 * torch.ones(1, 1)))
+                self.lengthscale_constraint.inverse_transform(2.5 * torch.ones(1, 1, dtype=dtype)))
         )
         self.register_parameter(
             name='raw_decay', parameter=torch.nn.Parameter(
-                self.pos_constraint.inverse_transform(0.9 * torch.ones(self.num_genes)))
+                self.pos_constraint.inverse_transform(0.4 * torch.ones(self.num_genes, dtype=dtype)))
         )
         self.register_parameter(
             name='raw_sensitivity', parameter=torch.nn.Parameter(
-                self.pos_constraint.inverse_transform(1 * torch.ones(self.num_genes)))
+                self.pos_constraint.inverse_transform(1 * torch.ones(self.num_genes, dtype=dtype)))
         )
         self.register_parameter(
-            name='raw_noise', parameter=torch.nn.Parameter(4 * torch.ones(self.num_genes))
+            name='raw_noise', parameter=torch.nn.Parameter(1 * torch.ones(self.num_genes, dtype=dtype))
         )
 
         # register the constraints

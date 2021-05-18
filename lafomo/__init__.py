@@ -1,5 +1,5 @@
 from . import (
-    mcmc, models, kernels, means, utilities, datasets
+    mcmc, models, kernels, means, utilities, datasets, plot
 )
 
 
@@ -10,4 +10,5 @@ __all__ = [
     'kernels',
     'utilities',
     'datasets',
+    'plot',
 ]

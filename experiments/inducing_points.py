@@ -1,49 +1,33 @@
 import torch
 from torch.nn import Parameter
 from matplotlib import pyplot as plt
+from torch.optim import Adam
+from gpytorch.optim import NGD
+from gpytorch.constraints import Positive
 import seaborn as sns
 import numpy as np
 
+from.variational import TranscriptionLFM
 from lafomo.datasets import P53Data
 from lafomo.configuration import VariationalConfiguration
-from lafomo.models import OrdinaryLFM, MultiOutputGP
-from lafomo.trainer import TranscriptionalTrainer
+from lafomo.models import OrdinaryLFM, generate_multioutput_rbf_gp
+from lafomo.trainers import VariationalTrainer
+from lafomo.utilities.data import p53_ground_truth
 
 
 """ Experiment for plotting the ideal inducing point """
 
 
-class TranscriptionLFM(OrdinaryLFM):
-    def __init__(self, num_outputs, gp_model, config: VariationalConfiguration):
-        super().__init__(num_outputs, gp_model, config)
-        self.decay_rate = Parameter(0.1 + torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64))
-        self.basal_rate = Parameter(torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64))
-        self.sensitivity = Parameter(0.2 + torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64))
-
-    def initial_state(self):
-        return self.basal_rate / self.decay_rate
-
-    def odefunc(self, t, h):
-        """h is of shape (num_samples, num_outputs, 1)"""
-        self.nfe += 1
-        # if (self.nfe % 100) == 0:
-        #     print(t)
-
-        decay = self.decay_rate * h
-
-        f = self.f[:, :, self.t_index].unsqueeze(2)
-
-        h = self.basal_rate + self.sensitivity * f - decay
-        if t > self.last_t:
-            self.t_index += 1
-        self.last_t = t
-        return h
-
-
-class P53ConstrainedTrainer(TranscriptionalTrainer):
-    def extra_constraints(self):
-        self.lfm.sensitivity[3] = np.float64(1.)
-        self.lfm.decay_rate[3] = np.float64(0.8)
+class P53ConstrainedTrainer(VariationalTrainer):
+    def after_epoch(self):
+        super().after_epoch()
+        with torch.no_grad():
+            self.lfm.basal_rate.clamp_(0, 20)
+            self.lfm.decay_rate.clamp_(0, 20)
+            sens = torch.tensor(1.)
+            dec = torch.tensor(0.8)
+            self.lfm.raw_sensitivity[3] = self.lfm.positivity.inverse_transform(sens)
+            self.lfm.raw_decay[3] = self.lfm.positivity.inverse_transform(dec)
 
 
 dataset = P53Data(replicate=0, data_dir='./data')
@@ -52,20 +36,14 @@ num_tfs = 1
 config = VariationalConfiguration(
     preprocessing_variance=dataset.variance,
     num_samples=80,
-    kernel_scale=False,
     initial_conditions=False
 )
 
-
-
 def diff(lfm: TranscriptionLFM):
-    B_exact = np.array([0.0649, 0.0069, 0.0181, 0.0033, 0.0869])
-    D_exact = np.array([0.2829, 0.3720, 0.3617, 0.8000, 0.3573])
-    S_exact = np.array([0.9075, 0.9748, 0.9785, 1.0000, 0.9680])
-
-    B = lfm.basal_rate.detach()
-    D = lfm.basal_rate.detach()
-    S = lfm.basal_rate.detach()
+    B_exact, S_exact, D_exact = p53_ground_truth()
+    B = lfm.basal_rate.detach().squeeze()
+    D = lfm.decay_rate.detach().squeeze()
+    S = lfm.sensitivity.detach().squeeze()
     mse = torch.square(B-B_exact) + torch.square(D-D_exact) + torch.square(S-S_exact)
     mse = mse.mean()
 
@@ -79,14 +57,25 @@ with open('experiments/inducing_points.txt', 'w') as f:
         num_inducing = i  # (I x m x 1)
         inducing_points = torch.linspace(0, 12, num_inducing).repeat(num_tfs, 1).view(num_tfs, num_inducing, 1)
 
-        gp_model = MultiOutputGP(inducing_points, num_tfs)
+        gp_model = generate_multioutput_rbf_gp(num_tfs, inducing_points, gp_kwargs=dict(natural=True))
+
         lfm = TranscriptionLFM(num_genes, gp_model, config)
 
-        optimizer = torch.optim.Adam(lfm.parameters(), lr=0.03)
-        trainer = P53ConstrainedTrainer(lfm, optimizer, dataset)
+        track_parameters = [
+            'raw_basal',
+            'raw_decay',
+            'raw_sensitivity',
+            'gp_model.covar_module.raw_lengthscale',
+        ]
+        num_training = dataset.m_observed.shape[-1]
+
+        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
+        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.03)
+        optimizers = [variational_optimizer, parameter_optimizer]
+        trainer = P53ConstrainedTrainer(lfm, optimizers, dataset, track_parameters=track_parameters)
 
         lfm.train()
-        trainer.train(350, report_interval=9, step_size=1e-1)
+        trainer.train(350, report_interval=50, step_size=1e-1)
         last_loss = trainer.losses[-1].sum()
         mse = diff(lfm)
         f.write(f'{i}\t{mse}\n')

@@ -1,6 +1,8 @@
 import torch
 import math
 import numpy as np
+from torchcubicspline import(natural_cubic_spline_coeffs,
+                             NaturalCubicSpline)
 CUDA_AVAILABLE = False
 
 
@@ -9,14 +11,38 @@ def is_cuda():
     return CUDA_AVAILABLE and torch.cuda.is_available()
 
 
-def save(model, name):
-    torch.save(model.state_dict(), f'./saved_models/{name}.pt')
+def discretisation_length(N, d):
+    """Returns the length of a linspace where there are N points with d intermediate (in-between) points."""
+    return (N - 1) * (d + 1) + 1
 
 
-def load(name, model_class, *args, **kwargs):
-    model = model_class(*args, **kwargs)
-    model.load_state_dict(torch.load(f'./saved_models/{name}.pt'))
-    return model
+def spline_interpolate_gradient(x: torch.Tensor, y: torch.Tensor, num_disc=9):
+    """
+    Returns x_interpolate, y_interpolate, y_grad, y_grad_2: the interpolated time, data and gradient
+    """
+    x_interpolate = torch.linspace(x.min(), x.max(), discretisation_length(x.shape[0], num_disc), device=x.device)
+    coeffs = natural_cubic_spline_coeffs(x, y)
+    spline = NaturalCubicSpline(coeffs)
+    y_interpolate = spline.evaluate(x_interpolate)
+    y_grad = spline.derivative(x_interpolate) #y_interpolate, denom, axis=1)
+    y_grad_2 = spline.derivative(x_interpolate, order=2)
+    return x_interpolate, y_interpolate, y_grad, y_grad_2
+
+
+"""These metrics are translated from https://rdrr.io/cran/lineqGPR/man/errorMeasureRegress.html"""
+def smse(y_test, f_mean):
+    """Standardised mean square error (standardised by variance)"""
+    return (y_test - f_mean).square() / y_test.var()
+
+
+def q2(y_test, f_mean):
+    y_mean = y_test.mean()
+    return 1 - (y_test - f_mean).square().sum() / (y_test - y_mean).square().sum()
+
+
+def cia(y_test, f_mean, f_var, n=1):
+    return ((y_test >= (f_mean - n * f_var.sqrt())) &
+            (y_test <= (f_mean + n * f_var.sqrt()))).double().mean()
 
 
 def ceil(x):
@@ -75,5 +101,22 @@ def discretise(time, num_discretised=40):
     t.sort()
     t_range = t[-1] - t[0]
     dp = t_range / num_discretised
-    print('t_sorted, dp', t, dp)
     return np.arange(t[0], t[-1] + dp, dp)
+
+
+def get_mean_trace(trace):
+    mean_trace = dict()
+    for key in trace.keys():
+        params = torch.stack(trace[key])
+        for i in range(1, params.ndim):
+            params = params.mean(-1)
+        mean_trace[key] = params
+    return mean_trace
+
+def compl_mul1d(a, b):
+    # (batch, in_channel, x ), (in_channel, out_channel, x) -> (batch, out_channel, x)
+    return torch.einsum('bix,iox->box', a, b)
+
+def compl_mul2d(a, b):
+    # (batch, in_channel, x,y ), (in_channel, out_channel, x,y) -> (batch, out_channel, x,y)
+    return torch.einsum('bixy,ioxy->boxy', a, b)

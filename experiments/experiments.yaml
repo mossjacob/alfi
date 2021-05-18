@@ -1,93 +1,126 @@
 # This configuration file is structured such that datasets are roots with methods direct descendents
 # p53 networks
 p53:
-  methods:
-    exact:
-      train-params:
+  experiments:
+    - method: exact
+      train_params:
         epochs: 350
         report_interval: 5
-    variational:
-      train-params:
-        epochs: 300
+    - method: variational
+      train_params:
+        epochs: 450
         report_interval: 10
-    mcmc:
-      train-params:
+    - method: mcmc
+      train_params:
         epochs: 2000
 
 hafner:
   num_latents: 1
-  methods:
-    variational:
-      train-params:
+  experiments:
+    - method: variational
+      train_params:
         epochs: 300
         report_interval: 10
-    mcmc:
-      train-params:
+    - method: mcmc
+      train_params:
         epochs: 2000
 
 # Toy datasets
 toy:
   num_latents: 3
-  methods:
-    variational:
-      train-params:
+  experiments:
+    - method: variational
+      train_params:
         epochs: 300
-    mcmc:
-      epochs: 2000
+    - method: mcmc
+      train_params:
+        epochs: 2000
 
 toy-spatial:
   num_latents: 1
-  methods:
-    partial:
-      train-params:
-        epochs: 80
-        report_interval: 1
+  experiments:
+    - method: partial
+      train_params:
+        epochs: 180
+        report_interval: 5
       model-params:
-        lengthscale: 1
-        sensitivity: 0.5
-        diffusion: 0.5
-        decay: 0.5
-
+        lengthscale: 0.2
+        sensitivity: 1.0
+        decay: 0.2
+        diffusion: 0.05
+        natural: true
+        warm_epochs: -1
+        clamp: false
 # Drosophila Experiments
 dros-kr:
   num_latents: 1
-  methods:
-    partial:
-      train-params:
-        epochs: 80
+  experiments:
+    - method: partial
+      train_params:
+        epochs: 100
         report_interval: 1
       model-params:
         lengthscale: 10
-        sensitivity: 0.1
-        diffusion: 0.1
-        decay: 0.1
+        sensitivity: 0.0970
+        decay: 0.0764
+        diffusion: 0.0015
+        parameter_grad: false
+        natural: true
+        warm_epochs: -1
+        zero_mean: true
+        clamp: true
 dros-kni:
   num_latents: 1
-  methods:
-    partial:
-      train-params:
-        epochs: 80
+  experiments:
+    - method: partial
+      train_params:
+        epochs: 300
         report_interval: 1
       model-params:
         lengthscale: 10
         sensitivity: 0.1
-        diffusion: 0.1
+        diffusion: 0.01
         decay: 0.1
+        natural: false
+        clamp: true
+
 dros-gt:
   num_latents: 1
-  methods:
-    partial:
-      train-params:
+  experiments:
+    - method: partial
+      train_params:
         epochs: 80
         report_interval: 1
       model-params:
         lengthscale: 10
         sensitivity: 0.1
-        diffusion: 0.1
+        diffusion: 0.01
         decay: 0.1
+        natural: false
+        clamp: true
 
-# Other stuff
-mnist:
-  methods:
-    variational:
-      epochs: 300
+# Lotka volterra
+lotka:
+  experiments:
+    - method: lotka
+      train_params:
+        epochs: 1400
+        report_interval: 20
+      model-params:
+        natural: false
+        kernel: 'periodic'
+    - method: lotka
+      train_params:
+        epochs: 1400
+        report_interval: 20
+      model-params:
+        natural: false
+        kernel: 'rbf'
+
+# Neural networks
+reaction-diffusion:
+  experiments:
+    - method: lfo-2d
+      train_params:
+        epochs: 100
+        report_interval: 1

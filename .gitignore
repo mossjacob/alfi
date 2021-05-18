@@ -10,10 +10,9 @@ tf_reggae.egg-info/
 
 .DS_Store
 
-*.pt
 lafomo.egg-info/
 
-deprecated/saved_models/
+deprecated/
 
 data/
 
@@ -25,3 +24,4 @@ ffc_element*
 /docs/_build/
 
 pull.sh
+lafomo/ndp_datasets.py

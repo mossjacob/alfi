@@ -3,14 +3,14 @@ from gpytorch.mlls import ExactMarginalLogLikelihood
 from matplotlib import pyplot as plt
 
 from lafomo.models import ExactLFM
-from lafomo.plot import Plotter
+from lafomo.plot import Plotter1d
 from lafomo.trainers import ExactTrainer
 from lafomo.utilities.data import p53_ground_truth
 
 tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
 
 
-def build_exact(dataset, params):
+def build_exact(dataset, params, **kwargs):
     model = ExactLFM(dataset, dataset.variance.reshape(-1))
     optimizer = torch.optim.Adam(model.parameters(), lr=0.07)
 
@@ -24,14 +24,14 @@ def build_exact(dataset, params):
     ]
     print(dict(model.named_parameters()))
 
-    trainer = ExactTrainer(model, optimizer, dataset, loss_fn=loss_fn, track_parameters=track_parameters)
-    plotter = Plotter(model, dataset.gene_names)
+    trainer = ExactTrainer(model, [optimizer], dataset, loss_fn=loss_fn, track_parameters=track_parameters)
+    plotter = Plotter1d(model, dataset.gene_names)
     model.likelihood.train()
 
     return model, trainer, plotter
 
 
-def plot_exact(dataset, lfm, trainer, plotter, filepath):
+def plot_exact(dataset, lfm, trainer, plotter, filepath, params):
     t_predict = torch.linspace(-1, 13, 80, dtype=torch.float64)
 
     plotter.plot_outputs(t_predict, t_scatter=dataset.t_observed, y_scatter=dataset.m_observed)

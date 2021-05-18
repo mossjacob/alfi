@@ -1,11 +1,13 @@
 import torch
-
+from pathlib import Path
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from scipy.integrate import odeint
 import numpy as np
 import pandas as pd
 from scipy.io import loadmat
 
 from lafomo.datasets import load_barenco_puma
+from lafomo.utilities.data import generate_neural_dataset_2d
 from . import LFMDataset
 
 from tqdm import tqdm
@@ -54,10 +56,55 @@ class P53Data(TranscriptomicTimeSeries):
         m_observed = torch.tensor(m_observed)
         self.t_observed = torch.linspace(f64(0), f64(12), 7)
         self.m_observed = m_observed
+        self.f_observed = torch.tensor([0.7116,0.7008,1.5933,0.7507,0.2346,0.3617,0.0673]).view(1, 1, 7)
+        self.f_observed = torch.tensor([0.1845,1.1785,1.6160,0.8156,0.6862,-0.1828, 0.5131]).view(1, 1, 7)
+        self.ups_f_observed = torch.tensor([ 0.1654,  0.2417,  0.3680,  0.5769,  0.8910,  1.2961,  1.7179,  2.0301,
+         2.1055,  1.8885,  1.4407,  0.9265,  0.5467,  0.4493,  0.6573,  1.0511,
+         1.4218,  1.5684,  1.3876,  0.9156,  0.3090, -0.2256, -0.5218, -0.5191,
+        -0.2726,  0.0860,  0.4121,  0.6056,  0.6397,  0.5517])
+        self.ups_m_observed = torch.tensor([[ 0.3320,  0.0215,  0.0643,  0.0200,  0.2439],
+        [ 0.3930,  0.0870,  0.1319,  0.0946,  0.3119],
+        [ 0.4726,  0.1710,  0.2184,  0.1799,  0.3989],
+        [ 0.5886,  0.2926,  0.3435,  0.2975,  0.5247],
+        [ 0.7662,  0.4779,  0.5343,  0.4745,  0.7165],
+        [ 1.0297,  0.7522,  0.8165,  0.7324,  1.0003],
+        [ 1.3845,  1.1195,  1.1942,  1.0670,  1.3800],
+        [ 1.8027,  1.5484,  1.6352,  1.4351,  1.8230],
+        [ 2.2269,  1.9766,  2.0751,  1.7660,  2.2647],
+        [ 2.5875,  2.3304,  2.4380,  1.9863,  2.6287],
+        [ 2.8234,  2.5466,  2.6588,  2.0439,  2.8495],
+        [ 2.8991,  2.5906,  2.7022,  1.9238,  2.8917],
+        [ 2.8242,  2.4765,  2.5830,  1.6655,  2.7703],
+        [ 2.6636,  2.2771,  2.3761,  1.3663,  2.5610],
+        [ 2.5173,  2.1008,  2.1935,  1.1477,  2.3765],
+        [ 2.4731,  2.0404,  2.1307,  1.0952,  2.3129],
+        [ 2.5574,  2.1206,  2.2130,  1.2074,  2.3954],
+        [ 2.7229,  2.2873,  2.3844,  1.3978,  2.5677],
+        [ 2.8762,  2.4384,  2.5395,  1.5417,  2.7234],
+        [ 2.9200,  2.4701,  2.5715,  1.5321,  2.7550],
+        [ 2.7960,  2.3228,  2.4191,  1.3264,  2.6011],
+        [ 2.5121,  2.0090,  2.0952,  0.9666,  2.2748],
+        [ 2.1368,  1.6051,  1.6790,  0.5574,  1.8559],
+        [ 1.7647,  1.2137,  1.2763,  0.2150,  1.4509],
+        [ 1.4744,  0.9177,  0.9722,  0.0158,  1.1455],
+        [ 1.3047,  0.7557,  0.8064, -0.0219,  0.9796],
+        [ 1.2526,  0.7211,  0.7719,  0.0694,  0.9458],
+        [ 1.2842,  0.7743,  0.8278,  0.2286,  1.0029],
+        [ 1.3540,  0.8650,  0.9222,  0.3933,  1.0986],
+        [ 1.4224,  0.9504,  1.0107,  0.5194,  1.1882]]).t()
+
+        self.ups_t_observed = t_predict = torch.linspace(0, 12, 30, dtype=torch.float32)
+
+        self.params = torch.tensor([
+            0.06374478, 0.01870999, 0.0182909,  0.0223461,  0.08485352, 0.9133557, 0.9743523,
+            0.9850107,  1., 0.974792,   0.27596828, 0.367931, 0.35159853, 0.79999995, 0.34772962
+        ]).view(3, 5)
         if replicate is None:
             self.variance = np.array([f64(σ2_m_pre)[r, i] for r in range(num_replicates) for i in range(num_genes)])
             self.data = [(self.t_observed, m_observed[r, i]) for r in range(num_replicates) for i in range(num_genes)]
         else:
+            self.m_observed = self.m_observed[replicate:replicate+1]
+            self.f_observed = self.f_observed[0:1]
             self.variance = np.array([f64(σ2_m_pre)[replicate, i] for i in range(num_genes)])
             self.data = [(self.t_observed, m_observed[replicate, i]) for i in range(num_genes)]
 
@@ -88,7 +135,7 @@ class HafnerData(TranscriptomicTimeSeries):
         # np.random.shuffle(target_genes)
         self.num_outputs = len(target_genes)
         tfs = ['TP53']
-        with open(path.join(data_dir, 'GSE100099_RNASeqGEO.tsv'), 'r', 1) as f:
+        with open(Path(data_dir) / 'GSE100099_RNASeqGEO.tsv', 'r', 1) as f:
             contents = f.buffer
             df = pd.read_table(contents, sep='\t', index_col=0)
 
@@ -111,15 +158,15 @@ class HafnerData(TranscriptomicTimeSeries):
         self.tfs = (f / np.sqrt(tfs_norm.reshape(-1, 1)))
         self.tfs = self.tfs.reshape((1, 2, 13)).swapaxes(0,1)
 
-        self.t = torch.linspace(0, 12, 13, dtype=torch.float32)
+        self.t_observed = torch.linspace(0, 12, 13, dtype=torch.float32)
         self.m_observed = self.m_observed.reshape(self.num_outputs, 2, 13).transpose(0, 1)
 
         if replicate is None:
-            self.data = [(self.t, self.m_observed[r, i]) for r in range(2) for i in range(self.num_outputs)]
+            self.data = [(self.t_observed, self.m_observed[r, i]) for r in range(2) for i in range(self.num_outputs)]
         else:
-            self.data = [(self.t, self.m_observed[replicate, i]) for i in range(self.num_outputs)]
+            self.data = [(self.t_observed, self.m_observed[replicate, i]) for i in range(self.num_outputs)]
 
-        self.gene_names = target_genes
+        self.gene_names = np.array(target_genes)
 
 
 class MCMCToyTimeSeries(TranscriptomicTimeSeries):
@@ -149,41 +196,42 @@ class MCMCToyTimeSeries(TranscriptomicTimeSeries):
         return 1
 
 
-class ToySpatialTranscriptomics(LFMDataset):
-    """
-    Toy dataset from López-Lopera et al. (2019)
-    https://arxiv.org/abs/1808.10026
-    Data download: https://github.com/anfelopera/PhysicallyGPDrosophila
-    """
-    def __init__(self, data_dir='../data/'):
-        data = pd.read_csv(path.join(data_dir, 'demToy1GPmRNA.csv'))
-        self.orig_data = data.values
-        self.num_outputs = 1
-        x_observed = torch.tensor(data.values[:, 0:2]).permute(1, 0)
-        data = torch.tensor(data.values[:, 3]).unsqueeze(0)
-        self.num_discretised = 40
-        self.data = [(x_observed, data)]
-        self.gene_names = np.array(['toy'])
-
-
 class DrosophilaSpatialTranscriptomics(LFMDataset):
     """
     Dataset from Becker et al. (2013).
     Reverse engineering post-transcriptional regulation of
     gap genes in Drosophila melanogaster
     """
-    def __init__(self, gene='kr', data_dir='../data/'):
+    def __init__(self, gene='kr', data_dir='../data/', scale=False, scale_tx=False, nn_format=False):
         indents = {'kr': 64, 'kni': 56, 'gt': 60}
         assert gene in indents
         data = pd.read_csv(path.join(data_dir, f'clean_{gene}.csv'))
         data = data.iloc[indents[gene]:].values
-        self.orig_data = data[:, [0, 1, 3, 2]]
+        data = data[:, [0, 1, 3, 2]]
+        if scale:
+            scaler = StandardScaler()
+            data[:, 2:3] = scaler.fit_transform(data[:, 2:3])
+            data[:, 3:4] = scaler.transform(data[:, 3:4])
+        if scale_tx:
+            scaler = MinMaxScaler()
+            data[:, 0:1] = scaler.fit_transform(data[:, 0:1])
+            data[:, 1:2] = scaler.fit_transform(data[:, 1:2])
+
+        self.orig_data = torch.tensor(data).t()
         self.num_outputs = 1
-        self.num_discretised = 7
+        self.disc = 1
+        self.num_discretised = self.disc*7
         x_observed = torch.tensor(data[:, 0:2]).permute(1, 0)
         data = torch.tensor(data[:, 3]).unsqueeze(0)
-        self.data = [(x_observed, data)]
         self.gene_names = np.array([gene])
+        if nn_format:
+            params = torch.tensor([-1.]*5).unsqueeze(0)
+            train, test = generate_neural_dataset_2d(self.orig_data.unsqueeze(0), params, 1, 0)
+            self.data = train
+            self.train_data = train
+            self.test_data = test
+        else:
+            self.data = [(x_observed, data)]
 
 
 class MarkovJumpProcess:

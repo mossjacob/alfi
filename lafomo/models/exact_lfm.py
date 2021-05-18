@@ -19,7 +19,7 @@ class ExactLFM(LFM, gpytorch.models.ExactGP):
         self.train_t = train_t.view(-1, 1)
         self.train_y = train_y.view(-1, 1)
         self.covar_module = SIMKernel(self.num_outputs, torch.tensor(variance, requires_grad=False))
-        initial_basal = torch.mean(train_y.view(5, 7), dim=1) * self.covar_module.decay
+        initial_basal = torch.mean(train_y.view(self.num_outputs, -1), dim=1) * self.covar_module.decay
         self.mean_module = SIMMean(self.covar_module, self.num_outputs, initial_basal)
 
     @property
@@ -35,7 +35,7 @@ class ExactLFM(LFM, gpytorch.models.ExactGP):
         covar_x = self.covar_module(x)
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
-    def predict_m(self, pred_t) -> torch.distributions.MultivariateNormal:
+    def predict_m(self, pred_t, jitter=1e-5) -> torch.distributions.MultivariateNormal:
         Kxx = self.covar_module(self.train_t, self.train_t)
         K_inv = torch.inverse(Kxx.evaluate())
         pred_t_blocked = pred_t.repeat(self.num_outputs)
@@ -51,9 +51,10 @@ class ExactLFM(LFM, gpytorch.models.ExactGP):
         mean = mean.transpose(0, 1)
         var = var.transpose(0, 1)
         var = torch.diag_embed(var)
+        var += jitter * torch.eye(var.shape[-1])
         return MultivariateNormal(mean, var)
 
-    def predict_f(self, pred_t) -> MultivariateNormal:
+    def predict_f(self, pred_t, jitter=1e-3) -> MultivariateNormal:
         Kxx = self.covar_module(self.train_t, self.train_t)
         K_inv = torch.inverse(Kxx.evaluate())
 
@@ -66,10 +67,10 @@ class ExactLFM(LFM, gpytorch.models.ExactGP):
         var = Kff - torch.matmul(KfxKxx, Kxf)
         # var = torch.diagonal(var, dim1=0, dim2=1).view(-1)
         var = var.unsqueeze(0)
-        var += 1e-3*torch.eye(var.shape[-1])
         # For some reason a full covariance doesn't work, for now just take the variance: (TODO)
         var = torch.diagonal(var, dim1=1, dim2=2)
         var = torch.diag_embed(var)
+        var += jitter * torch.eye(var.shape[-1])
 
         batch_mvn = gpytorch.distributions.MultivariateNormal(mean, var)
         print(batch_mvn)

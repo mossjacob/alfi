@@ -5,13 +5,13 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="lafomo",
-    version="0.0.6",
+    version="0.0.7",
     author="Jacob Moss",
     author_email="cob.mossy@gmail.com",
     description="A Latent Force Model library with variational and MCMC support for non-linear functions.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/JCobbles/reggae",
+    url="https://github.com/mossjacob/lafomo",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
