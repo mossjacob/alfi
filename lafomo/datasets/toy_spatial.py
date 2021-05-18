@@ -17,7 +17,7 @@ class ReactionDiffusion(LFMDataset):
     Generated using the `ReactionDiffusionGenerator`
     'l1', 'l2', 'decay', 'diffusion'
     """
-    def __init__(self, data_dir='../data/', max_n=2000, nn_format=True, ntest=50):
+    def __init__(self, data_dir='../data/', max_n=2000, nn_format=True, ntest=50, sub=1):
         data = torch.load(Path(data_dir) / 'toydata.pt')
         orig_data = data['orig_data']
         x_observed = data['x_observed']
@@ -35,7 +35,7 @@ class ReactionDiffusion(LFMDataset):
         params = data['params'][:self.num_data]
 
         if nn_format:
-            train, test = generate_neural_dataset_2d(self.orig_data, params, self.num_data - ntest, ntest)
+            train, test = generate_neural_dataset_2d(self.orig_data, params, self.num_data - ntest, ntest, sub=sub)
             self.data = train
             self.train_data = train
             self.test_data = test

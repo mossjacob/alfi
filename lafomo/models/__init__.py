@@ -4,6 +4,7 @@ from .variational_lfm import VariationalLFM
 from .ordinary_lfm import OrdinaryLFM
 from .approximate_gp import MultiOutputGP, generate_multioutput_rbf_gp
 from .operator import NeuralOperator
+from .recurrent_operator import RecurrentNeuralOperator
 from .neural_lfm import NeuralLFM
 
 
@@ -14,6 +15,7 @@ modules = [
     'VariationalLFM',
     'OrdinaryLFM',
     'NeuralOperator',
+    'RecurrentNeuralOperator',
     'MultiOutputGP',
     'generate_multioutput_rbf_gp',
 ]

@@ -7,31 +7,29 @@ from torch.nn.functional import softplus
 
 from lafomo.nn import SimpleBlock1d, SimpleBlock2d
 from lafomo.models import LFM
+from lafomo.models import NeuralOperator
 
 
-class NeuralOperator(LFM):
-    def __init__(self,
-                 block_dim,
-                 in_channels,
-                 out_channels,
-                 modes,
-                 width,
-                 num_layers=4,
-                 params=True):
+class RecurrentNeuralOperator(LFM):
+    def __init__(self, block_dim, in_channels, out_channels, modes, width, num_layers=4):
         super().__init__()
-        self.num_outputs = 1
-        if block_dim == 1:
-            self.conv = SimpleBlock1d(in_channels, out_channels, modes, width,
-                                      num_layers=num_layers, params=params)
-        elif block_dim == 2:
-            self.conv = SimpleBlock2d(in_channels, out_channels, modes, modes, width, num_layers=num_layers,
-                                      params=params)
-        else:
-            pass
+        self.operator = NeuralOperator(block_dim, in_channels, out_channels, modes, width,
+                                       num_layers=num_layers, params=False)
 
-    def forward(self, x):
-        x = self.conv(x)
-        return x#.squeeze()
+    def forward(self, x, T=1, step=1):
+        # Last dimension is time
+        pred = torch.empty_like(x)
+        for t in range(0, T, step):
+            y_pred = self.operator(x)
+            print('pred', y_pred.shape)
+            if t == 0:
+                pred = y_pred
+            else:
+                pred = torch.cat((pred, y_pred), -1)
+
+            x = torch.cat((x[..., step:], y_pred), dim=-1)
+
+        return pred
 
     def count_params(self):
         c = 0

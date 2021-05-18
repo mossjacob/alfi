@@ -11,7 +11,7 @@ Fourier neural operator for parametric partial differential equations.
 arXiv preprint arXiv:2010.08895.
 """
 class SimpleBlock1d(Module):
-    def __init__(self, in_channels, out_channels, modes, width, num_layers=4):
+    def __init__(self, in_channels, out_channels, modes, width, num_layers=4, params=True):
         super(SimpleBlock1d, self).__init__()
 
         """
@@ -26,7 +26,7 @@ class SimpleBlock1d(Module):
         output: the solution of a later timestep
         output shape: (batchsize, x=s, c=1)
         """
-
+        self.params = params
         self.modes1 = modes
         self.width = width
         self.num_layers = num_layers
@@ -74,28 +74,31 @@ class SimpleBlock1d(Module):
             if i < (self.num_layers - 1):
                 x = F.relu(x)
 
-        out_fts = torch.stack([out_fts.real, out_fts.imag], dim=-1)
-        # print(p.mean(-1).unsqueeze(-1).shape, out_fts.view(batchsize, self.width, -1).shape)
-        # params = self.fc0_parameters(out_fts.reshape(batchsize, -1))
-        # params = F.relu(params)
-        # params = self.fc1_parameters(params)
-        params = torch.cat([p.mean(-1).unsqueeze(-1), out_fts.view(batchsize, self.width, -1)], dim=-1)
-        # print(params.shape)
-        # print(self.fc0_parameters)
-        # params = p.mean(-1)
-        params = self.fc0_parameters(params.view(batchsize, -1))
-        params = F.relu(params)
-        params = self.fc1_parameters(params)
-
         x = x.permute(0, 2, 1)
         x = self.fc1(x)
         x = F.relu(x)
         x = self.fc2(x)
-        return x, params
+
+        if self.params:
+            out_fts = torch.stack([out_fts.real, out_fts.imag], dim=-1)
+            # print(p.mean(-1).unsqueeze(-1).shape, out_fts.view(batchsize, self.width, -1).shape)
+            # params = self.fc0_parameters(out_fts.reshape(batchsize, -1))
+            # params = F.relu(params)
+            # params = self.fc1_parameters(params)
+            params = torch.cat([p.mean(-1).unsqueeze(-1), out_fts.view(batchsize, self.width, -1)], dim=-1)
+            # print(params.shape)
+            # print(self.fc0_parameters)
+            # params = p.mean(-1)
+            params = self.fc0_parameters(params.view(batchsize, -1))
+            params = F.relu(params)
+            params = self.fc1_parameters(params)
+            return x, params
+
+        return x
 
 
 class SimpleBlock2d(Module):
-    def __init__(self, in_channels, out_channels, modes1, modes2, width, num_layers=4):
+    def __init__(self, in_channels, out_channels, modes1, modes2, width, num_layers=4, params=True):
         super(SimpleBlock2d, self).__init__()
 
         """
@@ -110,14 +113,15 @@ class SimpleBlock2d(Module):
         output: the solution
         output shape: (batchsize, x=s, y=s, c=1)
         """
-
+        self.params = params
         self.modes1 = modes1
         self.modes2 = modes2
         self.width = width
         self.num_layers = num_layers
         self.fc0 = Linear(in_channels, self.width)
-        self.fc0_parameters = Linear(self.width * self.modes1 * self.modes2 * num_layers**2 * 2, 200)
-        self.fc1_parameters = Linear(200, 5)
+        if params:
+            self.fc0_parameters = Linear(self.width * self.modes1 * self.modes2 * num_layers**2 * 2, 200)
+            self.fc1_parameters = Linear(200, 5)
         self.spectral_layers = ModuleList([
             SpectralConv2d(self.width, self.width, self.modes1, self.modes2)
             for _ in range(num_layers)
@@ -150,15 +154,16 @@ class SimpleBlock2d(Module):
             if i < (self.num_layers - 1):
                 x = F.relu(x)
 
-        out_fts = torch.stack([out_fts.real, out_fts.imag], dim=-1)
-        params = self.fc0_parameters(out_fts.reshape(batchsize, -1))
-        params = F.relu(params)
-        params = self.fc1_parameters(params)
-        # print('params', params.shape)
-        # out_ft[:, :, -self.modes1:, :self.modes2] = \
-
         x = x.permute(0, 2, 3, 1)
         x = self.fc1(x)
         x = F.relu(x)
         x = self.fc2(x)
-        return x, params
+
+        if self.params:
+            out_fts = torch.stack([out_fts.real, out_fts.imag], dim=-1)
+            params = self.fc0_parameters(out_fts.reshape(batchsize, -1))
+            params = F.relu(params)
+            params = self.fc1_parameters(params)
+            return x, params
+
+        return x
