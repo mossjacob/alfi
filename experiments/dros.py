@@ -2,7 +2,7 @@
 
 from torch.optim import Adam
 from gpytorch.optim import NGD
-from experiments.partial import build_partial, plot_partial
+from experiments.partial import build_partial, plot_partial, pretrain_partial
 from pathlib import Path
 import numpy as np
 
@@ -49,10 +49,6 @@ lfm, trainer, plotter = build_partial(
     dataset,
     params)
 
-sensitivity = (torch.tensor(params['sensitivity']))
-decay = (torch.tensor(params['decay']))
-diffusion = (torch.tensor(params['diffusion']))
-
 tx = trainer.tx
 orig_data = dataset.orig_data.squeeze().t()
 num_t = tx[0, :].unique().shape[0]
@@ -63,36 +59,6 @@ num_x_orig = orig_data[:, 1].unique().shape[0]
 
 y_target = trainer.y_target[0]
 y_matrix = y_target.view(num_t_orig, num_x_orig)
-dy_t = list()
-for i in range(num_x_orig):
-    t = tx[0][::disc][::num_x]
-    y = y_matrix[:, i].unsqueeze(-1)
-    t_interpolate, y_interpolate, y_grad, _ = \
-        spline_interpolate_gradient(t, y)
-    dy_t.append(y_grad)
-dy_t = torch.stack(dy_t)
-
-d2y_x = list()
-dy_x = list()
-for i in range(num_t_orig):
-    t = tx[1][::disc][:num_x]
-    y = y_matrix[i].unsqueeze(-1)
-    t_interpolate, y_interpolate, y_grad, y_grad_2 = \
-        spline_interpolate_gradient(t, y)
-    d2y_x.append(y_grad_2)
-    dy_x.append(y_grad)
-
-d2y_x = torch.stack(d2y_x)
-dy_x = torch.stack(dy_x)[..., ::10, 0].reshape(1, -1)
-d2y_x = d2y_x[..., ::10, 0].reshape(1, -1)
-dy_t = dy_t[..., ::10, 0].t().reshape(1, -1)
-
-def pde_func(y, u, sensitivity, decay, diffusion):
-    # y (1, 1681) u (25, 1, 41, 41) s (25, 1)
-    dy_t = (sensitivity * u.view(u.shape[0], -1) -
-            decay * y.view(1, -1) +
-            diffusion * d2y_x)
-    return dy_t
 
 for i in range(1):
     lfm, trainer, plotter = build_partial(
@@ -104,28 +70,7 @@ for i in range(1):
     xs = tx[1, :].unique().numpy()
     extent = [ts[0], ts[-1], xs[0], xs[-1]]
 
-    train_ratio = 0.3
-    num_training = int(train_ratio * tx.shape[1])
-    if params['natural']:
-        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
-        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.05)
-        optimizers = [variational_optimizer, parameter_optimizer]
-    else:
-        optimizers = [Adam(lfm.parameters(), lr=0.09)]
-
-
-    pre_estimator = PartialPreEstimator(
-        lfm, optimizers, dataset, pde_func,
-        input_pair=(trainer.tx, trainer.y_target), target=dy_t.t(),
-        train_mask=trainer.train_mask
-    )
-
-    import time
-    t0 = time.time()
-    lfm.pretrain(True)
-    lfm.config.num_samples = 50
-    times = pre_estimator.train(100, report_interval=5)
-    lfm.config.num_samples = 5
+    times = pretrain_partial(dataset, lfm, trainer, params)
 
     trainer.plot_outputs = False
     lfm.pretrain(False)
@@ -166,7 +111,6 @@ for i in range(1):
     mrna_q2s.append(mrna_q2.item())
     mrna_cias.append(mrna_cia.item())
 
-print(protein_q2s)
 protein_q2s = torch.tensor(protein_q2s)
 protein_cias = torch.tensor(protein_cias)
 mrna_q2s = torch.tensor(mrna_q2s)

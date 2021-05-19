@@ -31,7 +31,7 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
         num_inducing = int(tx.shape[1] * 3/6)
     else:
         num_inducing = int(tx.shape[1] * 5/6)
-    use_lhs = True
+    use_lhs = False
     if use_lhs:
         print('tx', tx.shape)
         from smt.sampling_methods import LHS
@@ -103,7 +103,7 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
         parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.05)
         optimizers = [variational_optimizer, parameter_optimizer]
     else:
-        optimizers = [Adam(lfm.parameters(), lr=0.07)]
+        optimizers = [Adam(lfm.parameters(), lr=0.005)]
 
     track_parameters = list(lfm.fenics_named_parameters.keys()) +\
                        list(map(lambda s: f'gp_model.{s}', dict(lfm.gp_model.named_hyperparameters()).keys()))
@@ -155,7 +155,7 @@ def pretrain_partial(dataset, lfm, trainer, modelparams):
     t0 = time.time()
     times = pre_estimator.train(80, report_interval=10)
     lfm.pretrain(False)
-    lfm.config.num_samples = 5
+    lfm.config.num_samples = 20
     return times, t0
 
 
