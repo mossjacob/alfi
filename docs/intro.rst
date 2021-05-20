@@ -2,8 +2,8 @@
 Introduction
 ------------
 
-LaFoMo is a package for building Latent Force Models in Python. LaFoMo supports exact and variational inference for linear and non-linear LFMs respectively using `PyTorch <https://pytorch.org/>`_. In addition, we also support MCMC models for a full Bayesian treatment, and this uses `TensorFlow <https://www.tensorflow.org/>`_. LaFoMo was originally created and is now managed by `Jacob Moss <https://www.cl.cam.ac.uk/~jm2311/>`_.
-The full list of contributors (in alphabetical order) is Bianca Dumitascu, Felix Opolka, Jeremy England, and Pietro Lio. If you are interested in contributing your Latent Force Models to this library please feel free to submit pull requests or contact us.
+LaFoMo is a package for building Latent Force Models in Python. LaFoMo supports exact and variational inference for linear and non-linear LFMs respectively using `PyTorch <https://pytorch.org/>`_. In addition, we also support MCMC models for a full Bayesian treatment, and this uses `TensorFlow <https://www.tensorflow.org/>`_. LaFoMo was originally created and is managed by `Jacob Moss <https://www.cl.cam.ac.uk/~jm2311/>`_.
+The full list of contributors is Jacob Moss, Bianca Dumitrascu, Felix Opolka, Jeremy England, and Pietro Lio. If you are interested in contributing your Latent Force Models to this library please feel free to submit pull requests or contact us.
 
 Install
 -------
@@ -41,7 +41,7 @@ Dependencies:
 
 For non-linear ODEs which result in non-Gaussian likelihoods, we have two devoted modules. For variational inference, the :class:`lafomo.VariationalLFM` superclass is the main building block for such models. The implementation of the GP uses the method of `Hensman et al. <http://proceedings.mlr.press/v38/hensman15.pdf>`_ [3]. See the `notebook here <notebooks/linear/variational.html>`_ for a linear implementation, and `here <notebooks/nonlinear/variational.html>`_ for an implementation of a non-linear version of the *Lawrence et al.* [1] model.
 
-The :class:`lafomo.mcmc` module implements several MCMC samplers suited for LFMs, such as the :class:`lafomo.mcmc.samplers.LatentGPSampler` which jointly samples the posterior GP in addition to the covariance kernel parameters. In addition, LaFoMo has a full implementation of such a non-linear LFM based on `Titsias et al. <https://bmcsystbiol.biomedcentral.com/articles/10.1186/1752-0509-6-53>`_ [2]: :class:`lafomo.mcmc.modules.TranscriptionRegulationLFM`  .
+The :class:`lafomo.mcmc` module is currently a work-in-progress, and implements several MCMC samplers suited for LFMs, such as the :class:`lafomo.mcmc.samplers.LatentGPSampler` which jointly samples the posterior GP in addition to the covariance kernel parameters. In addition, LaFoMo has a full implementation of such a non-linear LFM based on `Titsias et al. <https://bmcsystbiol.biomedcentral.com/articles/10.1186/1752-0509-6-53>`_ [2]: :class:`lafomo.mcmc.modules.TranscriptionRegulationLFM`  .
 
 
 Non-linear PDE

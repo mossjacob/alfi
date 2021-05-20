@@ -31,7 +31,7 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
         num_inducing = int(tx.shape[1] * 3/6)
     else:
         num_inducing = int(tx.shape[1] * 5/6)
-    use_lhs = False
+    use_lhs = True
     if use_lhs:
         print('tx', tx.shape)
         from smt.sampling_methods import LHS
@@ -96,11 +96,11 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
     if reload is not None:
         lfm = lfm.load(reload,
                        gp_model=lfm.gp_model,
-                       lfm_args=[1, lfm.fenics_model_fn, lfm.fenics_parameters, config])
+                       lfm_args=[1, lfm.fenics_model, lfm.fenics_parameters, config])
 
     if params['natural']:
-        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.09)
-        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.05)
+        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.03)
+        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.03)
         optimizers = [variational_optimizer, parameter_optimizer]
     else:
         optimizers = [Adam(lfm.parameters(), lr=0.005)]
@@ -135,7 +135,7 @@ def pretrain_partial(dataset, lfm, trainer, modelparams):
     y_matrix = y_target.view(num_t_orig, num_x_orig)
     pde_func, pde_target = lfm.fenics_model.interpolated_gradient(tx, y_matrix, disc=disc)
     train_ratio = 0.3
-    num_training = int(train_ratio * tx.shape[1])
+    num_training = int(train_ratio * num_x_orig * num_t_orig)
     print('num training', num_training)
     if modelparams['natural']:
         variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
@@ -164,7 +164,12 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
     tx = trainer.tx
     num_t = tx[0, :].unique().shape[0]
     num_x = tx[1, :].unique().shape[0]
-    f = lfm(tx)
+    orig_data = dataset.orig_data.squeeze().t()
+    num_t_orig = orig_data[:, 0].unique().shape[0]
+    num_x_orig = orig_data[:, 1].unique().shape[0]
+    disc = dataset.disc if hasattr(dataset, 'disc') else 1
+
+    f = lfm(tx, step=disc)
     f_mean = f.mean.detach()
     f_var = f.variance.detach()
     y_target = trainer.y_target[0]
@@ -181,10 +186,6 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
             str(q2(y_target[~trainer.train_mask], f_mean_test).item()),
             str(cia(y_target[~trainer.train_mask], f_mean_test, f_var_test).item())
         ]) + '\n')
-
-    orig_data = dataset.orig_data.squeeze().t()
-    num_t_orig = orig_data[:, 0].unique().shape[0]
-    num_x_orig = orig_data[:, 1].unique().shape[0]
 
     l_target = orig_data[trainer.t_sorted, 2]
     l = lfm.gp_model(tx.t())

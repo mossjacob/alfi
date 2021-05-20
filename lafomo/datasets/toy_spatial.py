@@ -79,6 +79,7 @@ class HomogeneousReactionDiffusion(LFMDataset):
         num_data = x_observed.shape[1] // num_per_data
         data = torch.tensor(values[:, 3]).unsqueeze(0)
         self.num_discretised = 40
+        self.disc = 1
         self.gene_names = np.array(['toy'])
 
         if nn_format:
