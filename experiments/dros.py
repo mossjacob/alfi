@@ -11,6 +11,7 @@ from lafomo.trainers import PartialPreEstimator
 from lafomo.plot import plot_spatiotemporal_data
 from lafomo.plot.misc import plot_variational_dist
 from lafomo.utilities.torch import spline_interpolate_gradient, softplus
+from lafomo.utilities.data import dros_ground_truth
 
 from matplotlib import pyplot as plt
 import torch
@@ -21,16 +22,6 @@ mrna_cias = list()
 protein_q2s = list()
 protein_cias = list()
 
-kni_params = dict(sensitivity=0.0783,
-                  decay=0.0770,
-                  diffusion=0.0125)
-gt_params = dict(sensitivity=0.1107,
-                  decay=0.1110,
-                  diffusion=0.0159)
-kr_params = dict(sensitivity=0.0970,
-                 decay=0.0764,
-                 diffusion=0.0015)
-params = dict(kr=kr_params, kni=kni_params, gt=gt_params)
 gene = 'kni'
 
 dataset = DrosophilaSpatialTranscriptomics(
@@ -41,8 +32,8 @@ params = dict(lengthscale=10,
               **params[gene],
               parameter_grad=False,
               warm_epochs=-1,
-              natural=False,
-              zero_mean=False,
+              natural=True,
+              zero_mean=True,
               clamp=True)
 
 lfm, trainer, plotter = build_partial(
@@ -74,7 +65,7 @@ for i in range(1):
 
     trainer.plot_outputs = False
     lfm.pretrain(False)
-    trainer.train(100, report_interval=10)
+    trainer.train(150, report_interval=10)
     lfm.save(f'./{gene}{i}')
     # from lafomo.plot import tight_kwargs
     # plot_partial(dataset, lfm, trainer, plotter, Path('./'), params)

@@ -20,6 +20,18 @@ def p53_ground_truth():
     S_exact = np.array([0.9075, 0.9748, 0.9785, 1.0000, 0.9680])
     return B_exact, S_exact, D_exact
 
+def dros_ground_truth(gene):
+    """Becker et al."""
+    kni_params = dict(sensitivity=0.0783,
+                      decay=0.0770,
+                      diffusion=0.0125)
+    gt_params = dict(sensitivity=0.1107,
+                     decay=0.1110,
+                     diffusion=0.0159)
+    kr_params = dict(sensitivity=0.0970,
+                     decay=0.0764,
+                     diffusion=0.0015)
+    return dict(kr=kr_params, kni=kni_params, gt=gt_params)[gene]
 
 def hafner_ground_truth():
     s = np.array([

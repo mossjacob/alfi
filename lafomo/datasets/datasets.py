@@ -202,7 +202,7 @@ class DrosophilaSpatialTranscriptomics(LFMDataset):
     Reverse engineering post-transcriptional regulation of
     gap genes in Drosophila melanogaster
     """
-    def __init__(self, gene='kr', data_dir='../data/', scale=False, scale_tx=False, nn_format=False):
+    def __init__(self, gene='kr', data_dir='../data/', scale=False, scale_tx=False, nn_format=False, disc=1):
         indents = {'kr': 64, 'kni': 56, 'gt': 60}
         assert gene in indents
         data = pd.read_csv(path.join(data_dir, f'clean_{gene}.csv'))
@@ -219,7 +219,7 @@ class DrosophilaSpatialTranscriptomics(LFMDataset):
 
         self.orig_data = torch.tensor(data).t()
         self.num_outputs = 1
-        self.disc = 2
+        self.disc = disc
         self.num_discretised = self.disc*7
         x_observed = torch.tensor(data[:, 0:2]).permute(1, 0)
         data = torch.tensor(data[:, 3]).unsqueeze(0)

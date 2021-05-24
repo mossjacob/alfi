@@ -22,9 +22,6 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
     lengthscale = params['lengthscale']
     zero_mean = params['zero_mean'] if 'zero_mean' in params else False
     checkpoint_dir = checkpoint_dir if 'checkpoint' in params else None
-    # Define mesh
-    spatial = np.unique(tx[1, :])
-    mesh = interval_mesh(spatial)
 
     # Define GP
     if tx.shape[1] > 1000:
@@ -55,12 +52,8 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
     # lengthscale_constraint=Interval(0.1, 0.3),
     gp_model.double()
 
-    # Define LFM
-    # We calculate a mesh that contains all possible spatial locations in the dataset
-    data = next(iter(dataset))
-    tx, y_target = data
-
     # Define mesh
+    # We calculate a mesh that contains all possible spatial locations in the dataset
     spatial = np.unique(tx[1, :])
     mesh = interval_mesh(spatial)
 
@@ -75,6 +68,7 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
         num_samples=5
     )
 
+    # Define LFM
     parameter_grad = params['parameter_grad'] if 'parameter_grad' in params else True
     sensitivity = Parameter(
         inv_softplus(torch.tensor(params['sensitivity'])) * torch.ones((1, 1), dtype=torch.float64),
@@ -138,8 +132,8 @@ def pretrain_partial(dataset, lfm, trainer, modelparams):
     num_training = int(train_ratio * num_x_orig * num_t_orig)
     print('num training', num_training)
     if modelparams['natural']:
-        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
-        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.05)
+        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.03)
+        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.03)
         optimizers = [variational_optimizer, parameter_optimizer]
     else:
         optimizers = [Adam(lfm.parameters(), lr=0.05)]
