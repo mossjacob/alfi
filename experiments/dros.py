@@ -6,16 +6,16 @@ from experiments.partial import build_partial, plot_partial, pretrain_partial
 from pathlib import Path
 import numpy as np
 
-from lafomo.datasets import DrosophilaSpatialTranscriptomics, HomogeneousReactionDiffusion
-from lafomo.trainers import PartialPreEstimator
-from lafomo.plot import plot_spatiotemporal_data
-from lafomo.plot.misc import plot_variational_dist
-from lafomo.utilities.torch import spline_interpolate_gradient, softplus
-from lafomo.utilities.data import dros_ground_truth
+from alfi.datasets import DrosophilaSpatialTranscriptomics, HomogeneousReactionDiffusion
+from alfi.trainers import PartialPreEstimator
+from alfi.plot import plot_spatiotemporal_data
+from alfi.plot.misc import plot_variational_dist
+from alfi.utilities.torch import spline_interpolate_gradient, softplus
+from alfi.utilities.data import dros_ground_truth
 
 from matplotlib import pyplot as plt
 import torch
-from lafomo.configuration import VariationalConfiguration
+from alfi.configuration import VariationalConfiguration
 
 mrna_q2s = list()
 mrna_cias = list()
@@ -67,12 +67,12 @@ for i in range(1):
     lfm.pretrain(False)
     trainer.train(150, report_interval=10)
     lfm.save(f'./{gene}{i}')
-    # from lafomo.plot import tight_kwargs
+    # from alfi.plot import tight_kwargs
     # plot_partial(dataset, lfm, trainer, plotter, Path('./'), params)
     #
     # plt.savefig(Path('./') / f'kinetics-{gene}-{i}.pdf', **tight_kwargs)
 
-    # from lafomo.utilities.torch import q2, cia
+    # from alfi.utilities.torch import q2, cia
     # f = lfm(tx)
     # f_mean = f.mean.detach()
     # f_var = f.variance.detach()
