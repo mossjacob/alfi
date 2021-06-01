@@ -2,8 +2,8 @@ import torch
 
 from torch.utils.data import DataLoader
 
-from alfi.models import NeuralOperator
-from alfi.trainers import NeuralOperatorTrainer
+from lafomo.models import NeuralOperator
+from lafomo.trainers import NeuralOperatorTrainer
 
 
 def build_dataset(dataset, ntest=50):

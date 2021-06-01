@@ -7,13 +7,13 @@ from gpytorch.optim import NGD
 import gpytorch
 import time
 
-from alfi.configuration import VariationalConfiguration
-from alfi.models import MultiOutputGP, PartialLFM, generate_multioutput_rbf_gp
-from alfi.models.pdes import ReactionDiffusion
-from alfi.plot import Plotter1d, plot_spatiotemporal_data, tight_kwargs
-from alfi.trainers import PDETrainer, PartialPreEstimator
-from alfi.utilities.fenics import interval_mesh
-from alfi.utilities.torch import cia, q2, smse, inv_softplus, softplus, spline_interpolate_gradient, get_mean_trace
+from lafomo.configuration import VariationalConfiguration
+from lafomo.models import MultiOutputGP, PartialLFM, generate_multioutput_rbf_gp
+from lafomo.models.pdes import ReactionDiffusion
+from lafomo.plot import Plotter1d, plot_spatiotemporal_data, tight_kwargs
+from lafomo.trainers import PDETrainer, PartialPreEstimator
+from lafomo.utilities.fenics import interval_mesh
+from lafomo.utilities.torch import cia, q2, smse, inv_softplus, softplus, spline_interpolate_gradient, get_mean_trace
 
 
 def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):

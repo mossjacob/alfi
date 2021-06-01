@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 
-from alfi.datasets import HomogeneousReactionDiffusion, ReactionDiffusionGenerator
+from lafomo.datasets import HomogeneousReactionDiffusion, ReactionDiffusionGenerator
 
 
 if __name__ == '__main__':

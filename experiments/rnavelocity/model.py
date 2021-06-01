@@ -1,8 +1,8 @@
 import torch
 from torch.nn import Parameter
 
-from alfi.models import OrdinaryLFM
-from alfi.configuration import VariationalConfiguration
+from lafomo.models import OrdinaryLFM
+from lafomo.configuration import VariationalConfiguration
 
 
 class RNAVelocityLFM(OrdinaryLFM):

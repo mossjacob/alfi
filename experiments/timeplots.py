@@ -7,18 +7,18 @@ from gpytorch.constraints import Positive
 import seaborn as sns
 import numpy as np
 
-from alfi.datasets import P53Data, ToyTranscriptomicGenerator
-from alfi.configuration import VariationalConfiguration
-from alfi.models import OrdinaryLFM, generate_multioutput_rbf_gp
-from alfi.trainers import VariationalTrainer
+from lafomo.datasets import P53Data, ToyTranscriptomicGenerator
+from lafomo.configuration import VariationalConfiguration
+from lafomo.models import OrdinaryLFM, generate_multioutput_rbf_gp
+from lafomo.trainers import VariationalTrainer
 from .variational import TranscriptionLFM
-from alfi.utilities.data import p53_ground_truth
+from lafomo.utilities.data import p53_ground_truth
 from torch.nn.functional import l1_loss
 from gpytorch.mlls.exact_marginal_log_likelihood import ExactMarginalLogLikelihood
 
-from alfi.datasets import P53Data
-from alfi.models import ExactLFM
-from alfi.trainers import ExactTrainer
+from lafomo.datasets import P53Data
+from lafomo.models import ExactLFM
+from lafomo.trainers import ExactTrainer
 from collections import namedtuple
 
 """ Experiment for finding timings """

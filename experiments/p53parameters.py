@@ -8,9 +8,9 @@ import torch
 from matplotlib import pyplot as plt
 from pathlib import Path
 
-from alfi.datasets import P53Data
-from alfi.utilities.data import p53_ground_truth
-from alfi.plot import tight_kwargs
+from lafomo.datasets import P53Data
+from lafomo.utilities.data import p53_ground_truth
+from lafomo.plot import tight_kwargs
 
 from .variational import build_variational, plot_variational
 

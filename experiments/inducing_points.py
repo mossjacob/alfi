@@ -8,11 +8,11 @@ import seaborn as sns
 import numpy as np
 
 from.variational import TranscriptionLFM
-from alfi.datasets import P53Data
-from alfi.configuration import VariationalConfiguration
-from alfi.models import OrdinaryLFM, generate_multioutput_rbf_gp
-from alfi.trainers import VariationalTrainer
-from alfi.utilities.data import p53_ground_truth
+from lafomo.datasets import P53Data
+from lafomo.configuration import VariationalConfiguration
+from lafomo.models import OrdinaryLFM, generate_multioutput_rbf_gp
+from lafomo.trainers import VariationalTrainer
+from lafomo.utilities.data import p53_ground_truth
 
 
 """ Experiment for plotting the ideal inducing point """

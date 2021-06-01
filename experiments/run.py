@@ -8,12 +8,12 @@ import torch
 from matplotlib import pyplot as plt
 from pathlib import Path
 
-from alfi.datasets import (
+from lafomo.datasets import (
     P53Data, HafnerData, ToyTranscriptomics, ToyTranscriptomicGenerator,
     HomogeneousReactionDiffusion, DrosophilaSpatialTranscriptomics,
     DeterministicLotkaVolterra, ReactionDiffusion
 )
-from alfi.utilities.torch import get_mean_trace, is_cuda
+from lafomo.utilities.torch import get_mean_trace, is_cuda
 try:
     from .partial import build_partial, plot_partial, pretrain_partial
 except ImportError:

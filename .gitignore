@@ -24,4 +24,4 @@ ffc_element*
 /docs/_build/
 
 pull.sh
-alfi/ndp_datasets.py
+lafomo/ndp_datasets.py

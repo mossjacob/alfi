@@ -2,10 +2,10 @@ import torch
 from gpytorch.mlls import ExactMarginalLogLikelihood
 from matplotlib import pyplot as plt
 
-from alfi.models import ExactLFM
-from alfi.plot import Plotter1d
-from alfi.trainers import ExactTrainer
-from alfi.utilities.data import p53_ground_truth
+from lafomo.models import ExactLFM
+from lafomo.plot import Plotter1d
+from lafomo.trainers import ExactTrainer
+from lafomo.utilities.data import p53_ground_truth
 
 tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
 
