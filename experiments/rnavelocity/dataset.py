@@ -3,7 +3,7 @@ from os import path
 import torch
 import numpy as np
 
-from lafomo.datasets import TranscriptomicTimeSeries
+from alfi.datasets import TranscriptomicTimeSeries
 
 
 class Pancreas(TranscriptomicTimeSeries):
