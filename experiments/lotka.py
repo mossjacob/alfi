@@ -8,11 +8,11 @@ from torch.optim import Adam
 from gpytorch.optim import NGD
 from gpytorch.constraints import Positive, Interval
 
-from lafomo.models import OrdinaryLFM, MultiOutputGP
-from lafomo.utilities.torch import inv_softplus, softplus
-from lafomo.plot import Plotter1d, plot_phase, Colours
-from lafomo.configuration import VariationalConfiguration
-from lafomo.trainers import VariationalTrainer
+from alfi.models import OrdinaryLFM, MultiOutputGP
+from alfi.utilities.torch import inv_softplus, softplus
+from alfi.plot import Plotter1d, plot_phase, Colours
+from alfi.configuration import VariationalConfiguration
+from alfi.trainers import VariationalTrainer
 
 tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
 

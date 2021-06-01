@@ -1,10 +1,10 @@
 import torch
 from gpytorch.distributions import MultivariateNormal, MultitaskMultivariateNormal
 
-from lafomo.trainers import Trainer
-from lafomo.utilities.torch import ceil, is_cuda
-from lafomo.models import LFM
-from lafomo.datasets import LFMDataset
+from alfi.trainers import Trainer
+from alfi.utilities.torch import ceil, is_cuda
+from alfi.models import LFM
+from alfi.datasets import LFMDataset
 
 
 class EMTrainer(Trainer):

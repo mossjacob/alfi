@@ -7,13 +7,13 @@ from gpytorch.optim import NGD
 import gpytorch
 import time
 
-from lafomo.configuration import VariationalConfiguration
-from lafomo.models import MultiOutputGP, PartialLFM, generate_multioutput_rbf_gp
-from lafomo.models.pdes import ReactionDiffusion
-from lafomo.plot import Plotter1d, plot_spatiotemporal_data, tight_kwargs
-from lafomo.trainers import PDETrainer, PartialPreEstimator
-from lafomo.utilities.fenics import interval_mesh
-from lafomo.utilities.torch import cia, q2, smse, inv_softplus, softplus, spline_interpolate_gradient, get_mean_trace
+from alfi.configuration import VariationalConfiguration
+from alfi.models import MultiOutputGP, PartialLFM, generate_multioutput_rbf_gp
+from alfi.models.pdes import ReactionDiffusion
+from alfi.plot import Plotter1d, plot_spatiotemporal_data, tight_kwargs
+from alfi.trainers import PDETrainer, PartialPreEstimator
+from alfi.utilities.fenics import interval_mesh
+from alfi.utilities.torch import cia, q2, smse, inv_softplus, softplus, spline_interpolate_gradient, get_mean_trace
 
 
 def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
@@ -22,9 +22,6 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
     lengthscale = params['lengthscale']
     zero_mean = params['zero_mean'] if 'zero_mean' in params else False
     checkpoint_dir = checkpoint_dir if 'checkpoint' in params else None
-    # Define mesh
-    spatial = np.unique(tx[1, :])
-    mesh = interval_mesh(spatial)
 
     # Define GP
     if tx.shape[1] > 1000:
@@ -55,12 +52,8 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
     # lengthscale_constraint=Interval(0.1, 0.3),
     gp_model.double()
 
-    # Define LFM
-    # We calculate a mesh that contains all possible spatial locations in the dataset
-    data = next(iter(dataset))
-    tx, y_target = data
-
     # Define mesh
+    # We calculate a mesh that contains all possible spatial locations in the dataset
     spatial = np.unique(tx[1, :])
     mesh = interval_mesh(spatial)
 
@@ -75,6 +68,7 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
         num_samples=5
     )
 
+    # Define LFM
     parameter_grad = params['parameter_grad'] if 'parameter_grad' in params else True
     sensitivity = Parameter(
         inv_softplus(torch.tensor(params['sensitivity'])) * torch.ones((1, 1), dtype=torch.float64),
@@ -96,14 +90,14 @@ def build_partial(dataset, params, reload=None, checkpoint_dir=None, **kwargs):
     if reload is not None:
         lfm = lfm.load(reload,
                        gp_model=lfm.gp_model,
-                       lfm_args=[1, lfm.fenics_model_fn, lfm.fenics_parameters, config])
+                       lfm_args=[1, lfm.fenics_model, lfm.fenics_parameters, config])
 
     if params['natural']:
-        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.09)
-        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.05)
+        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.03)
+        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.03)
         optimizers = [variational_optimizer, parameter_optimizer]
     else:
-        optimizers = [Adam(lfm.parameters(), lr=0.07)]
+        optimizers = [Adam(lfm.parameters(), lr=0.005)]
 
     track_parameters = list(lfm.fenics_named_parameters.keys()) +\
                        list(map(lambda s: f'gp_model.{s}', dict(lfm.gp_model.named_hyperparameters()).keys()))
@@ -135,11 +129,11 @@ def pretrain_partial(dataset, lfm, trainer, modelparams):
     y_matrix = y_target.view(num_t_orig, num_x_orig)
     pde_func, pde_target = lfm.fenics_model.interpolated_gradient(tx, y_matrix, disc=disc)
     train_ratio = 0.3
-    num_training = int(train_ratio * tx.shape[1])
+    num_training = int(train_ratio * num_x_orig * num_t_orig)
     print('num training', num_training)
     if modelparams['natural']:
-        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
-        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.05)
+        variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.03)
+        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.03)
         optimizers = [variational_optimizer, parameter_optimizer]
     else:
         optimizers = [Adam(lfm.parameters(), lr=0.05)]
@@ -155,7 +149,7 @@ def pretrain_partial(dataset, lfm, trainer, modelparams):
     t0 = time.time()
     times = pre_estimator.train(80, report_interval=10)
     lfm.pretrain(False)
-    lfm.config.num_samples = 5
+    lfm.config.num_samples = 20
     return times, t0
 
 
@@ -164,7 +158,12 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
     tx = trainer.tx
     num_t = tx[0, :].unique().shape[0]
     num_x = tx[1, :].unique().shape[0]
-    f = lfm(tx)
+    orig_data = dataset.orig_data.squeeze().t()
+    num_t_orig = orig_data[:, 0].unique().shape[0]
+    num_x_orig = orig_data[:, 1].unique().shape[0]
+    disc = dataset.disc if hasattr(dataset, 'disc') else 1
+
+    f = lfm(tx, step=disc)
     f_mean = f.mean.detach()
     f_var = f.variance.detach()
     y_target = trainer.y_target[0]
@@ -181,10 +180,6 @@ def plot_partial(dataset, lfm, trainer, plotter, filepath, params):
             str(q2(y_target[~trainer.train_mask], f_mean_test).item()),
             str(cia(y_target[~trainer.train_mask], f_mean_test, f_var_test).item())
         ]) + '\n')
-
-    orig_data = dataset.orig_data.squeeze().t()
-    num_t_orig = orig_data[:, 0].unique().shape[0]
-    num_x_orig = orig_data[:, 1].unique().shape[0]
 
     l_target = orig_data[trainer.t_sorted, 2]
     l = lfm.gp_model(tx.t())
