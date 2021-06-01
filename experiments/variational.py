@@ -6,22 +6,29 @@ from gpytorch.constraints import Positive
 from gpytorch.optim import NGD
 from torch.optim import Adam
 
-from lafomo.configuration import VariationalConfiguration
-from lafomo.models import OrdinaryLFM, generate_multioutput_rbf_gp
-from lafomo.plot import Plotter1d
-from lafomo.trainers import VariationalTrainer
-from lafomo.utilities.data import p53_ground_truth
+from alfi.configuration import VariationalConfiguration
+from alfi.models import OrdinaryLFM, generate_multioutput_rbf_gp
+from alfi.plot import Plotter1d
+from alfi.trainers import VariationalTrainer
+from alfi.utilities.data import p53_ground_truth
 
 tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
 
 
 class TranscriptionLFM(OrdinaryLFM):
-    def __init__(self, num_outputs, gp_model, config: VariationalConfiguration, **kwargs):
+    def __init__(self, num_outputs, gp_model, config: VariationalConfiguration,
+                 initial_basal=None, initial_decay=None, initial_sensitivity=None, **kwargs):
         super().__init__(num_outputs, gp_model, config, **kwargs)
         self.positivity = Positive()
-        self.raw_decay = Parameter(0.3 + torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64))
-        self.raw_basal = Parameter(0.1 * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64))
-        self.raw_sensitivity = Parameter(torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64))
+        initial_basal = 0.1 if initial_basal is None else initial_basal
+        initial_decay = 0.3 if initial_decay is None else initial_decay
+        initial_sensitivity = 1 if initial_sensitivity is None else initial_sensitivity
+        self.raw_decay = Parameter(self.positivity.inverse_transform(
+            initial_decay + torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64)))
+        self.raw_basal = Parameter(self.positivity.inverse_transform(
+            initial_basal * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64)))
+        self.raw_sensitivity = Parameter(self.positivity.inverse_transform(
+            initial_sensitivity * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64)))
 
     @property
     def decay_rate(self):
