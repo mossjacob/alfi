@@ -97,7 +97,7 @@ class HomogeneousReactionDiffusion(LFMDataset):
 
 class ReactionDiffusionGenerator:
     """
-    Reaction Diffusion LFM generator (transcribed from R to Python by Jacob Moss).
+    Reaction Diffusion LFM generator (transcribed from R to Python by Anonymous).
     The original author for the R code for the reaction diffusion equation is López-Lopera et al. (2019)
     https://github.com/anfelopera/PhysicallyGPDrosophila
     """

@@ -8,7 +8,7 @@ Original Authors: Li, Z., Kovachki, N., Azizzadenesheli, K., Liu, B., Bhattachar
 Fourier neural operator for parametric partial differential equations. 
 arXiv preprint arXiv:2010.08895.
 
-Edited: Moss, Jacob. 2021
+Edited: Anonymous. 2021
 - fixes to work with Torch 1.9.0 (complex dtypes)
 """
 class SpectralConv1d(Module):
