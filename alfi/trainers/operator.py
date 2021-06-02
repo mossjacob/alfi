@@ -39,6 +39,11 @@ class NeuralOperatorTrainer(Trainer):
 
         self.loss_fn = LpLoss(size_average=True)
 
+    def to_normal(self, p_y_pred):
+        mu = p_y_pred[..., 0]
+        sigma = softplus(p_y_pred[..., 1]) + 1e-6
+        return Normal(mu, sigma)
+
     def single_epoch(self, step_size=1e-1, epoch=0, **kwargs):
         self.lfm.train()
         train_mse = 0
@@ -51,18 +56,20 @@ class NeuralOperatorTrainer(Trainer):
                 x, y, params = x.cuda(), y.cuda(), params.cuda()
 
             self.optimizer.zero_grad()
-            p_y_pred, params_out = self.lfm(x)
+            additional_loss = 0
 
-            mu = p_y_pred[..., 0]
-            sigma = 0.1 + 0.9 * torch.sigmoid(p_y_pred[..., 1])
-            sigma = softplus(p_y_pred[..., 1]) + 1e-6
-            p_y_pred = Normal(mu, sigma)
+            p_y_pred = self.lfm(x)
+            if self.lfm.params:
+                p_y_pred, params_out = p_y_pred
+                params_mse = mse_loss(params_out, params.view(batch_size, -1), reduction='mean')
+                train_params_mse += params_mse.item()
+                additional_loss = 10 * params_mse
+
+            p_y_pred = self.to_normal(p_y_pred)
 
             mse = mse_loss(p_y_pred.mean, y.squeeze(-1), reduction='mean')
-            # mse.backward()
             l2 = self._loss(p_y_pred, y.squeeze(-1))
-            params_mse = mse_loss(params_out, params.view(batch_size, -1), reduction='mean')
-            total_loss = l2 + 10 * params_mse
+            total_loss = l2 + additional_loss
 
             total_loss.backward()  # use the l2 relative loss
             self.optimizer.step()
@@ -70,7 +77,6 @@ class NeuralOperatorTrainer(Trainer):
             train_mse += mse.item()
             train_l2 += l2.item()
             train_loss += total_loss.item()
-            train_params_mse += params_mse.item()
 
         self.scheduler.step()
         self.lfm.eval()
@@ -84,24 +90,24 @@ class NeuralOperatorTrainer(Trainer):
                 # x, y = x.cuda(), y.cuda()
                 if is_cuda():
                     x, y, params = x.cuda(), y.cuda(), params.cuda()
+                additional_loss = 0
 
-                p_y_pred, params_out = self.lfm(x)
+                p_y_pred = self.lfm(x)
+                if self.lfm.params:
+                    p_y_pred, params_out = p_y_pred
+                    params_mse = mse_loss(params_out, params.view(self.test_loader.batch_size, -1), reduction='mean')
+                    test_params_mse += params_mse.item()
+                    additional_loss = 10 * params_mse
 
-                mu = p_y_pred[..., 0]
-                sigma = 0.1 + 0.9 * torch.sigmoid(p_y_pred[..., 1])
-                sigma = softplus(p_y_pred[..., 1]) + 1e-6
+                p_y_pred = self.to_normal(p_y_pred)
 
-                p_y_pred = Normal(mu, sigma)
+                mse = mse_loss(p_y_pred.mean, y.squeeze(-1), reduction='mean')
+                l2 = self._loss(p_y_pred, y.squeeze(-1))
+                total_loss = l2 + additional_loss
 
-                test_mse += mse_loss(p_y_pred.mean, y.squeeze(-1), reduction='mean').item()
-                loss = self._loss(p_y_pred, y.squeeze(-1))
-                test_l2 += loss
-                test_params_mse += mse_loss(params_out, params.view(self.test_loader.batch_size, -1), reduction='mean')
-                test_loss += test_l2 + test_params_mse
-                # test_l2 += self.loss_fn(out, y.view(self.test_loader.batch_size, -1)).item()
-                params_mse = mse_loss(params_out, params.view(self.test_loader.batch_size, -1), reduction='mean')
-                test_params_mse += params_mse
-                test_loss += loss + params_mse
+                test_mse += mse.item()
+                test_l2 += l2.item()
+                test_loss += total_loss.item()
 
         train_mse /= len(self.train_loader)
         train_l2 /= len(self.train_loader)

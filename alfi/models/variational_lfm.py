@@ -61,20 +61,23 @@ class VariationalLFM(LFM, ABC):
         return self.gp_model.variational_parameters()
 
     def summarise_gp_hyp(self):
+        def convert(x):
+            return x.detach().cpu().view(-1).numpy()
+
         # variational_keys = dict(self.gp_model.named_variational_parameters()).keys()
         # named_parameters = dict(self.named_parameters())
         #
         # return [named_parameters[key] for key in named_parameters.keys()
         #         if key[len('gp_model.'):] not in variational_keys]
         if self.gp_model.covar_module.lengthscale is not None:
-            return self.gp_model.covar_module.lengthscale.detach().cpu().numpy()
+            return convert(self.gp_model.covar_module.lengthscale)
         elif hasattr(self.gp_model.covar_module, 'base_kernel'):
             kernel = self.gp_model.covar_module.base_kernel
             if hasattr(kernel, 'kernels'):
                 if hasattr(kernel.kernels[0], 'lengthscale'):
-                    return kernel.kernels[0].lengthscale.detach().cpu().numpy()
+                    return convert(kernel.kernels[0].lengthscale)
             else:
-                return self.gp_model.covar_module.base_kernel.lengthscale.detach().cpu().numpy()
+                return convert(self.gp_model.covar_module.base_kernel.lengthscale)
         else:
             return ''
 
