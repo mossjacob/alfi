@@ -73,7 +73,6 @@ class ExactLFM(LFM, gpytorch.models.ExactGP):
         var += jitter * torch.eye(var.shape[-1])
 
         batch_mvn = gpytorch.distributions.MultivariateNormal(mean, var)
-        print(batch_mvn)
         return gpytorch.distributions.MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)
 
     def save(self, filepath):

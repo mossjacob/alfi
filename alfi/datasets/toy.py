@@ -109,6 +109,7 @@ class ToyTranscriptomicGenerator(LFMDataset):
             def __init__(self, num_outputs, gp_model, ref, config: VariationalConfiguration, **kwargs):
                 super().__init__(num_outputs, gp_model, config, **kwargs)
                 self.ref = ref
+                self.dtype = ref.dtype
                 num_latents = gp_model.variational_strategy.num_tasks
                 basal = torch.tensor(ref.basal, dtype=self.dtype)
                 decay = torch.tensor(ref.decay, dtype=self.dtype)
@@ -140,7 +141,8 @@ class ToyTranscriptomicGenerator(LFMDataset):
                 if self.ref.softplus:
                     f = softplus(f)
                 if f.shape[1] > 1:
-                    interactions = torch.matmul(self.weight, torch.log(f + 1e-100)) + self.weight_bias
+                    eps = torch.tensor(torch.finfo(self.dtype).tiny, dtype=self.dtype)
+                    interactions = torch.matmul(self.weight, torch.log(f + eps)) + self.weight_bias
                     f = torch.sigmoid(interactions)  # TF Activation Function (sigmoid)
                 else:
                     f = f.repeat(1, self.num_outputs, 1)

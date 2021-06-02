@@ -20,6 +20,7 @@ class NeuralOperator(LFM):
                  params=True):
         super().__init__()
         self.num_outputs = 1
+        self.params = params
         if block_dim == 1:
             self.conv = SimpleBlock1d(in_channels, out_channels, modes, width,
                                       num_layers=num_layers, params=params)
