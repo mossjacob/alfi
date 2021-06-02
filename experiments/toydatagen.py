@@ -1,7 +1,39 @@
 import torch
 import numpy as np
+import pandas as pd
+from pathlib import Path
 
 from alfi.datasets import HomogeneousReactionDiffusion, ReactionDiffusionGenerator
+
+
+def save_dataset(toydata):
+    """
+    data_dir: the directory where the toy data and intermediate data lies. Will also be saved here.
+    """
+    data_dir = '../data'
+    temp = pd.read_csv(Path(data_dir) / 'demToy1GPmRNA.csv').values
+    t_sorted = np.argsort(temp[:, 0], kind='mergesort')
+    # toydata = torch.load(Path(data_dir) / 'intermediate_toydata.pt')
+    params_list = list()
+    orig_data = list()
+    num_samples = toydata[0]['samples'].shape[0]
+    x_observed = torch.tensor(temp[t_sorted, 0:2]).permute(1, 0)
+
+    for i in range(len(toydata)):
+        params = torch.tensor([toydata[i][key] for key in ['l1', 'l2', 'sensitivity', 'decay', 'diffusion']])
+        samples = toydata[i]['samples']
+        for sample in range(num_samples):
+            lf = samples[sample, 1681:]
+            out = samples[sample, :1681]
+            lf_out = torch.stack([lf, out], dim=0)
+            orig_data.append(lf_out)
+            params_list.append(params)
+    params = torch.stack(params_list)
+    orig_data = torch.stack(orig_data)
+    shuffle = torch.randperm(orig_data.size()[0])
+    orig_data = orig_data[shuffle]
+    params = params[shuffle]
+    torch.save({'x_observed': x_observed, 'orig_data': orig_data, 'params': params}, Path(data_dir) / 'toydata.pt')
 
 
 if __name__ == '__main__':
@@ -54,5 +86,6 @@ if __name__ == '__main__':
                             i += 1
                             print('Done ', i, '/', tot)
 
-        torch.save(objects, 'toydata.pt')
+        # torch.save(, 'intermediate_toydata.pt')
+        save_dataset(objects)
         print('Saved')
