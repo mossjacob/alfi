@@ -40,7 +40,7 @@ class RNAVelocityLFM(OrdinaryLFM):
 
         return h_t
 
-    def G(self, f):
+    def mix(self, f):
         """
         Parameters:
             f: (I, T)
@@ -53,5 +53,5 @@ class RNAVelocityLFM(OrdinaryLFM):
         q_f = self.get_latents(t_predict.reshape(-1))
         f = q_f.sample([500])  # (S, I, t)
         # This is a hack to wrap the latent function with the nonlinearity. Note we use the same variance.
-        f = torch.mean(self.G(f), dim=0)[0]
+        f = torch.mean(self.mix(f), dim=0)[0]
         return torch.distributions.multivariate_normal.MultivariateNormal(f, scale_tril=q_f.scale_tril)
