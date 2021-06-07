@@ -52,7 +52,8 @@ class OrdinaryLFM(VariationalLFM):
         q_f = self.gp_model(t_f)
 
         self.f = q_f.rsample(torch.Size([self.config.num_samples])).permute(0, 2, 1)  # (S, I, T)
-        self.f = self.G(self.f)
+        self.f = self.nonlinearity(self.f)
+        self.f = self.mix(self.f)
 
         if self.pretrain_mode:
             h_samples = self.odefunc(t_f, h0)
@@ -63,18 +64,27 @@ class OrdinaryLFM(VariationalLFM):
             self.last_t = self.f.min() - 1
             h_samples = odeint(self.odefunc, h0, t, method='rk4', options=dict(step_size=step_size)) # (T, S, num_outputs, 1)
 
-        self.f = None
         # self.t_index = None
         # self.last_t = None
         if return_samples:
             return h_samples
 
-        h_mean = torch.mean(h_samples, dim=1).squeeze(-1).transpose(0, 1)  # shape was (#outputs, #T, 1)
-        h_var = torch.var(h_samples, dim=1).squeeze(-1).transpose(0, 1) + 1e-7
+        h_mean = h_samples.mean(dim=1).squeeze(-1).transpose(0, 1)  # shape was (#outputs, #T, 1)
+        h_var = h_samples.var(dim=1).squeeze(-1).transpose(0, 1) + 1e-7
         h_mean = self.decode(h_mean)
         h_var = self.decode(h_var)
         # TODO: make distribution something less constraining
-        h_covar = torch.diag_embed(h_var)
+        if self.config.latent_data_present:
+            # todo: make this
+            f = self.gp_model(t).rsample(torch.Size([self.config.num_samples])).permute(0, 2, 1)
+            # f = self.nonlinearity(f)
+            f_mean = f.mean(dim=0)
+            f_var = f.var(dim=0) + 1e-7
+            h_mean = torch.cat([h_mean, f_mean], dim=0)
+            h_var = torch.cat([h_var, f_var], dim=0)
+
+        self.f = None
+        h_covar = torch.diag_embed(h_var)  # (num_tasks, t, t)
         batch_mvn = gpytorch.distributions.MultivariateNormal(h_mean, h_covar)
         return gpytorch.distributions.MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)
 
@@ -89,5 +99,12 @@ class OrdinaryLFM(VariationalLFM):
         """
         pass
 
-    def G(self, f):
-        return f.repeat(1, self.num_outputs, 1)  # (S, I, t)
+    def sample_latents(self, t, num_samples=1):
+        q_f = self.gp_model(t)
+        return self.nonlinearity(q_f.sample(torch.Size([num_samples])))
+
+    def nonlinearity(self, f):
+        return f
+
+    def mix(self, f):
+        return f#.repeat(1, self.num_outputs, 1)  # (S, I, t)

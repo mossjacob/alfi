@@ -19,7 +19,7 @@ class VariationalTrainer(Trainer):
                  dataset,
                  warm_variational=-1,
                  **kwargs):
-        super().__init__(lfm, optimizers, dataset, batch_size=lfm.num_outputs, **kwargs)
+        super().__init__(lfm, optimizers, dataset, batch_size=lfm.num_tasks, **kwargs)
         self.warm_variational = warm_variational
         # if warm_variational >= 0:  # Cold start: don't train non variational parameters initially.
         #     for param in self.lfm.nonvariational_parameters():
@@ -40,7 +40,7 @@ class VariationalTrainer(Trainer):
             y_target = y.t()
 
             self.debug_out(data_input, y, output)
-            log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target)
+            log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target, mask=self.train_mask)
 
             loss = - (log_likelihood - kl_divergence)
 

@@ -48,7 +48,7 @@ class SoftplusTranscriptionLFM(TranscriptionLFM):
         self.raw_basal = Parameter(torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64))
         self.raw_sensitivity = Parameter(8 + torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64))
 
-    def G(self, f):
+    def mix(self, f):
         # I = 1 so just repeat for num_outputs
         return softplus(f).repeat(1, self.num_outputs, 1)
 
@@ -58,7 +58,7 @@ class SoftplusTranscriptionLFM(TranscriptionLFM):
         f = q_f.sample(torch.Size([500])).permute(0, 2, 1)  # (S, I, T)
         print(f.shape)
         # This is a hack to wrap the latent function with the nonlinearity. Note we use the same variance.
-        f = torch.mean(self.G(f), dim=0)[0].unsqueeze(0)
+        f = torch.mean(self.mix(f), dim=0)[0].unsqueeze(0)
         print(f.shape, q_f.mean.shape, q_f.scale_tril.shape)
         batch_mvn = MultivariateNormal(f, q_f.covariance_matrix.unsqueeze(0))
         print(batch_mvn)
