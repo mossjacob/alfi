@@ -6,6 +6,7 @@ from fenics_adjoint import *
 
 from alfi.utilities.torch import spline_interpolate_gradient
 
+
 class ReactionDiffusion(torch_fenics.FEniCSModule):
     def __init__(self, t_range: tuple, time_steps, mesh):
         """
