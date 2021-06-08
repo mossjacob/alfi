@@ -67,8 +67,9 @@ class EMTrainer(Trainer):
             y = y.cuda() if is_cuda() else y
             ### E-step ###
             # assign timepoints $t_i$ to each cell by minimising its distance to the trajectory
-            self.e_step(y)
-            print('estep done')
+            if epoch == 0 or epoch > 3:
+                self.e_step(y)
+                print('estep done')
 
             ### M-step ###
             # TODO try to do it for only the time assignments
@@ -86,7 +87,6 @@ class EMTrainer(Trainer):
             f_mean = output.mean.transpose(0, 1)[:, self.time_assignments_indices]
             f_var = output.variance.transpose(0, 1)[:, self.time_assignments_indices]
             print(f_mean.shape, f_var.shape)
-            total_loss = torch.tensor(0.)
             y_target = y.squeeze(-1).permute(1, 0)
             var = f_var
             mean = f_mean
@@ -99,7 +99,7 @@ class EMTrainer(Trainer):
             print(output.mean.shape, y_target.shape)
             # Calc loss and backprop gradients
             log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target)
-            total_loss += (-log_likelihood + kl_divergence)
+            total_loss = (-log_likelihood + kl_divergence)
             print('back')
             total_loss.backward()
             print('ward')
