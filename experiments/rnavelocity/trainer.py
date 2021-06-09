@@ -1,5 +1,6 @@
 import torch
 from gpytorch.distributions import MultivariateNormal, MultitaskMultivariateNormal
+from gpytorch.lazy import DiagLazyTensor
 
 from alfi.trainers import Trainer
 from alfi.utilities.torch import ceil, is_cuda
@@ -19,15 +20,16 @@ class EMTrainer(Trainer):
     inducing timepoints.
     give_output: whether the trainer should give the first output (y_0) as initial value to the model `forward()`
     """
-    def __init__(self, lfm: LFM, optimizers: torch.optim.Optimizer, dataset: LFMDataset, batch_size: int):
+    def __init__(self, lfm: LFM, optimizers, dataset: LFMDataset, batch_size: int):
         super().__init__(lfm, optimizers, dataset, batch_size=batch_size)
         # Initialise trajectory
-        self.timepoint_choices = torch.linspace(0, 1, 100, requires_grad=False)
-        initial_value = self.initial_value(None)
+        self.timepoint_choices = torch.linspace(0, 12, 100, requires_grad=False)
+        # initial_value = self.initial_value(None)
         self.previous_trajectory = self.lfm(self.timepoint_choices, step_size=1e-2)
         self.time_assignments_indices = torch.zeros_like(self.lfm.time_assignments, dtype=torch.long)
 
     def e_step(self, y):
+        # Given parameters, assign the timepoints
         num_outputs = self.lfm.num_outputs
         # sorted_times, sort_indices = torch.sort(self.model.time_assignments, dim=0)
         # trajectory = self.model(sorted_times, self.initial_value(None), rtol=1e-2, atol=1e-3)
@@ -55,7 +57,7 @@ class EMTrainer(Trainer):
             self.lfm.time_assignments[from_index:to_index] = self.timepoint_choices[residual]
             self.time_assignments_indices[from_index:to_index] = residual
 
-    def single_epoch(self, step_size=1e-1):
+    def single_epoch(self, epoch=0, step_size=1e-1, **kwargs):
         epoch_loss = 0
         epoch_ll = 0
         epoch_kl = 0
@@ -65,11 +67,13 @@ class EMTrainer(Trainer):
             y = y.cuda() if is_cuda() else y
             ### E-step ###
             # assign timepoints $t_i$ to each cell by minimising its distance to the trajectory
-            self.e_step(y)
-            print('estep done')
+            if epoch == 0 or epoch > 3:
+                self.e_step(y)
+                print('estep done')
 
             ### M-step ###
             # TODO try to do it for only the time assignments
+            # given timepoints, maximise for parameters
             t_sorted, inv_indices = torch.unique(self.lfm.time_assignments, sorted=True, return_inverse=True)
             print('num t:', t_sorted.shape)
             '''
@@ -83,15 +87,22 @@ class EMTrainer(Trainer):
             f_mean = output.mean.transpose(0, 1)[:, self.time_assignments_indices]
             f_var = output.variance.transpose(0, 1)[:, self.time_assignments_indices]
             print(f_mean.shape, f_var.shape)
-            f_covar = torch.diag_embed(f_var)
-            batch_mvn = MultivariateNormal(f_mean, f_covar)
-            output = MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)
-
-            # Calc loss and backprop gradients
             y_target = y.squeeze(-1).permute(1, 0)
+            var = f_var
+            mean = f_mean
+            covar = DiagLazyTensor(var)
+            # covar = torch.diag_embed(var)
+            print('covar', covar.shape)
+            batch_mvn = MultivariateNormal(mean, covar)
+            print(batch_mvn.mean.shape, batch_mvn)
+            output = MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)
+            print(output.mean.shape, y_target.shape)
+            # Calc loss and backprop gradients
             log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target)
-            total_loss = -log_likelihood + kl_divergence
+            total_loss = (-log_likelihood + kl_divergence)
+            print('back')
             total_loss.backward()
+            print('ward')
             [optim.step() for optim in self.optimizers]
 
             epoch_loss += total_loss.item()
@@ -102,6 +113,6 @@ class EMTrainer(Trainer):
     def after_epoch(self):
         with torch.no_grad():
             # TODO can we replace these with parameter transforms like we did with lengthscale
-            self.lfm.transcription_rate.clamp_(0, 20)
+            # self.lfm.transcription_rate.clamp_(0, 20)
             self.lfm.splicing_rate.clamp_(0, 20)
             self.lfm.decay_rate.clamp_(0, 20)

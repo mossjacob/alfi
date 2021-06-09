@@ -44,6 +44,7 @@ class ToyTranscriptomicGenerator(LFMDataset):
                  num_times=10,
                  plot=False,
                  softplus=True,
+                 latent_data_present=False,
                  dtype=torch.float32):
         self.num_outputs = num_outputs
         self.num_latents = num_latents
@@ -53,7 +54,7 @@ class ToyTranscriptomicGenerator(LFMDataset):
         self.gene_names = np.arange(num_outputs)
         self.softplus = softplus
         self.dtype = dtype
-
+        self.latent_data_present = latent_data_present
     def pick_decay(self):
         return 0.2 + .5 * torch.rand(torch.Size([self.num_outputs, 1]), dtype=self.dtype)
 
@@ -137,9 +138,12 @@ class ToyTranscriptomicGenerator(LFMDataset):
                 self.last_t = t
                 return h
 
-            def G(self, f):
+            def nonlinearity(self, f):
                 if self.ref.softplus:
-                    f = softplus(f)
+                    return softplus(f)
+                return f
+
+            def mix(self, f):
                 if f.shape[1] > 1:
                     eps = torch.tensor(torch.finfo(self.dtype).tiny, dtype=self.dtype)
                     interactions = torch.matmul(self.weight, torch.log(f + eps)) + self.weight_bias
@@ -169,6 +173,8 @@ class ToyTranscriptomicGenerator(LFMDataset):
             self.m_observed_highres = q_m.mean.unsqueeze(0).permute(0, 2, 1)
             self.m_observed = q_m.mean[::self.num_disc+1].unsqueeze(0).permute(0, 2, 1)
             self.data = [(self.t_observed, self.m_observed[0, i]) for i in range(self.num_outputs)]
+            if self.latent_data_present:
+                self.data.extend([(self.t_observed, self.f_observed[0, i]) for i in range(self.num_latents)])
         return self
 
     def train_gp(self, gp_model, t_predict):

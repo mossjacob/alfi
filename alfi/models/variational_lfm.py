@@ -29,19 +29,27 @@ class VariationalLFM(LFM, ABC):
         super().__init__()
         self.gp_model = gp_model
         self.num_outputs = num_outputs
-        self.likelihood = MultitaskGaussianLikelihood(num_tasks=self.num_outputs)
         self.pretrain_mode = False
+        self.config = config
+        self.dtype = dtype
+
         try:
             self.inducing_points = self.gp_model.get_inducing_points()
         except AttributeError:
             raise AttributeError('The GP model must define a function `get_inducing_points`.')
 
+        # Construct likelihood
+        self.num_tasks = num_outputs
         if num_training_points is None:
             num_training_points = self.inducing_points.numel()  # TODO num_data refers to the number of training datapoints
 
+        if config.latent_data_present:  # add latent force likelihood
+            num_latents = gp_model.variational_strategy.num_tasks
+            self.num_tasks += num_latents
+
+        self.likelihood = MultitaskGaussianLikelihood(num_tasks=self.num_tasks)
+
         self.loss_fn = MaskedVariationalELBO(self.likelihood, gp_model, num_training_points, combine_terms=False)
-        self.config = config
-        self.dtype = dtype
 
         # if config.preprocessing_variance is not None:
         #     self.likelihood_variance = Parameter(torch.tensor(config.preprocessing_variance), requires_grad=False)
