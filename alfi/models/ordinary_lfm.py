@@ -2,6 +2,7 @@ from abc import abstractmethod
 
 import torch
 import gpytorch
+from torch.distributions import Distribution
 from torchdiffeq import odeint
 
 from .variational_lfm import VariationalLFM
@@ -69,6 +70,11 @@ class OrdinaryLFM(VariationalLFM):
         if return_samples:
             return h_samples
 
+        dist = self.build_output_distribution(t, h_samples)
+        self.f = None
+        return dist
+
+    def build_output_distribution(self, t, h_samples) -> Distribution:
         h_mean = h_samples.mean(dim=1).squeeze(-1).transpose(0, 1)  # shape was (#outputs, #T, 1)
         h_var = h_samples.var(dim=1).squeeze(-1).transpose(0, 1) + 1e-7
         h_mean = self.decode(h_mean)
@@ -83,7 +89,6 @@ class OrdinaryLFM(VariationalLFM):
             h_mean = torch.cat([h_mean, f_mean], dim=0)
             h_var = torch.cat([h_var, f_var], dim=0)
 
-        self.f = None
         h_covar = torch.diag_embed(h_var)  # (num_tasks, t, t)
         batch_mvn = gpytorch.distributions.MultivariateNormal(h_mean, h_covar)
         return gpytorch.distributions.MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)

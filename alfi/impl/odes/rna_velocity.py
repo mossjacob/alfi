@@ -1,17 +1,28 @@
 import torch
+
 from torch.nn import Parameter
 from torch.nn.functional import relu
 from gpytorch.constraints import Positive
+from gpytorch.distributions import MultivariateNormal, MultitaskMultivariateNormal
+from gpytorch.lazy import DiagLazyTensor
+from dataclasses import dataclass
 
 from alfi.models import OrdinaryLFM
 from alfi.configuration import VariationalConfiguration
 
 
+@dataclass
+class RNAVelocityConfiguration(VariationalConfiguration):
+    num_cells:  int = 20       # number of cells
+    num_timepoint_choices: int = 100
+    end_pseudotime: float = 12.
+
+
 class RNAVelocityLFM(OrdinaryLFM):
     def __init__(self,
-                 num_cells, num_outputs,
+                 num_outputs,
                  gp_model,
-                 config: VariationalConfiguration,
+                 config: RNAVelocityConfiguration,
                  nonlinearity=relu, **kwargs):
         super().__init__(num_outputs, gp_model, config, **kwargs)
         num_genes = num_outputs // 2
@@ -26,9 +37,15 @@ class RNAVelocityLFM(OrdinaryLFM):
         self.raw_decay_rate = Parameter(self.positivity.inverse_transform(
             decay_rate * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64)))
         self.nonlinearity = nonlinearity
-        self.num_cells = num_cells
-        ### Initialise random time assignments
+        self.num_cells = config.num_cells
+
+        # Initialise random time assignments
         self.time_assignments = torch.rand(self.num_cells, requires_grad=False)
+        self.time_assignments_indices = torch.zeros_like(self.time_assignments, dtype=torch.long)
+        self.timepoint_choices = torch.linspace(0, config.end_pseudotime, config.num_timepoint_choices) #, requires_grad=False
+
+        # Initialise trajectory
+        self(self.timepoint_choices, step_size=1e-1)
 
     @property
     def splicing_rate(self):
@@ -77,6 +94,17 @@ class RNAVelocityLFM(OrdinaryLFM):
         self.last_t = t
 
         return h_t
+
+    def build_output_distribution(self, t, h_samples) -> MultitaskMultivariateNormal:
+        h_mean = h_samples.mean(dim=1).squeeze(-1).transpose(0, 1)  # shape was (#outputs, #T, 1)
+        self.current_trajectory = h_mean
+        h_var = h_samples.var(dim=1).squeeze(-1).transpose(0, 1) + 1e-7
+        h_mean = self.decode(h_mean)[:, self.time_assignments_indices]
+        h_var = self.decode(h_var)[:, self.time_assignments_indices]
+
+        h_covar = DiagLazyTensor(h_var)
+        batch_mvn = MultivariateNormal(h_mean, h_covar)
+        return MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)
 
     def mix(self, f):
         """
