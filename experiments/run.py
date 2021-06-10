@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from pathlib import Path
 
 from alfi.datasets import (
-    P53Data, HafnerData, ToyTranscriptomics, ToyTranscriptomicGenerator,
+    P53Data, HafnerData, ToyTranscriptomicGenerator,
     HomogeneousReactionDiffusion, DrosophilaSpatialTranscriptomics,
     DeterministicLotkaVolterra, ReactionDiffusion
 )
@@ -18,10 +18,17 @@ try:
     from .partial import build_partial, plot_partial, pretrain_partial
 except ImportError:
     build_partial, plot_partial, pretrain_partial = None, None, None
-from .variational import build_variational, plot_variational
-from .exact import build_exact, plot_exact
-from .lotka import build_lotka, plot_lotka
-from .lfo import build_dataset, build_lfo
+
+try:
+    from alfi.datasets import Pancreas
+except ImportError:
+    Pancreas = None
+
+from .model_specs.variational import build_variational, plot_variational
+from .model_specs.exact import build_exact, plot_exact
+from .model_specs.lotka import build_lotka, plot_lotka
+from .model_specs.lfo import build_dataset, build_lfo
+from .model_specs.rnavelocity import build_rnavelocity, plot_rnavelocity
 
 
 plt.rcParams['font.family'] = 'serif'
@@ -62,6 +69,7 @@ datasets = {
     'reaction-diffusion': lambda: build_dataset(
         ReactionDiffusion('data', nn_format=True, max_n=4000, ntest=50), ntest=50
     ),
+    'pancreas': lambda: Pancreas(data_dir='data')
 }
 
 
@@ -71,7 +79,8 @@ builders = {
     'exact': build_exact,
     'partial': build_partial,
     'lotka': build_lotka,
-    'lfo-2d': lambda *args, **kwargs: build_lfo(*args, **kwargs, block_dim=2)
+    'lfo-2d': lambda *args, **kwargs: build_lfo(*args, **kwargs, block_dim=2),
+    'rnavelo': build_rnavelocity,
 }
 
 plotters = {
@@ -79,6 +88,7 @@ plotters = {
     'partial': plot_partial,
     'variational': plot_variational,
     'lotka': plot_lotka,
+    'rnavelo': plot_rnavelocity,
 }
 
 

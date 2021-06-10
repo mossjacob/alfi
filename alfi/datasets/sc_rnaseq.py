@@ -3,11 +3,11 @@ from os import path
 import torch
 import numpy as np
 
-from alfi.datasets import TranscriptomicTimeSeries
+from .datasets import TranscriptomicTimeSeries
 
 
 class Pancreas(TranscriptomicTimeSeries):
-    def __init__(self, max_cells=10000, data_dir='./', calc_moments=True):
+    def __init__(self, max_cells=10000, data_dir='../data/', calc_moments=True):
         super().__init__()
         self.num_outputs = 4000
 
@@ -56,7 +56,7 @@ class SingleCellKidney(TranscriptomicTimeSeries):
     Parameters:
         calc_moments: bool=False whether to use the raw unspliced/spliced or moments
     """
-    def __init__(self, data_dir='./',
+    def __init__(self, data_dir='../data/',
                  raw_data_dir=None,
                  calc_moments=True):
         super().__init__()

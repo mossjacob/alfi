@@ -124,3 +124,11 @@ reaction-diffusion:
       train_params:
         epochs: 100
         report_interval: 1
+
+pancreas:
+  experiments:
+    - method: rnavelo
+      train_params:
+        epochs: 140
+        report_interval: 1
+        step_size: 1e-1
