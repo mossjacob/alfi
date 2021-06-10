@@ -131,4 +131,13 @@ pancreas:
       train_params:
         epochs: 140
         report_interval: 1
-        step_size: 1e-1
+        step_size: 0.1
+      model-params:
+        nonlinearity: 'relu'
+    - method: rnavelo
+      train_params:
+        epochs: 140
+        report_interval: 1
+        step_size: 0.1
+      model-params:
+        nonlinearity: 'softplus'

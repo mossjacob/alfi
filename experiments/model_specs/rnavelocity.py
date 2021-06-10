@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 from torch.optim import Adam
+from torch.nn.functional import relu
 from gpytorch.optim import NGD
 
 from alfi.models import generate_multioutput_rbf_gp
@@ -10,6 +11,7 @@ from alfi.utilities.torch import softplus
 from alfi.datasets import SingleCellKidney, Pancreas
 from alfi.impl.odes import RNAVelocityLFM, RNAVelocityConfiguration
 from alfi.impl.trainers import EMTrainer
+
 
 def build_rnavelocity(dataset, params, **kwargs):
     data = dataset.m_observed.squeeze()
@@ -50,8 +52,8 @@ def build_rnavelocity(dataset, params, **kwargs):
     l2 = s.squeeze().square().sum(dim=1)
     gamma /= l2
     gamma = gamma.unsqueeze(-1)
-
-    lfm = RNAVelocityLFM(4000, gp_model, config, nonlinearity=softplus, decay_rate=gamma, num_training_points=num_cells)
+    nonlinearity = softplus if params['nonlinearity'] == 'softplus' else relu
+    lfm = RNAVelocityLFM(4000, gp_model, config, nonlinearity=nonlinearity, decay_rate=gamma, num_training_points=num_cells)
     if use_natural:
         variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_cells, lr=0.05)
         parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.02)
@@ -66,4 +68,5 @@ def build_rnavelocity(dataset, params, **kwargs):
 
 def plot_rnavelocity(dataset, lfm, trainer, plotter, filepath, params):
     cpe_index = np.where(dataset.loom.var.index == 'Cpe')[0][0]
+    end_t = 12
     t_predict = torch.linspace(0, end_t, 80, dtype=torch.float32)
