@@ -23,12 +23,11 @@ class RNAVelocityLFM(OrdinaryLFM):
                  num_outputs,
                  gp_model,
                  config: RNAVelocityConfiguration,
-                 nonlinearity=relu, **kwargs):
+                 nonlinearity=relu, decay_rate=0.4, **kwargs):
         super().__init__(num_outputs, gp_model, config, **kwargs)
         num_genes = num_outputs // 2
         splicing_rate = 1
         transcription_rate = 1
-        decay_rate = 0.4
         self.positivity = Positive()
         self.raw_splicing_rate = Parameter(self.positivity.inverse_transform(
             splicing_rate * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64)))
@@ -112,7 +111,7 @@ class RNAVelocityLFM(OrdinaryLFM):
             f: (I, T)
         """
         # nn linear
-        return f.repeat(1, self.num_outputs//2//10, 1)  # (S, I, t)
+        return f.repeat(1, self.num_outputs//2//self.num_latents, 1)  # (S, I, t)
 
     def predict_f(self, t_predict, **kwargs):
         # Sample from the latent distribution

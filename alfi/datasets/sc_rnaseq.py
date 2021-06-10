@@ -1,26 +1,31 @@
 from os import path
+from pathlib import Path
 
 import torch
 import numpy as np
 
 from .datasets import TranscriptomicTimeSeries
+from scvelo import read
 
 
 class Pancreas(TranscriptomicTimeSeries):
     def __init__(self, max_cells=10000, data_dir='../data/', calc_moments=True):
         super().__init__()
         self.num_outputs = 4000
-
-        data_path = path.join(data_dir, 'pancreas.pt')
-        if path.exists(data_path):
-            data = torch.load(data_path)
+        data_path = Path(data_dir)
+        cache_path = data_path / 'pancreas' / 'pancreas.pt'
+        if path.exists(cache_path):
+            data = torch.load(cache_path)
             self.m_observed = data['m_observed']
             self.data = data['data']
             self.gene_names = data['gene_names']
             self.loom = data['loom']
         else:
             import scvelo as scv
-            data = scv.datasets.pancreas()
+            filename = data_path / 'pancreas' / 'endocrinogenesis_day15.h5ad'
+            data = read(filename, sparse=True, cache=True)
+            data.var_names_make_unique()
+
             scv.pp.filter_and_normalize(data, min_shared_counts=20, n_top_genes=2000)
             scv.pp.moments(data, n_neighbors=30, n_pcs=30)
             u = data.layers['unspliced'].toarray()[:max_cells]
@@ -46,7 +51,7 @@ class Pancreas(TranscriptomicTimeSeries):
                 'm_observed': self.m_observed,
                 'gene_names': self.gene_names,
                 'loom': self.loom,
-            }, data_path)
+            }, cache_path)
 
 
 class SingleCellKidney(TranscriptomicTimeSeries):
@@ -61,7 +66,7 @@ class SingleCellKidney(TranscriptomicTimeSeries):
                  calc_moments=True):
         super().__init__()
         self.num_outputs = 2000
-        data_path = path.join(data_dir, 'kidney1.pt')
+        data_path = path.join(data_dir, 'kidney/kidney1.pt')
         if path.exists(data_path):
             data = torch.load(data_path)
             self.m_observed = data['m_observed']

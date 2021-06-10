@@ -43,9 +43,9 @@ class VariationalLFM(LFM, ABC):
         if num_training_points is None:
             num_training_points = self.inducing_points.numel()  # TODO num_data refers to the number of training datapoints
 
+        self.num_latents = gp_model.variational_strategy.num_tasks
         if config.latent_data_present:  # add latent force likelihood
-            num_latents = gp_model.variational_strategy.num_tasks
-            self.num_tasks += num_latents
+            self.num_tasks += self.num_latents
 
         self.likelihood = MultitaskGaussianLikelihood(num_tasks=self.num_tasks)
 
