@@ -23,24 +23,25 @@ class RNAVelocityLFM(OrdinaryLFM):
                  num_outputs,
                  gp_model,
                  config: RNAVelocityConfiguration,
-                 nonlinearity=relu, decay_rate=0.4, **kwargs):
+                 nonlinearity=relu, decay_rate=None, nonzero_mask=None, **kwargs):
         super().__init__(num_outputs, gp_model, config, **kwargs)
+        self.nonzero_mask = nonzero_mask
         num_genes = num_outputs // 2
         splicing_rate = 1
         transcription_rate = 1
+        if decay_rate is None:
+            decay_rate = 0.4 * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64)
         self.positivity = Positive()
         self.raw_splicing_rate = Parameter(self.positivity.inverse_transform(
             splicing_rate * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64)))
         self.raw_transcription_rate = Parameter(self.positivity.inverse_transform(
             transcription_rate * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64)))
-        self.raw_decay_rate = Parameter(self.positivity.inverse_transform(
-            decay_rate * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64)))
+        self.raw_decay_rate = Parameter(self.positivity.inverse_transform(decay_rate))
         self.nonlinearity = nonlinearity
         self.num_cells = config.num_cells
 
         # Initialise random time assignments
-        self.time_assignments = torch.rand(self.num_cells, requires_grad=False)
-        self.time_assignments_indices = torch.zeros_like(self.time_assignments, dtype=torch.long)
+        self.time_assignments_indices = torch.zeros(self.num_cells, dtype=torch.long)
         self.timepoint_choices = torch.linspace(0, config.end_pseudotime, config.num_timepoint_choices) #, requires_grad=False
 
         # Initialise trajectory
@@ -100,7 +101,9 @@ class RNAVelocityLFM(OrdinaryLFM):
         h_var = h_samples.var(dim=1).squeeze(-1).transpose(0, 1) + 1e-7
         h_mean = self.decode(h_mean)[:, self.time_assignments_indices]
         h_var = self.decode(h_var)[:, self.time_assignments_indices]
-
+        if self.nonzero_mask is not None:
+            h_mean *= self.nonzero_mask
+            h_var *= self.nonzero_mask
         h_covar = DiagLazyTensor(h_var)
         batch_mvn = MultivariateNormal(h_mean, h_covar)
         return MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)
