@@ -9,15 +9,19 @@ from scvelo import read
 
 
 class Pancreas(TranscriptomicTimeSeries):
-    def __init__(self, max_cells=10000, data_dir='../data/', calc_moments=True):
+    def __init__(self, max_cells=10000, gene_index=None, data_dir='../data/', calc_moments=True):
         super().__init__()
-        self.num_outputs = 4000
+        self.num_outputs = 4000 if gene_index is None else 2
         data_path = Path(data_dir)
         cache_path = data_path / 'pancreas' / 'pancreas.pt'
         if path.exists(cache_path):
             data = torch.load(cache_path)
-            self.m_observed = data['m_observed']
-            self.data = data['data']
+            if gene_index is None:
+                self.m_observed = data['m_observed']
+                self.data = data['data']
+            else:
+                self.m_observed = data['m_observed'][:, [gene_index, 2000 + gene_index]]
+                self.data = [data['data'][gene_index], data['data'][2000 + gene_index]]
             self.gene_names = data['gene_names']
             self.loom = data['loom']
         else:

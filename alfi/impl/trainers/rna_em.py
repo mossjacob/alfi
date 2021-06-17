@@ -63,7 +63,7 @@ class EMTrainer(Trainer):
             # if epoch > 0:
             with torch.no_grad():
                 self.e_step(y)
-            print('estep done')
+            # print('estep done')
             # else:
             #     self.random_assignment()
 
@@ -79,27 +79,18 @@ class EMTrainer(Trainer):
             '''
             # Get trajectory
             output = self.lfm(self.lfm.timepoint_choices, step_size=step_size)
-            print(output.shape)
+            # print(output.shape)
             y = y.squeeze(-1)
             y *= self.lfm.nonzero_mask
             y_target = y.permute(1, 0)
-            print((output.mean - y_target).square().sum())
+            # print((output.mean - y_target).square().sum())
             # Calc loss and backprop gradients
             log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target, mask=self.train_mask)
             total_loss = (-log_likelihood + kl_divergence)
-            print('back')
             total_loss.backward()
-            print('ward')
             [optim.step() for optim in self.optimizers]
 
             epoch_loss += total_loss.item()
             epoch_ll += log_likelihood.item()
             epoch_kl += kl_divergence.item()
         return epoch_loss, (-epoch_ll, epoch_kl)
-
-    def after_epoch(self):
-        with torch.no_grad():
-            # TODO can we replace these with parameter transforms like we did with lengthscale
-            # self.lfm.transcription_rate.clamp_(0, 20)
-            self.lfm.splicing_rate.clamp_(0, 20)
-            self.lfm.decay_rate.clamp_(0, 20)

@@ -23,19 +23,21 @@ class RNAVelocityLFM(OrdinaryLFM):
                  num_outputs,
                  gp_model,
                  config: RNAVelocityConfiguration,
-                 nonlinearity=relu, decay_rate=None, nonzero_mask=None, **kwargs):
+                 nonlinearity=relu,
+                 decay_rate=None, transcription_rate=None, splicing_rate=None,
+                 nonzero_mask=None, **kwargs):
         super().__init__(num_outputs, gp_model, config, **kwargs)
         self.nonzero_mask = nonzero_mask
         num_genes = num_outputs // 2
-        splicing_rate = 1
-        transcription_rate = 1
+        if splicing_rate is None:
+            splicing_rate = 1 * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64)
+        if transcription_rate is None:
+            transcription_rate = 1 * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64)
         if decay_rate is None:
             decay_rate = 0.4 * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64)
         self.positivity = Positive()
-        self.raw_splicing_rate = Parameter(self.positivity.inverse_transform(
-            splicing_rate * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64)))
-        self.raw_transcription_rate = Parameter(self.positivity.inverse_transform(
-            transcription_rate * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64)))
+        self.raw_splicing_rate = Parameter(self.positivity.inverse_transform(splicing_rate))
+        self.raw_transcription_rate = Parameter(self.positivity.inverse_transform(transcription_rate))
         self.raw_decay_rate = Parameter(self.positivity.inverse_transform(decay_rate))
         self.nonlinearity = nonlinearity
         self.num_cells = config.num_cells
