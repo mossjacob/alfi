@@ -10,7 +10,7 @@ from gpytorch.constraints import Positive, Interval
 from gpytorch.distributions import MultitaskMultivariateNormal, MultivariateNormal
 
 from alfi.configuration import VariationalConfiguration
-from alfi.models import OrdinaryLFM, MultiOutputGP, generate_multioutput_rbf_gp
+from alfi.models import OrdinaryLFM, MultiOutputGP, generate_multioutput_gp
 from alfi.plot import Plotter1d, Colours, tight_kwargs
 from alfi.trainers import VariationalTrainer, PreEstimator
 from alfi.utilities.data import hafner_ground_truth
@@ -85,10 +85,10 @@ config = VariationalConfiguration(
 inducing_points = torch.linspace(0, 12, num_inducing).repeat(num_tfs, 1).view(num_tfs, num_inducing, 1)
 step_size = 5e-1
 num_training = dataset.m_observed.shape[-1]
-gp_model = generate_multioutput_rbf_gp(num_tfs, inducing_points,
-                                       zero_mean=False,
-                                       initial_lengthscale=2,
-                                       gp_kwargs=dict(natural=use_natural))
+gp_model = generate_multioutput_gp(num_tfs, inducing_points,
+                                   zero_mean=False,
+                                   initial_lengthscale=2,
+                                   gp_kwargs=dict(natural=use_natural))
 lfm = TranscriptionLFM(num_genes, gp_model, config, num_training_points=num_training)
 plotter = Plotter1d(lfm, dataset.gene_names, style='seaborn')
 

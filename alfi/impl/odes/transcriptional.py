@@ -3,7 +3,7 @@ from torch.nn import Parameter
 from gpytorch.constraints import Positive
 
 from alfi.configuration import VariationalConfiguration
-from alfi.models import OrdinaryLFM, generate_multioutput_rbf_gp
+from alfi.models import OrdinaryLFM, generate_multioutput_gp
 
 
 class TranscriptionLFM(OrdinaryLFM):

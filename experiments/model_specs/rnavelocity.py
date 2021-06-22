@@ -5,7 +5,7 @@ from torch.optim import Adam
 from torch.nn.functional import relu
 from gpytorch.optim import NGD
 
-from alfi.models import generate_multioutput_rbf_gp
+from alfi.models import generate_multioutput_gp
 from alfi.plot import Plotter1d
 from alfi.utilities.torch import softplus
 from alfi.datasets import SingleCellKidney, Pancreas
@@ -36,9 +36,9 @@ def build_rnavelocity(dataset, params, **kwargs):
 
     inducing_points = torch.linspace(0, end_t, num_inducing).repeat(num_latents, 1).view(num_latents, num_inducing, 1)
 
-    gp_model = generate_multioutput_rbf_gp(num_latents, inducing_points,
-                                           use_scale=False, initial_lengthscale=3,
-                                           gp_kwargs=dict(natural=use_natural))
+    gp_model = generate_multioutput_gp(num_latents, inducing_points,
+                                       use_scale=False, initial_lengthscale=3,
+                                       gp_kwargs=dict(natural=use_natural))
 
     y_target = data
     u_y = y_target[:num_genes]  # (num_genes, num_cells)

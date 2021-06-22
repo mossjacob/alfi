@@ -4,6 +4,7 @@ import torch
 import gpytorch
 from torch.distributions import Distribution
 from torchdiffeq import odeint
+from gpytorch.lazy import DiagLazyTensor
 
 from .variational_lfm import VariationalLFM
 from alfi.configuration import VariationalConfiguration
@@ -89,7 +90,7 @@ class OrdinaryLFM(VariationalLFM):
             h_mean = torch.cat([h_mean, f_mean], dim=0)
             h_var = torch.cat([h_var, f_var], dim=0)
 
-        h_covar = torch.diag_embed(h_var)  # (num_tasks, t, t)
+        h_covar = DiagLazyTensor(h_var)  # (num_tasks, t, t)
         batch_mvn = gpytorch.distributions.MultivariateNormal(h_mean, h_covar)
         return gpytorch.distributions.MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)
 

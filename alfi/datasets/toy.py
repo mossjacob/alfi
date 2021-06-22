@@ -95,7 +95,7 @@ class ToyTranscriptomicGenerator(LFMDataset):
                         params_train=params_train, params_test=params_test), Path(data_dir) / 'toy_transcriptomics.pt')
 
     def generate_single(self, basal=None, sensitivity=None, decay=None, lengthscale=2., epochs=150):
-        from alfi.models import OrdinaryLFM, generate_multioutput_rbf_gp
+        from alfi.models import OrdinaryLFM, generate_multioutput_gp
         self.epochs = epochs
         self.decay = decay if decay is not None else self.pick_decay()
         self.basal = basal if basal is not None else self.pick_basal()
@@ -161,9 +161,9 @@ class ToyTranscriptomicGenerator(LFMDataset):
         inducing_points = torch.linspace(0, self.num_times-1, num_inducing, dtype=self.dtype).repeat(self.num_latents, 1).view(self.num_latents, num_inducing, 1)
         t_predict = torch.linspace(0, self.num_times-1, discretisation_length(self.num_times, self.num_disc), dtype=self.dtype)
 
-        gp_model = generate_multioutput_rbf_gp(self.num_latents, inducing_points,
-                                               initial_lengthscale=lengthscale,
-                                               gp_kwargs=dict(natural=False))
+        gp_model = generate_multioutput_gp(self.num_latents, inducing_points,
+                                           initial_lengthscale=lengthscale,
+                                           gp_kwargs=dict(natural=False))
         self.train_gp(gp_model, t_predict)
         with torch.no_grad():
             self.lfm = ToyLFM(self.num_outputs, gp_model, self, config)

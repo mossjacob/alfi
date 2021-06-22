@@ -5,7 +5,7 @@ from torch.optim import Adam
 from gpytorch.optim import NGD
 
 from alfi.configuration import VariationalConfiguration
-from alfi.models import OrdinaryLFM, generate_multioutput_rbf_gp
+from alfi.models import OrdinaryLFM, generate_multioutput_gp
 from alfi.plot import Plotter1d
 from alfi.trainers import VariationalTrainer
 from alfi.utilities.data import p53_ground_truth
@@ -27,7 +27,7 @@ def build_variational(dataset, params, **kwargs):
     inducing_points = torch.linspace(0, 12, num_inducing).repeat(num_tfs, 1).view(num_tfs, num_inducing, 1)
     num_training = dataset.m_observed.shape[-1]
     use_natural = True
-    gp_model = generate_multioutput_rbf_gp(num_tfs, inducing_points, gp_kwargs=dict(natural=use_natural))
+    gp_model = generate_multioutput_gp(num_tfs, inducing_points, gp_kwargs=dict(natural=use_natural))
 
     lfm = TranscriptionLFM(dataset.num_outputs, gp_model, config, num_training_points=num_training)
     plotter = Plotter1d(lfm, dataset.gene_names, style='seaborn')

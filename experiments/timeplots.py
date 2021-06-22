@@ -9,7 +9,7 @@ import numpy as np
 
 from alfi.datasets import P53Data, ToyTranscriptomicGenerator
 from alfi.configuration import VariationalConfiguration
-from alfi.models import OrdinaryLFM, generate_multioutput_rbf_gp
+from alfi.models import OrdinaryLFM, generate_multioutput_gp
 from alfi.trainers import VariationalTrainer
 from .variational import TranscriptionLFM
 from alfi.utilities.data import p53_ground_truth
@@ -89,7 +89,7 @@ if __name__ == '__main__':
             #### Train variational
 
             inducing_points = torch.linspace(0, t_end, num_inducing).repeat(num_tfs, 1).view(num_tfs, num_inducing, 1)
-            gp_model = generate_multioutput_rbf_gp(num_tfs, inducing_points, gp_kwargs=dict(natural=True))
+            gp_model = generate_multioutput_gp(num_tfs, inducing_points, gp_kwargs=dict(natural=True))
 
             lfm = TranscriptionLFM(num_genes, gp_model, config)
 
