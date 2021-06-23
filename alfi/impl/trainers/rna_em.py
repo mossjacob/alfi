@@ -1,6 +1,4 @@
 import torch
-from gpytorch.distributions import MultivariateNormal, MultitaskMultivariateNormal
-from gpytorch.lazy import DiagLazyTensor
 
 from alfi.trainers import Trainer
 from alfi.utilities.torch import ceil, is_cuda
@@ -62,7 +60,7 @@ class EMTrainer(Trainer):
             # assign timepoints $t_i$ to each cell by minimising its distance to the trajectory
             # if epoch > 0:
             with torch.no_grad():
-                self.e_step(y)
+                self.e_step(y[:-1])
             # print('estep done')
             # else:
             #     self.random_assignment()

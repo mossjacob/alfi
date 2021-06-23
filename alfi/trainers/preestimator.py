@@ -1,5 +1,4 @@
 from typing import List, Callable
-from matplotlib import pyplot as plt
 import torch
 
 from .trainer import Trainer
@@ -19,7 +18,7 @@ class PreEstimator(Trainer):
                  dataset,
                  **kwargs):
         super().__init__(lfm, optimizers, dataset, **kwargs)
-        num_intermediate = 9
+        num_intermediate = 9  # this determines how granular the interpolation is
         data = next(iter(self.data_loader))
         t, y = data[0][0], data[1]
 
