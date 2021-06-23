@@ -50,7 +50,7 @@ class EMTrainer(Trainer):
     def random_assignment(self):
         self.lfm.time_assignments_indices = torch.randint(self.lfm.timepoint_choices.shape[0], torch.Size([self.lfm.num_cells]))
 
-    def single_epoch(self, epoch=0, step_size=1e-1, **kwargs):
+    def single_epoch(self, epoch=0, step_size=1e-1, warmup=30, **kwargs):
         epoch_loss = 0
         epoch_ll = 0
         epoch_kl = 0
@@ -88,7 +88,11 @@ class EMTrainer(Trainer):
             log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target, mask=self.train_mask)
             total_loss = (-log_likelihood + kl_divergence)
             total_loss.backward()
-            [optim.step() for optim in self.optimizers]
+
+            if epoch < warmup:
+                self.optimizers[1].step()
+            else:
+                [optim.step() for optim in self.optimizers]
 
             epoch_loss += total_loss.item()
             epoch_ll += log_likelihood.item()

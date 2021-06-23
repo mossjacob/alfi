@@ -47,6 +47,7 @@ class RNAVelocityLFM(OrdinaryLFM):
         self.timepoint_choices = torch.linspace(0, config.end_pseudotime, config.num_timepoint_choices) #, requires_grad=False
 
         # Initialise trajectory
+        self.current_trajectory = None
         self(self.timepoint_choices, step_size=1e-1)
 
     @property
@@ -86,7 +87,7 @@ class RNAVelocityLFM(OrdinaryLFM):
 
         f = self.f[:, :, self.t_index].unsqueeze(2)
         # print(torch.sum(s < 0), torch.sum(u < 0))
-        du = self.transcription_rate * f - self.splicing_rate * u
+        du = f - self.splicing_rate * u #self.transcription_rate
         ds = self.splicing_rate * u - self.decay_rate * s
 
         h_t = torch.cat([du, ds], dim=1)
@@ -103,9 +104,22 @@ class RNAVelocityLFM(OrdinaryLFM):
         h_var = h_samples.var(dim=1).squeeze(-1).transpose(0, 1) + 1e-7
         h_mean = self.decode(h_mean)[:, self.time_assignments_indices]
         h_var = self.decode(h_var)[:, self.time_assignments_indices]
+
+        if self.config.latent_data_present:
+            # todo: make this
+            f = self.gp_model(self.timepoint_choices).rsample(torch.Size([self.config.num_samples])).permute(0, 2, 1)
+            f = self.nonlinearity(f)
+            f_mean = f.mean(dim=0)
+            f_var = f.var(dim=0) + 1e-7
+            filler = torch.zeros(f_mean.shape[0], h_mean.shape[1]-self.timepoint_choices.shape[0])
+            f_mean = torch.cat([f_mean, filler], dim=1)
+            f_var = torch.cat([f_var, filler], dim=1)
+            h_mean = torch.cat([h_mean, f_mean], dim=0)
+            h_var = torch.cat([h_var, f_var], dim=0)
         if self.nonzero_mask is not None:
             h_mean *= self.nonzero_mask
             h_var *= self.nonzero_mask
+
         h_covar = DiagLazyTensor(h_var)
         batch_mvn = MultivariateNormal(h_mean, h_covar)
         return MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)

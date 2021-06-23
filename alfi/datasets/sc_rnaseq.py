@@ -31,7 +31,6 @@ class Pancreas(TranscriptomicTimeSeries):
             data.var_names_make_unique()
 
             scv.pp.filter_and_normalize(data, min_shared_counts=20, n_top_genes=2000)
-            scv.pp.moments(data, n_neighbors=30, n_pcs=30)
             u = data.layers['unspliced'].toarray()[:max_cells]
             s = data.layers['spliced'].toarray()[:max_cells]
             if calc_moments:
@@ -40,6 +39,8 @@ class Pancreas(TranscriptomicTimeSeries):
                 s = data.layers['Ms']
 
             print(u.shape, s.shape)
+            # scaling = u.std(axis=0) / s.std(axis=0)
+            # u /= np.expand_dims(scaling, 0)
 
             self.loom = data
             self.gene_names = self.loom.var.index

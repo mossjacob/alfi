@@ -51,11 +51,6 @@ class VariationalLFM(LFM, ABC):
 
         self.loss_fn = MaskedVariationalELBO(self.likelihood, gp_model, num_training_points, combine_terms=False)
 
-        # if config.preprocessing_variance is not None:
-        #     self.likelihood_variance = Parameter(torch.tensor(config.preprocessing_variance), requires_grad=False)
-        # else:
-        #     self.raw_likelihood_variance = Parameter(torch.ones((self.num_outputs, self.num_observed), dtype=dtype))
-
         if config.initial_conditions:
             self.initial_conditions = Parameter(torch.tensor(torch.zeros(self.num_outputs, 1)), requires_grad=True)
 
