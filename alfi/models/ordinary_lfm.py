@@ -45,7 +45,7 @@ class OrdinaryLFM(VariationalLFM):
         # Get GP outputs
         if self.pretrain_mode:
             t_f = t[0]
-            h0 = t[1]
+            h0 = t[1].unsqueeze(0).repeat(self.config.num_samples, 1, 1)
         else:
             t_f = torch.arange(t.min(), t.max()+step_size/3, step_size/3)
             h0 = self.initial_state()
@@ -78,8 +78,7 @@ class OrdinaryLFM(VariationalLFM):
     def build_output_distribution(self, t, h_samples) -> Distribution:
         h_mean = h_samples.mean(dim=1).squeeze(-1).transpose(0, 1)  # shape was (#outputs, #T, 1)
         h_var = h_samples.var(dim=1).squeeze(-1).transpose(0, 1) + 1e-7
-        h_mean = self.decode(h_mean)
-        h_var = self.decode(h_var)
+
         # TODO: make distribution something less constraining
         if self.config.latent_data_present:
             # todo: make this
@@ -93,9 +92,6 @@ class OrdinaryLFM(VariationalLFM):
         h_covar = DiagLazyTensor(h_var)  # (num_tasks, t, t)
         batch_mvn = gpytorch.distributions.MultivariateNormal(h_mean, h_covar)
         return gpytorch.distributions.MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)
-
-    def decode(self, h_out):
-        return h_out
 
     @abstractmethod
     def odefunc(self, t, h):
