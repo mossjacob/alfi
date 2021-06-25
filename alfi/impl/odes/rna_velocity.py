@@ -75,35 +75,50 @@ class RNAVelocityLFM(OrdinaryLFM):
         self.raw_decay_rate = self.positivity.inverse_transform(value)
 
     def odefunc(self, t, h):
-        """h is of shape (num_samples, num_outputs, 1)"""
+        """
+        h is of shape (num_samples, num_outputs, times)
+        times = 1 unless in pretrain mode
+        """
         # if (self.nfe % 10) == 0:
         #     print(t)
         self.nfe += 1
+        f = self.f
+        if not self.pretrain_mode:
+            f = self.f[:, :, self.t_index].unsqueeze(2)
+            if t > self.last_t:
+                self.t_index += 1
+            self.last_t = t
+
+        # print('h shape', h.shape)
         num_samples = h.shape[0]
         num_outputs = h.shape[1]
-        h = h.view(num_samples, num_outputs//2, 2)
-        u = h[:, :, 0].unsqueeze(-1)
-        s = h[:, :, 1].unsqueeze(-1)
+        num_times = h.shape[2]
+        u = h[:, :num_outputs//2]
+        s = h[:, num_outputs//2:]
 
-        f = self.f[:, :, self.t_index].unsqueeze(2)
-        # print(torch.sum(s < 0), torch.sum(u < 0))
+        # (30, 1, 598) (1, 598, 1)
+        # print('u', u.shape)
+        # print('beta * u', (self.splicing_rate * u).shape)
+        # print('f', f.shape)
+        # [1, 598, 1]
         du = f - self.splicing_rate * u #self.transcription_rate
         ds = self.splicing_rate * u - self.decay_rate * s
-
+        # print(du.shape, ds.shape, u.shape, s.shape)
         h_t = torch.cat([du, ds], dim=1)
-
-        if t > self.last_t:
-            self.t_index += 1
-        self.last_t = t
 
         return h_t
 
     def build_output_distribution(self, t, h_samples) -> MultitaskMultivariateNormal:
         h_mean = h_samples.mean(dim=1).squeeze(-1).transpose(0, 1)  # shape was (#outputs, #T, 1)
-        self.current_trajectory = h_mean
         h_var = h_samples.var(dim=1).squeeze(-1).transpose(0, 1) + 1e-7
-        h_mean = self.decode(h_mean)[:, self.time_assignments_indices]
-        h_var = self.decode(h_var)[:, self.time_assignments_indices]
+        self.current_trajectory = h_mean
+        if self.pretrain_mode:
+            h_covar = DiagLazyTensor(h_var)
+            batch_mvn = MultivariateNormal(h_mean, h_covar)
+            return MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)
+
+        h_mean = h_mean[:, self.time_assignments_indices]
+        h_var = h_var[:, self.time_assignments_indices]
 
         if self.config.latent_data_present:
             # todo: make this
