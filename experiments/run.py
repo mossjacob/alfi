@@ -14,6 +14,7 @@ from alfi.datasets import (
     DeterministicLotkaVolterra, ReactionDiffusion
 )
 from alfi.utilities.torch import get_mean_trace, is_cuda
+from alfi.models import TrainMode
 try:
     from .partial import build_partial, plot_partial, pretrain_partial
 except ImportError:
@@ -111,7 +112,7 @@ def time_models(builder, dataset, filepath, modelparams, num_samples):
         trainer.plot_outputs = False
 
         t0 = time.time()
-        model.pretrain(False)
+        model.set_mode(TrainMode.NORMAL)
         train_times = trainer.train(**experiment['train_params'])
         train_times = np.array(train_times)
         train_time = (train_times[:, 0] - t0) / 60
@@ -125,11 +126,11 @@ def time_models(builder, dataset, filepath, modelparams, num_samples):
         model, trainer, plotter = builder(dataset, modelparams)
         trainer.plot_outputs = False
 
-        model.pretrain(True)
+        model.set_mode(TrainMode.PRETRAIN)
         pretrain_times, t_start = train_pre_step[method](dataset, model, trainer, modelparams)
 
         t1 = time.time()
-        model.pretrain(False)
+        model.set_mode(TrainMode.NORMAL)
         train_times = trainer.train(**experiment['train_params'])
         pretrain_times = np.array(pretrain_times)
         train_times = np.array(train_times)

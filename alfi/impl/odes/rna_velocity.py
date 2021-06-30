@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 from alfi.models import OrdinaryLFM
 from alfi.configuration import VariationalConfiguration
+from alfi.models import TrainMode
 
 
 @dataclass
@@ -83,7 +84,7 @@ class RNAVelocityLFM(OrdinaryLFM):
         #     print(t)
         self.nfe += 1
         f = self.f
-        if not self.pretrain_mode:
+        if not (self.train_mode == TrainMode.PRETRAIN):
             f = self.f[:, :, self.t_index].unsqueeze(2)
             if t > self.last_t:
                 self.t_index += 1
@@ -112,7 +113,7 @@ class RNAVelocityLFM(OrdinaryLFM):
         h_mean = h_samples.mean(dim=1).squeeze(-1).transpose(0, 1)  # shape was (#outputs, #T, 1)
         h_var = h_samples.var(dim=1).squeeze(-1).transpose(0, 1) + 1e-7
         self.current_trajectory = h_mean
-        if self.pretrain_mode:
+        if not (self.train_mode == TrainMode.NORMAL):
             h_covar = DiagLazyTensor(h_var)
             batch_mvn = MultivariateNormal(h_mean, h_covar)
             return MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)

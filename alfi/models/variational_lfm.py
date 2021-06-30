@@ -1,4 +1,5 @@
 from abc import ABC
+from enum import Enum
 
 import torch
 from torch.nn.parameter import Parameter
@@ -9,6 +10,12 @@ from gpytorch.likelihoods import MultitaskGaussianLikelihood
 from .lfm import LFM
 from alfi.configuration import VariationalConfiguration
 from alfi.mlls import MaskedVariationalELBO
+
+
+class TrainMode(Enum):
+    NORMAL   = 0
+    PRETRAIN = 1
+    FILTER   = 2
 
 
 class VariationalLFM(LFM, ABC):
@@ -29,7 +36,7 @@ class VariationalLFM(LFM, ABC):
         super().__init__()
         self.gp_model = gp_model
         self.num_outputs = num_outputs
-        self.pretrain_mode = False
+        self.train_mode = TrainMode.NORMAL
         self.config = config
         self.dtype = dtype
 
@@ -91,13 +98,13 @@ class VariationalLFM(LFM, ABC):
         self.gp_model.train(mode)
         self.likelihood.train(mode)
 
-    def pretrain(self, mode=True):
-        self.pretrain_mode = mode
+    def set_mode(self, mode=TrainMode.NORMAL):
+        self.train_mode = mode
 
     def eval(self):
         self.gp_model.eval()
         self.likelihood.eval()
-        self.pretrain(False)
+        self.set_mode(TrainMode.NORMAL)
 
     def predict_m(self, t_predict, **kwargs) -> torch.distributions.MultivariateNormal:
         """

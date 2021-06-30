@@ -5,7 +5,7 @@ from gpytorch.models import ApproximateGP
 from gpytorch.distributions import MultivariateNormal, MultitaskMultivariateNormal
 from torch_fenics import FEniCSModule
 
-from alfi.models import VariationalLFM
+from alfi.models import VariationalLFM, TrainMode
 from alfi.configuration import VariationalConfiguration
 from alfi.utilities.torch import softplus
 
@@ -45,7 +45,7 @@ class PartialLFM(VariationalLFM):
         self.nfe = 0
         # self.gp_model.share_memory()
         # Get GP outputs
-        if self.pretrain_mode:
+        if self.train_mode == TrainMode.PRETRAIN:
             t_f = tx[0].transpose(0, 1)
             data = tx[0]
         else:
@@ -58,7 +58,7 @@ class PartialLFM(VariationalLFM):
         u = q_u.rsample(torch.Size([self.config.num_samples])).permute(0, 2, 1)
         u = self.G(u)  # (S, num_outputs, tx)
         u = u.view(*u.shape[:2], num_t, num_x)
-        if self.pretrain_mode:
+        if self.train_mode == TrainMode.PRETRAIN:
             params = [softplus(param.repeat(self.config.num_samples, 1)) for param in self.fenics_parameters]
             outputs = kwargs['pde_func'](tx[1], u[:, :, ::step].contiguous(), *params)
         else:

@@ -1,18 +1,8 @@
 #%%
-
-from torch.optim import Adam
-from gpytorch.optim import NGD
 from experiments.partial import build_partial, plot_partial, pretrain_partial
-from pathlib import Path
-import numpy as np
 
 from alfi.datasets import DrosophilaSpatialTranscriptomics, HomogeneousReactionDiffusion
-from alfi.trainers import PartialPreEstimator
-from alfi.plot import plot_spatiotemporal_data
-from alfi.plot.misc import plot_variational_dist
-from alfi.utilities.torch import spline_interpolate_gradient, softplus
-from alfi.utilities.data import dros_ground_truth
-
+from alfi.models import TrainMode
 from matplotlib import pyplot as plt
 import torch
 from alfi.configuration import VariationalConfiguration
@@ -64,7 +54,7 @@ for i in range(1):
     times = pretrain_partial(dataset, lfm, trainer, params)
 
     trainer.plot_outputs = False
-    lfm.pretrain(False)
+    lfm.set_mode(TrainMode.NORMAL)
     trainer.train(150, report_interval=10)
     lfm.save(f'./{gene}{i}')
     # from alfi.plot import tight_kwargs

@@ -4,11 +4,10 @@ from torch.nn import Parameter
 from matplotlib import pyplot as plt
 from torch.optim import Adam
 from gpytorch.optim import NGD
-import gpytorch
 import time
 
 from alfi.configuration import VariationalConfiguration
-from alfi.models import MultiOutputGP, PartialLFM, generate_multioutput_gp
+from alfi.models import PartialLFM, generate_multioutput_gp, TrainMode
 from alfi.models.pdes import ReactionDiffusion
 from alfi.plot import Plotter1d, plot_spatiotemporal_data, tight_kwargs
 from alfi.trainers import PDETrainer, PartialPreEstimator
@@ -144,11 +143,11 @@ def pretrain_partial(dataset, lfm, trainer, modelparams):
         train_mask=trainer.train_mask
     )
 
-    lfm.pretrain(True)
+    lfm.set_mode(TrainMode.PRETRAIN)
     lfm.config.num_samples = 50
     t0 = time.time()
     times = pre_estimator.train(80, report_interval=10)
-    lfm.pretrain(False)
+    lfm.set_mode(TrainMode.NORMAL)
     lfm.config.num_samples = 20
     return times, t0
 

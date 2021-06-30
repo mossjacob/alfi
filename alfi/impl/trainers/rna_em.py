@@ -1,9 +1,10 @@
 import torch
 
 from alfi.trainers import Trainer
-from alfi.utilities.torch import ceil, is_cuda
+from alfi.utilities.torch import ceil, is_cuda, spline_interpolate_gradient, savgol_filter_gradient
 from alfi.impl.odes import RNAVelocityLFM
 from alfi.datasets import LFMDataset
+from alfi.models import TrainMode
 
 
 class EMTrainer(Trainer):
@@ -40,13 +41,56 @@ class EMTrainer(Trainer):
 
             residual = u_residual.square() + s_residual.square()
             residual = residual.sum(dim=0).argmin(dim=1).type(torch.long)
-            # print(residual.shape)
-            # print(residual[:5])
-            # print('done', batch)
             self.lfm.time_assignments_indices[from_index:to_index] = residual
 
     def random_assignment(self):
         self.lfm.time_assignments_indices = torch.randint(self.lfm.timepoint_choices.shape[0], torch.Size([self.lfm.num_cells]))
+
+    def get_interpolated_data(self, cells):
+        num_outputs = self.lfm.num_outputs
+        u_y = cells[:num_outputs // 2]  # (num_genes, num_cells)
+        s_y = cells[num_outputs // 2:]  # (num_genes, num_cells)
+
+        # First step: sort the cells in the current assignment order
+        sorted_t, sorted_ind = self.lfm.time_assignments_indices.sort()
+        sorted_t = self.lfm.timepoint_choices[sorted_t]
+        u_y = u_y[:, sorted_ind].squeeze(-1)
+        s_y = s_y[:, sorted_ind].squeeze(-1)
+
+        # Second step: bucket the cells based on their time assigment
+        u_y_bucketed = list()
+        s_y_bucketed = list()
+        for t in self.lfm.timepoint_choices:
+            a = sorted_t == t
+            u_y_bucketed.append(u_y[:, a].mean(-1))
+            s_y_bucketed.append(s_y[:, a].mean(-1))
+        u_y_bucketed = torch.stack(u_y_bucketed, dim=1)
+        s_y_bucketed = torch.stack(s_y_bucketed, dim=1)
+
+        # Third step: interpolate the buckets to ensure regular time spacing
+        t_interpolate, u_y_interp, _, _ = spline_interpolate_gradient(
+            self.lfm.timepoint_choices,
+            u_y_bucketed.unsqueeze(-1),
+            num_disc=2)
+        _, s_y_interp, _, _ = spline_interpolate_gradient(
+            self.lfm.timepoint_choices,
+            s_y_bucketed.unsqueeze(-1),
+            num_disc=2)
+
+        # Fourth step: denoise and get the first derivative
+        u_y_denoised, du = savgol_filter_gradient(t_interpolate, u_y_interp.squeeze(-1))
+        s_y_denoised, ds = savgol_filter_gradient(t_interpolate, s_y_interp.squeeze(-1))
+        du, ds, u_y_denoised, s_y_denoised = [
+            torch.tensor(x) for x in [du, ds, u_y_denoised, s_y_denoised]]
+        if du.ndim < 2:
+            du, ds, u_y_denoised, s_y_denoised = [
+                x.unsqueeze(0) for x in [du, ds, u_y_denoised, s_y_denoised]]
+        du, ds, u_y_denoised, s_y_denoised = [
+            x[:, ::3] for x in [du, ds, u_y_denoised, s_y_denoised]]
+        data_interpolated_gradient = torch.cat([du, ds], dim=0).t()
+        data_interpolated = torch.cat([u_y_denoised, s_y_denoised], dim=0)
+        t_interpolate = t_interpolate[::3]
+        return t_interpolate, data_interpolated, data_interpolated_gradient
 
     def single_epoch(self, epoch=0, step_size=1e-1, warmup=30, **kwargs):
         epoch_loss = 0
@@ -56,18 +100,43 @@ class EMTrainer(Trainer):
             [optim.zero_grad() for optim in self.optimizers]
             y = data.permute(0, 2, 1)  # (O, C, 1)
             y = y.cuda() if is_cuda() else y
+            cells = y[:-1] if self.lfm.config.latent_data_present else y
+
             ### E-step ###
             # assign timepoints $t_i$ to each cell by minimising its distance to the trajectory
             # if epoch > 0:
-            with torch.no_grad():
-                self.e_step(y[:-1])
+            e_step = 5 if self.lfm.train_mode == TrainMode.PRETRAIN else 1
+            if (epoch % e_step) == 0:
+                print('running e step', epoch)
+                with torch.no_grad():
+                    if self.lfm.train_mode == TrainMode.PRETRAIN:
+                        # If pretraining, then call the LFM with normal mode
+                        self.lfm.set_mode(TrainMode.NORMAL)
+                        self.lfm(self.lfm.timepoint_choices, step_size=step_size)
+                        self.e_step(cells)
+                        self.lfm.set_mode(TrainMode.PRETRAIN)
+                    else:
+                        self.e_step(cells)
             # print('estep done')
             # else:
             #     self.random_assignment()
 
-            ### M-step ###
+            ### M-step: given timepoints, maximise for parameters ###
+            if self.lfm.train_mode == TrainMode.FILTER:
+                t_interpolated, data_interpolated, _ = self.get_interpolated_data(cells)
+                y_target = data_interpolated.t()
+                x = self.lfm.timepoint_choices
+            elif self.lfm.train_mode == TrainMode.PRETRAIN:
+                t_interpolated, data_interpolated, data_interpolated_gradient = self.get_interpolated_data(cells)
+                y_target = data_interpolated_gradient
+                x = (t_interpolated, data_interpolated)
+            else:
+                y = y.squeeze(-1)
+                y *= self.lfm.nonzero_mask
+                y_target = y.permute(1, 0)
+                x = self.lfm.timepoint_choices
+
             # TODO try to do it for only the time assignments
-            # given timepoints, maximise for parameters
             t_sorted, inv_indices = torch.unique(self.lfm.time_assignments_indices, sorted=True, return_inverse=True)
             print('num t2:', t_sorted.shape)
             '''
@@ -76,13 +145,11 @@ class EMTrainer(Trainer):
             # print(t_sorted, inv_indices.shape)
             '''
             # Get trajectory
-            output = self.lfm(self.lfm.timepoint_choices, step_size=step_size)
+            output = self.lfm(x, step_size=step_size)
             # print(output.shape)
-            y = y.squeeze(-1)
-            y *= self.lfm.nonzero_mask
-            y_target = y.permute(1, 0)
             # print((output.mean - y_target).square().sum())
             # Calc loss and backprop gradients
+            print(output.mean.shape, y_target.shape)
             log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target, mask=self.train_mask)
             total_loss = (-log_likelihood + kl_divergence)
             total_loss.backward()

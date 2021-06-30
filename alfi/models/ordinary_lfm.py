@@ -7,6 +7,7 @@ from torchdiffeq import odeint
 from gpytorch.lazy import DiagLazyTensor
 
 from .variational_lfm import VariationalLFM
+from . import TrainMode
 from alfi.configuration import VariationalConfiguration
 from alfi.utilities.torch import is_cuda
 
@@ -43,7 +44,7 @@ class OrdinaryLFM(VariationalLFM):
         self.nfe = 0
 
         # Get GP outputs
-        if self.pretrain_mode:
+        if self.train_mode == TrainMode.PRETRAIN:
             t_f = t[0]
             h0 = t[1].unsqueeze(0).repeat(self.config.num_samples, 1, 1)
         else:
@@ -57,7 +58,7 @@ class OrdinaryLFM(VariationalLFM):
         self.f = self.nonlinearity(self.f)
         self.f = self.mix(self.f)
 
-        if self.pretrain_mode:
+        if self.train_mode == TrainMode.PRETRAIN:
             h_samples = self.odefunc(t_f, h0)
             h_samples = h_samples.permute(2, 0, 1)
         else:

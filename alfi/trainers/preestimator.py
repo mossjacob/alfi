@@ -2,7 +2,7 @@ from typing import List, Callable
 import torch
 
 from .trainer import Trainer
-from alfi.models import VariationalLFM
+from alfi.models import VariationalLFM, TrainMode
 try:
     from alfi.models import PartialLFM
 except:
@@ -31,7 +31,7 @@ class PreEstimator(Trainer):
         self.model_kwargs = {}
 
     def single_epoch(self, epoch=0, **kwargs):
-        assert self.lfm.pretrain_mode
+        assert self.lfm.train_mode == TrainMode.PRETRAIN
         [optim.zero_grad() for optim in self.optimizers]
         # y = y.cuda() if is_cuda() else y
 

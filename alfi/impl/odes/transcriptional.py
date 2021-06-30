@@ -3,7 +3,7 @@ from torch.nn import Parameter
 from gpytorch.constraints import Positive
 
 from alfi.configuration import VariationalConfiguration
-from alfi.models import OrdinaryLFM, generate_multioutput_gp
+from alfi.models import OrdinaryLFM, TrainMode
 
 
 class TranscriptionLFM(OrdinaryLFM):
@@ -53,7 +53,7 @@ class TranscriptionLFM(OrdinaryLFM):
         self.nfe += 1
 
         f = self.f
-        if not self.pretrain_mode:
+        if not (self.train_mode == TrainMode.PRETRAIN):
             f = self.f[:, :, self.t_index].unsqueeze(2)
             if t > self.last_t:
                 self.t_index += 1

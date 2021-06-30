@@ -86,7 +86,6 @@ else:
 trainer = ConstrainedTrainer(lfm, optimizers, dataset, track_parameters=track_parameters)
 pre_estimator = PreEstimator(lfm, pre_optimizers, dataset, track_parameters=track_parameters)
 
-lfm.pretrain(False)
 lfm.loss_fn.num_data = num_training
 trainer.train(200, report_interval=10, step_size=step_size);
 
