@@ -31,7 +31,7 @@ class PreEstimator(Trainer):
         self.model_kwargs = {}
 
     def single_epoch(self, epoch=0, **kwargs):
-        assert self.lfm.train_mode == TrainMode.PRETRAIN
+        assert self.lfm.train_mode == TrainMode.GRADIENT_MATCH
         [optim.zero_grad() for optim in self.optimizers]
         # y = y.cuda() if is_cuda() else y
 

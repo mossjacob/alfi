@@ -14,7 +14,7 @@ from alfi.mlls import MaskedVariationalELBO
 
 class TrainMode(Enum):
     NORMAL   = 0
-    PRETRAIN = 1
+    GRADIENT_MATCH = 1
     FILTER   = 2
 
 

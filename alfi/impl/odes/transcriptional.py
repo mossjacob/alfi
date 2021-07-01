@@ -53,7 +53,7 @@ class TranscriptionLFM(OrdinaryLFM):
         self.nfe += 1
 
         f = self.f
-        if not (self.train_mode == TrainMode.PRETRAIN):
+        if not (self.train_mode == TrainMode.GRADIENT_MATCH):
             f = self.f[:, :, self.t_index].unsqueeze(2)
             if t > self.last_t:
                 self.t_index += 1

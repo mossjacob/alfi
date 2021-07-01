@@ -84,7 +84,7 @@ class RNAVelocityLFM(OrdinaryLFM):
         #     print(t)
         self.nfe += 1
         f = self.f
-        if not (self.train_mode == TrainMode.PRETRAIN):
+        if not (self.train_mode == TrainMode.GRADIENT_MATCH):
             f = self.f[:, :, self.t_index].unsqueeze(2)
             if t > self.last_t:
                 self.t_index += 1
@@ -97,12 +97,9 @@ class RNAVelocityLFM(OrdinaryLFM):
         u = h[:, :num_outputs//2]
         s = h[:, num_outputs//2:]
 
-        # (30, 1, 598) (1, 598, 1)
-        # print('u', u.shape)
-        # print('beta * u', (self.splicing_rate * u).shape)
-        # print('f', f.shape)
-        # [1, 598, 1]
-        du = f - self.splicing_rate * u #self.transcription_rate
+        # transcription = self.transcription_rate * f
+        transcription = f
+        du = transcription - self.splicing_rate * u
         ds = self.splicing_rate * u - self.decay_rate * s
         # print(du.shape, ds.shape, u.shape, s.shape)
         h_t = torch.cat([du, ds], dim=1)

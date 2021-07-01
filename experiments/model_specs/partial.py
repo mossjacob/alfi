@@ -143,7 +143,7 @@ def pretrain_partial(dataset, lfm, trainer, modelparams):
         train_mask=trainer.train_mask
     )
 
-    lfm.set_mode(TrainMode.PRETRAIN)
+    lfm.set_mode(TrainMode.GRADIENT_MATCH)
     lfm.config.num_samples = 50
     t0 = time.time()
     times = pre_estimator.train(80, report_interval=10)

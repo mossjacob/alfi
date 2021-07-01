@@ -92,7 +92,7 @@ class EMTrainer(Trainer):
         t_interpolate = t_interpolate[::3]
         return t_interpolate, data_interpolated, data_interpolated_gradient
 
-    def single_epoch(self, epoch=0, step_size=1e-1, warmup=30, **kwargs):
+    def single_epoch(self, epoch=0, step_size=1e-1, warmup=-1, **kwargs):
         epoch_loss = 0
         epoch_ll = 0
         epoch_kl = 0
@@ -105,7 +105,7 @@ class EMTrainer(Trainer):
             ### E-step ###
             # assign timepoints $t_i$ to each cell by minimising its distance to the trajectory
             # if epoch > 0:
-            e_step = 5 if self.lfm.train_mode == TrainMode.PRETRAIN else 1
+            e_step = 5 if self.lfm.train_mode == TrainMode.GRADIENT_MATCH else 1
             if (epoch % e_step) == 0:
                 print('running e step', epoch)
                 with torch.no_grad():
@@ -126,7 +126,7 @@ class EMTrainer(Trainer):
                 t_interpolated, data_interpolated, _ = self.get_interpolated_data(cells)
                 y_target = data_interpolated.t()
                 x = self.lfm.timepoint_choices
-            elif self.lfm.train_mode == TrainMode.PRETRAIN:
+            elif self.lfm.train_mode == TrainMode.GRADIENT_MATCH:
                 t_interpolated, data_interpolated, data_interpolated_gradient = self.get_interpolated_data(cells)
                 y_target = data_interpolated_gradient
                 x = (t_interpolated, data_interpolated)
@@ -149,7 +149,6 @@ class EMTrainer(Trainer):
             # print(output.shape)
             # print((output.mean - y_target).square().sum())
             # Calc loss and backprop gradients
-            print(output.mean.shape, y_target.shape)
             log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target, mask=self.train_mask)
             total_loss = (-log_likelihood + kl_divergence)
             total_loss.backward()

@@ -126,7 +126,7 @@ def time_models(builder, dataset, filepath, modelparams, num_samples):
         model, trainer, plotter = builder(dataset, modelparams)
         trainer.plot_outputs = False
 
-        model.set_mode(TrainMode.PRETRAIN)
+        model.set_mode(TrainMode.GRADIENT_MATCH)
         pretrain_times, t_start = train_pre_step[method](dataset, model, trainer, modelparams)
 
         t1 = time.time()

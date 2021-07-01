@@ -45,7 +45,7 @@ class PartialLFM(VariationalLFM):
         self.nfe = 0
         # self.gp_model.share_memory()
         # Get GP outputs
-        if self.train_mode == TrainMode.PRETRAIN:
+        if self.train_mode == TrainMode.GRADIENT_MATCH:
             t_f = tx[0].transpose(0, 1)
             data = tx[0]
         else:
@@ -58,7 +58,7 @@ class PartialLFM(VariationalLFM):
         u = q_u.rsample(torch.Size([self.config.num_samples])).permute(0, 2, 1)
         u = self.G(u)  # (S, num_outputs, tx)
         u = u.view(*u.shape[:2], num_t, num_x)
-        if self.train_mode == TrainMode.PRETRAIN:
+        if self.train_mode == TrainMode.GRADIENT_MATCH:
             params = [softplus(param.repeat(self.config.num_samples, 1)) for param in self.fenics_parameters]
             outputs = kwargs['pde_func'](tx[1], u[:, :, ::step].contiguous(), *params)
         else:

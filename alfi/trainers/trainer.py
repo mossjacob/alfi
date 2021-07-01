@@ -91,6 +91,9 @@ class Trainer:
     def single_epoch(self, epoch=0, **kwargs):
         raise NotImplementedError
 
+    def set_optimizers(self, optimizers):
+        self.optimizers = optimizers
+
     def print_extra(self):
         print('')
 
