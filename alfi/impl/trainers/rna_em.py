@@ -101,27 +101,6 @@ class EMTrainer(Trainer):
             y = data.permute(0, 2, 1)  # (O, C, 1)
             y = y.cuda() if is_cuda() else y
             cells = y[:-1] if self.lfm.config.latent_data_present else y
-
-            ### E-step ###
-            # assign timepoints $t_i$ to each cell by minimising its distance to the trajectory
-            # if epoch > 0:
-            e_step = 5 if self.lfm.train_mode == TrainMode.GRADIENT_MATCH else 1
-            if (epoch % e_step) == 0:
-                print('running e step', epoch)
-                with torch.no_grad():
-                    if self.lfm.train_mode == TrainMode.PRETRAIN:
-                        # If pretraining, then call the LFM with normal mode
-                        self.lfm.set_mode(TrainMode.NORMAL)
-                        self.lfm(self.lfm.timepoint_choices, step_size=step_size)
-                        self.e_step(cells)
-                        self.lfm.set_mode(TrainMode.PRETRAIN)
-                    else:
-                        self.e_step(cells)
-            # print('estep done')
-            # else:
-            #     self.random_assignment()
-
-            ### M-step: given timepoints, maximise for parameters ###
             if self.lfm.train_mode == TrainMode.FILTER:
                 t_interpolated, data_interpolated, _ = self.get_interpolated_data(cells)
                 y_target = data_interpolated.t()
@@ -135,6 +114,34 @@ class EMTrainer(Trainer):
                 y *= self.lfm.nonzero_mask
                 y_target = y.permute(1, 0)
                 x = self.lfm.timepoint_choices
+
+            ### E-step ###
+            # assign timepoints $t_i$ to each cell by minimising its distance to the trajectory
+            # if epoch > 0:
+            e_step = 5 if self.lfm.train_mode == TrainMode.GRADIENT_MATCH else 1
+            if (epoch % e_step) == 0:
+                # with torch.no_grad():
+                if not (self.lfm.train_mode == TrainMode.NORMAL) or True:
+                    # If pretraining, then call the LFM with normal mode
+                    mode = self.lfm.train_mode
+                    self.lfm.set_mode(TrainMode.NORMAL)
+                    t_sorted, indices = torch.sort(self.lfm.time_assignments)
+                    self.lfm.time_assignments_indices = indices
+                    print(t_sorted)
+                    out = self.lfm(t_sorted, step_size=step_size)
+                    self.e_step(cells)
+                    self.lfm.set_mode(mode)
+                    print(out.mean.shape, y_target.shape)
+                    loss = self.lfm.loss_fn(out, y_target)
+                    loss.backward()
+                    self.optimizers[-1].step()
+                else:
+                    self.e_step(cells)
+            # print('estep done')
+            # else:
+            #     self.random_assignment()
+
+            ### M-step: given timepoints, maximise for parameters ###
 
             # TODO try to do it for only the time assignments
             t_sorted, inv_indices = torch.unique(self.lfm.time_assignments_indices, sorted=True, return_inverse=True)
@@ -156,7 +163,7 @@ class EMTrainer(Trainer):
             if epoch < warmup:
                 self.optimizers[1].step()
             else:
-                [optim.step() for optim in self.optimizers]
+                [optim.step() for optim in self.optimizers[:-1]]
 
             epoch_loss += total_loss.item()
             epoch_ll += log_likelihood.item()

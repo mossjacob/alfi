@@ -46,6 +46,7 @@ class RNAVelocityLFM(OrdinaryLFM):
         # Initialise random time assignments
         self.time_assignments_indices = torch.zeros(self.num_cells, dtype=torch.long)
         self.timepoint_choices = torch.linspace(0, config.end_pseudotime, config.num_timepoint_choices) #, requires_grad=False
+        self.time_assignments = Parameter(torch.linspace(0, config.end_pseudotime, self.num_cells))
 
         # Initialise trajectory
         self.current_trajectory = None
