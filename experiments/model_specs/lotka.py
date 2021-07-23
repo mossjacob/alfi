@@ -88,7 +88,7 @@ def build_lotka(dataset, params, reload=None, **kwargs):
             dh = self.growth_rate * h * f - self.decay_rate * h
             return dh
 
-        def G(self, f):
+        def mix(self, f):
             return softplus(f).repeat(1, self.num_outputs, 1)
 
     use_natural = params['natural']

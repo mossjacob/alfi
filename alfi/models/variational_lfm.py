@@ -1,4 +1,5 @@
 from abc import ABC
+from enum import Enum
 
 import torch
 from torch.nn.parameter import Parameter
@@ -9,6 +10,19 @@ from gpytorch.likelihoods import MultitaskGaussianLikelihood
 from .lfm import LFM
 from alfi.configuration import VariationalConfiguration
 from alfi.mlls import MaskedVariationalELBO
+
+
+class TrainMode(Enum):
+    NORMAL = 0
+    """
+    Gradient matching: the derivative of the spline interpolation is matched with the output of the ODE function
+    """
+    GRADIENT_MATCH = 1
+    """
+    Filter: the output of the ODE function is matched with the filtered data bucketed and filtered into the same
+    timepoints
+    """
+    FILTER = 2
 
 
 class VariationalLFM(LFM, ABC):
@@ -29,24 +43,27 @@ class VariationalLFM(LFM, ABC):
         super().__init__()
         self.gp_model = gp_model
         self.num_outputs = num_outputs
-        self.likelihood = MultitaskGaussianLikelihood(num_tasks=self.num_outputs)
-        self.pretrain_mode = False
+        self.train_mode = TrainMode.NORMAL
+        self.config = config
+        self.dtype = dtype
+
         try:
             self.inducing_points = self.gp_model.get_inducing_points()
         except AttributeError:
             raise AttributeError('The GP model must define a function `get_inducing_points`.')
 
+        # Construct likelihood
+        self.num_tasks = num_outputs
         if num_training_points is None:
             num_training_points = self.inducing_points.numel()  # TODO num_data refers to the number of training datapoints
 
-        self.loss_fn = MaskedVariationalELBO(self.likelihood, gp_model, num_training_points, combine_terms=False)
-        self.config = config
-        self.dtype = dtype
+        self.num_latents = gp_model.variational_strategy.num_tasks
+        if config.latent_data_present:  # add latent force likelihood
+            self.num_tasks += self.num_latents
 
-        # if config.preprocessing_variance is not None:
-        #     self.likelihood_variance = Parameter(torch.tensor(config.preprocessing_variance), requires_grad=False)
-        # else:
-        #     self.raw_likelihood_variance = Parameter(torch.ones((self.num_outputs, self.num_observed), dtype=dtype))
+        self.likelihood = MultitaskGaussianLikelihood(num_tasks=self.num_tasks)
+
+        self.loss_fn = MaskedVariationalELBO(self.likelihood, gp_model, num_training_points, combine_terms=False)
 
         if config.initial_conditions:
             self.initial_conditions = Parameter(torch.tensor(torch.zeros(self.num_outputs, 1)), requires_grad=True)
@@ -88,13 +105,13 @@ class VariationalLFM(LFM, ABC):
         self.gp_model.train(mode)
         self.likelihood.train(mode)
 
-    def pretrain(self, mode=True):
-        self.pretrain_mode = mode
+    def set_mode(self, mode=TrainMode.NORMAL):
+        self.train_mode = mode
 
     def eval(self):
         self.gp_model.eval()
         self.likelihood.eval()
-        self.pretrain(False)
+        self.set_mode(TrainMode.NORMAL)
 
     def predict_m(self, t_predict, **kwargs) -> torch.distributions.MultivariateNormal:
         """

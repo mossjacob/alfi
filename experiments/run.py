@@ -9,19 +9,27 @@ from matplotlib import pyplot as plt
 from pathlib import Path
 
 from alfi.datasets import (
-    P53Data, HafnerData, ToyTranscriptomics, ToyTranscriptomicGenerator,
+    P53Data, HafnerData, ToyTranscriptomicGenerator,
     HomogeneousReactionDiffusion, DrosophilaSpatialTranscriptomics,
     DeterministicLotkaVolterra, ReactionDiffusion
 )
 from alfi.utilities.torch import get_mean_trace, is_cuda
+from alfi.models import TrainMode
 try:
     from .partial import build_partial, plot_partial, pretrain_partial
 except ImportError:
     build_partial, plot_partial, pretrain_partial = None, None, None
-from .variational import build_variational, plot_variational
-from .exact import build_exact, plot_exact
-from .lotka import build_lotka, plot_lotka
-from .lfo import build_dataset, build_lfo
+
+try:
+    from alfi.datasets import Pancreas
+except ImportError:
+    Pancreas = None
+
+from .model_specs.variational import build_variational, plot_variational
+from .model_specs.exact import build_exact, plot_exact
+from .model_specs.lotka import build_lotka, plot_lotka
+from .model_specs.lfo import build_dataset, build_lfo
+from .model_specs.rnavelocity import build_rnavelocity, plot_rnavelocity
 
 
 plt.rcParams['font.family'] = 'serif'
@@ -62,6 +70,7 @@ datasets = {
     'reaction-diffusion': lambda: build_dataset(
         ReactionDiffusion('data', nn_format=True, max_n=4000, ntest=50), ntest=50
     ),
+    'pancreas': lambda: Pancreas(data_dir='data')
 }
 
 
@@ -71,7 +80,8 @@ builders = {
     'exact': build_exact,
     'partial': build_partial,
     'lotka': build_lotka,
-    'lfo-2d': lambda *args, **kwargs: build_lfo(*args, **kwargs, block_dim=2)
+    'lfo-2d': lambda *args, **kwargs: build_lfo(*args, **kwargs, block_dim=2),
+    'rnavelo': build_rnavelocity,
 }
 
 plotters = {
@@ -79,6 +89,7 @@ plotters = {
     'partial': plot_partial,
     'variational': plot_variational,
     'lotka': plot_lotka,
+    'rnavelo': plot_rnavelocity,
 }
 
 
@@ -101,7 +112,7 @@ def time_models(builder, dataset, filepath, modelparams, num_samples):
         trainer.plot_outputs = False
 
         t0 = time.time()
-        model.pretrain(False)
+        model.set_mode(TrainMode.NORMAL)
         train_times = trainer.train(**experiment['train_params'])
         train_times = np.array(train_times)
         train_time = (train_times[:, 0] - t0) / 60
@@ -115,11 +126,11 @@ def time_models(builder, dataset, filepath, modelparams, num_samples):
         model, trainer, plotter = builder(dataset, modelparams)
         trainer.plot_outputs = False
 
-        model.pretrain(True)
+        model.set_mode(TrainMode.GRADIENT_MATCH)
         pretrain_times, t_start = train_pre_step[method](dataset, model, trainer, modelparams)
 
         t1 = time.time()
-        model.pretrain(False)
+        model.set_mode(TrainMode.NORMAL)
         train_times = trainer.train(**experiment['train_params'])
         pretrain_times = np.array(pretrain_times)
         train_times = np.array(train_times)

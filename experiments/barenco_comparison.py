@@ -7,7 +7,7 @@ from torch.nn.functional import l1_loss
 
 from alfi.datasets import P53Data
 from alfi.configuration import VariationalConfiguration
-from alfi.models import generate_multioutput_rbf_gp
+from alfi.models import generate_multioutput_gp
 from alfi.plot import Plotter1d, Colours, tight_kwargs
 from alfi.trainers import VariationalTrainer, PreEstimator
 from alfi.models import ExactLFM
@@ -55,7 +55,7 @@ inducing_points = torch.linspace(0, t_end, num_inducing).repeat(num_tfs, 1).view
 t_predict = torch.linspace(0, t_end+3, 80, dtype=torch.float32)
 step_size = 5e-1
 num_training = dataset.m_observed.shape[-1]
-gp_model = generate_multioutput_rbf_gp(num_tfs, inducing_points, gp_kwargs=dict(natural=use_natural))
+gp_model = generate_multioutput_gp(num_tfs, inducing_points, gp_kwargs=dict(natural=use_natural))
 
 lfm = TranscriptionLFM(num_genes, gp_model, config,
                        initial_basal=0.1,
@@ -86,7 +86,6 @@ else:
 trainer = ConstrainedTrainer(lfm, optimizers, dataset, track_parameters=track_parameters)
 pre_estimator = PreEstimator(lfm, pre_optimizers, dataset, track_parameters=track_parameters)
 
-lfm.pretrain(False)
 lfm.loss_fn.num_data = num_training
 trainer.train(200, report_interval=10, step_size=step_size);
 

@@ -3,6 +3,8 @@ import math
 import numpy as np
 from torchcubicspline import(natural_cubic_spline_coeffs,
                              NaturalCubicSpline)
+from scipy.signal import savgol_filter
+
 CUDA_AVAILABLE = False
 
 
@@ -18,6 +20,7 @@ def discretisation_length(N, d):
 
 def spline_interpolate_gradient(x: torch.Tensor, y: torch.Tensor, num_disc=9):
     """
+    y should be of shape (..., length, input_channels)
     Returns x_interpolate, y_interpolate, y_grad, y_grad_2: the interpolated time, data and gradient
     """
     x_interpolate = torch.linspace(x.min(), x.max(), discretisation_length(x.shape[0], num_disc), device=x.device)
@@ -27,6 +30,20 @@ def spline_interpolate_gradient(x: torch.Tensor, y: torch.Tensor, num_disc=9):
     y_grad = spline.derivative(x_interpolate) #y_interpolate, denom, axis=1)
     y_grad_2 = spline.derivative(x_interpolate, order=2)
     return x_interpolate, y_interpolate, y_grad, y_grad_2
+
+
+def savgol_filter_gradient(x, y, window_length=75, polyorder=3):
+    """
+    Applies the Savitzky-Golay filter to denoise the series y, and returns the first derivative
+    """
+    savgol_config = dict(
+        window_length=window_length,
+        polyorder=polyorder
+    )
+    dx = x[1] - x[0]
+    y_denoised = savgol_filter(y.squeeze(), **savgol_config)
+    dy = savgol_filter(y.squeeze(), **savgol_config, deriv=1, delta=dx)
+    return y_denoised, dy
 
 
 """These metrics are translated from https://rdrr.io/cran/lineqGPR/man/errorMeasureRegress.html"""

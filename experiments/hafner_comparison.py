@@ -10,7 +10,7 @@ from gpytorch.constraints import Positive, Interval
 from gpytorch.distributions import MultitaskMultivariateNormal, MultivariateNormal
 
 from alfi.configuration import VariationalConfiguration
-from alfi.models import OrdinaryLFM, MultiOutputGP, generate_multioutput_rbf_gp
+from alfi.models import OrdinaryLFM, MultiOutputGP, generate_multioutput_gp
 from alfi.plot import Plotter1d, Colours, tight_kwargs
 from alfi.trainers import VariationalTrainer, PreEstimator
 from alfi.utilities.data import hafner_ground_truth
@@ -48,7 +48,7 @@ class SoftplusTranscriptionLFM(TranscriptionLFM):
         self.raw_basal = Parameter(torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64))
         self.raw_sensitivity = Parameter(8 + torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64))
 
-    def G(self, f):
+    def mix(self, f):
         # I = 1 so just repeat for num_outputs
         return softplus(f).repeat(1, self.num_outputs, 1)
 
@@ -58,7 +58,7 @@ class SoftplusTranscriptionLFM(TranscriptionLFM):
         f = q_f.sample(torch.Size([500])).permute(0, 2, 1)  # (S, I, T)
         print(f.shape)
         # This is a hack to wrap the latent function with the nonlinearity. Note we use the same variance.
-        f = torch.mean(self.G(f), dim=0)[0].unsqueeze(0)
+        f = torch.mean(self.mix(f), dim=0)[0].unsqueeze(0)
         print(f.shape, q_f.mean.shape, q_f.scale_tril.shape)
         batch_mvn = MultivariateNormal(f, q_f.covariance_matrix.unsqueeze(0))
         print(batch_mvn)
@@ -85,10 +85,10 @@ config = VariationalConfiguration(
 inducing_points = torch.linspace(0, 12, num_inducing).repeat(num_tfs, 1).view(num_tfs, num_inducing, 1)
 step_size = 5e-1
 num_training = dataset.m_observed.shape[-1]
-gp_model = generate_multioutput_rbf_gp(num_tfs, inducing_points,
-                                       zero_mean=False,
-                                       initial_lengthscale=2,
-                                       gp_kwargs=dict(natural=use_natural))
+gp_model = generate_multioutput_gp(num_tfs, inducing_points,
+                                   zero_mean=False,
+                                   initial_lengthscale=2,
+                                   gp_kwargs=dict(natural=use_natural))
 lfm = TranscriptionLFM(num_genes, gp_model, config, num_training_points=num_training)
 plotter = Plotter1d(lfm, dataset.gene_names, style='seaborn')
 

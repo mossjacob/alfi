@@ -4,13 +4,11 @@ __pycache__/
 dist
 build
 
-tf_reggae.egg-info/
+alfi.egg-info/
 
 .idea/
 
 .DS_Store
-
-lafomo.egg-info/
 
 deprecated/
 

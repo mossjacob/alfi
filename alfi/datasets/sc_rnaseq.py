@@ -1,28 +1,36 @@
 from os import path
+from pathlib import Path
 
 import torch
 import numpy as np
 
-from alfi.datasets import TranscriptomicTimeSeries
+from .datasets import TranscriptomicTimeSeries
+from scvelo import read
 
 
 class Pancreas(TranscriptomicTimeSeries):
-    def __init__(self, max_cells=10000, data_dir='./', calc_moments=True):
+    def __init__(self, max_cells=10000, gene_index=None, data_dir='../data/', calc_moments=True):
         super().__init__()
-        self.num_outputs = 4000
-
-        data_path = path.join(data_dir, 'pancreas.pt')
-        if path.exists(data_path):
-            data = torch.load(data_path)
-            self.m_observed = data['m_observed']
-            self.data = data['data']
+        self.num_outputs = 4000 if gene_index is None else 2
+        data_path = Path(data_dir)
+        cache_path = data_path / 'pancreas' / 'pancreas.pt'
+        if path.exists(cache_path):
+            data = torch.load(cache_path)
+            if gene_index is None:
+                self.m_observed = data['m_observed']
+                self.data = data['data']
+            else:
+                self.m_observed = data['m_observed'][:, [gene_index, 2000 + gene_index]]
+                self.data = [data['data'][gene_index], data['data'][2000 + gene_index]]
             self.gene_names = data['gene_names']
             self.loom = data['loom']
         else:
             import scvelo as scv
-            data = scv.datasets.pancreas()
+            filename = data_path / 'pancreas' / 'endocrinogenesis_day15.h5ad'
+            data = read(filename, sparse=True, cache=True)
+            data.var_names_make_unique()
+
             scv.pp.filter_and_normalize(data, min_shared_counts=20, n_top_genes=2000)
-            scv.pp.moments(data, n_neighbors=30, n_pcs=30)
             u = data.layers['unspliced'].toarray()[:max_cells]
             s = data.layers['spliced'].toarray()[:max_cells]
             if calc_moments:
@@ -31,6 +39,8 @@ class Pancreas(TranscriptomicTimeSeries):
                 s = data.layers['Ms']
 
             print(u.shape, s.shape)
+            # scaling = u.std(axis=0) / s.std(axis=0)
+            # u /= np.expand_dims(scaling, 0)
 
             self.loom = data
             self.gene_names = self.loom.var.index
@@ -46,7 +56,7 @@ class Pancreas(TranscriptomicTimeSeries):
                 'm_observed': self.m_observed,
                 'gene_names': self.gene_names,
                 'loom': self.loom,
-            }, data_path)
+            }, cache_path)
 
 
 class SingleCellKidney(TranscriptomicTimeSeries):
@@ -56,12 +66,12 @@ class SingleCellKidney(TranscriptomicTimeSeries):
     Parameters:
         calc_moments: bool=False whether to use the raw unspliced/spliced or moments
     """
-    def __init__(self, data_dir='./',
+    def __init__(self, data_dir='../data/',
                  raw_data_dir=None,
                  calc_moments=True):
         super().__init__()
         self.num_outputs = 2000
-        data_path = path.join(data_dir, 'kidney1.pt')
+        data_path = path.join(data_dir, 'kidney/kidney1.pt')
         if path.exists(data_path):
             data = torch.load(data_path)
             self.m_observed = data['m_observed']

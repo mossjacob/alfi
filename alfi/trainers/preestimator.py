@@ -1,9 +1,8 @@
 from typing import List, Callable
-from matplotlib import pyplot as plt
 import torch
 
 from .trainer import Trainer
-from alfi.models import VariationalLFM
+from alfi.models import VariationalLFM, TrainMode
 try:
     from alfi.models import PartialLFM
 except:
@@ -19,7 +18,7 @@ class PreEstimator(Trainer):
                  dataset,
                  **kwargs):
         super().__init__(lfm, optimizers, dataset, **kwargs)
-        num_intermediate = 9
+        num_intermediate = 9  # this determines how granular the interpolation is
         data = next(iter(self.data_loader))
         t, y = data[0][0], data[1]
 
@@ -32,7 +31,7 @@ class PreEstimator(Trainer):
         self.model_kwargs = {}
 
     def single_epoch(self, epoch=0, **kwargs):
-        assert self.lfm.pretrain_mode
+        assert self.lfm.train_mode == TrainMode.GRADIENT_MATCH
         [optim.zero_grad() for optim in self.optimizers]
         # y = y.cuda() if is_cuda() else y
 
