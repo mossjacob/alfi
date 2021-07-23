@@ -13,9 +13,16 @@ from alfi.mlls import MaskedVariationalELBO
 
 
 class TrainMode(Enum):
-    NORMAL   = 0
+    NORMAL = 0
+    """
+    Gradient matching: the derivative of the spline interpolation is matched with the output of the ODE function
+    """
     GRADIENT_MATCH = 1
-    FILTER   = 2
+    """
+    Filter: the output of the ODE function is matched with the filtered data bucketed and filtered into the same
+    timepoints
+    """
+    FILTER = 2
 
 
 class VariationalLFM(LFM, ABC):

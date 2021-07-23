@@ -46,9 +46,11 @@ class OrdinaryLFM(VariationalLFM):
         # Get GP outputs
         if self.train_mode == TrainMode.GRADIENT_MATCH:
             t_f = t[0]
+            t_output = t_f
             h0 = t[1].unsqueeze(0).repeat(self.config.num_samples, 1, 1)
         else:
             t_f = torch.arange(t.min(), t.max()+step_size/3, step_size/3)
+            t_output = t
             h0 = self.initial_state()
             h0 = h0.unsqueeze(0).repeat(self.config.num_samples, 1, 1)
 
@@ -72,7 +74,7 @@ class OrdinaryLFM(VariationalLFM):
         if return_samples:
             return h_samples
 
-        dist = self.build_output_distribution(t, h_samples)
+        dist = self.build_output_distribution(t_output, h_samples)
         self.f = None
         return dist
 
