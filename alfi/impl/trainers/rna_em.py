@@ -1,4 +1,7 @@
 import torch
+import numpy as np
+
+from sklearn.cluster import KMeans
 
 from alfi.trainers import Trainer
 from alfi.utilities.torch import ceil, is_cuda, spline_interpolate_gradient, savgol_filter_gradient
@@ -21,8 +24,15 @@ class EMTrainer(Trainer):
     """
     def __init__(self, lfm: RNAVelocityLFM, optimizers, dataset: LFMDataset, batch_size: int, **kwargs):
         super().__init__(lfm, optimizers, dataset, batch_size=batch_size, **kwargs)
+        cells = next(iter(self.data_loader))
+        X = cells.squeeze().t()
+        self.num_clusters = 8
+        self.kmeans = KMeans(n_clusters=self.num_clusters, random_state=0).fit(X)
+        print(self.kmeans.labels_.shape)
+        print(self.kmeans.predict(X).shape)
+        print(self.kmeans.cluster_centers_.shape)
 
-    def e_step(self, y):
+    def e_step(self, y, add_penalty=False):
         # Given parameters, assign the timepoints
         num_outputs = self.lfm.num_outputs
         traj = self.lfm.current_trajectory
@@ -31,17 +41,43 @@ class EMTrainer(Trainer):
         u_y = y[:num_outputs//2]  # (num_genes, num_cells)
         s_y = y[num_outputs//2:]  # (num_genes, num_cells)
 
+        time_assignments = self.lfm.time_assignments_indices
+        cluster_mean_times = torch.tensor(  # the mean times per cluster (num_clusters)
+            [time_assignments.type(torch.float)[self.kmeans.labels_ == c].mean() for c in range(self.num_clusters)])
+        print(cluster_mean_times)
+        mu_cells = cluster_mean_times[self.kmeans.labels_]  # mean time for the cluster each cell belongs to (num_cells)
         batch_size = 500
         num_batches = ceil(y.shape[1] / batch_size)
-        for batch in range(num_batches):  # batch over cells
+        for batch in range(num_batches):  # batch over cells. we assign times per cell
             from_index = batch * batch_size
             to_index = (batch+1) * batch_size
             u_residual = u_y[:, from_index:to_index] - u.transpose(1, 2)
             s_residual = s_y[:, from_index:to_index] - s.transpose(1, 2)
 
+            # residual is now the indices into the time vector (500,)
+            # add penalty
+            # diff in cell's cluster (small desired) - avg diff to other clusters (large desired)
+            mu_cells_batch = mu_cells[from_index:to_index]  # (num_cells, 1) cluster means for all cells
+
+            within_cluster_diff = (self.lfm.timepoint_choices.unsqueeze(0) - mu_cells_batch.unsqueeze(1)).square()  # (num_cells, 200)
+            # other_cluster_diff = torch.empty((batch_size, self.lfm.timepoint_choices.shape[0]))
+            # for cluster in range(self.num_clusters):
+            #     cluster_mask = self.kmeans.labels_ == cluster
+            #     cluster_mean_time = cluster_mean_times[cluster]
+            #     # get difference between cluster mean for cell and the timepoint choices
+            #     diff = self.lfm.timepoint_choices.unsqueeze(0) - mu_cells_batch.unsqueeze(1)  # (num_cells, 200)
+            #     # mask out those differences to the same cluster
+            #     diff[cluster_mask] *= 0
+            #     other_cluster_diff += diff.square()
+            print(mu_cells_batch.shape, '-', time_assignments[from_index:to_index].shape)
             residual = u_residual.square() + s_residual.square()
-            residual = residual.sum(dim=0).argmin(dim=1).type(torch.long)
-            self.lfm.time_assignments_indices[from_index:to_index] = residual
+            residual = residual.sum(dim=0)
+            if add_penalty:
+                residual += within_cluster_diff #- other_cluster_diff # (batch, 200)
+            print('resid shape', residual.shape)
+            residual = residual.argmin(dim=1).type(torch.long)  # sum over genes (batch) TODO: average??
+
+            self.lfm.time_assignments_indices[from_index:to_index] = residual.squeeze()
 
     def random_assignment(self):
         self.lfm.time_assignments_indices = torch.randint(self.lfm.timepoint_choices.shape[0], torch.Size([self.lfm.num_cells]))
@@ -120,23 +156,16 @@ class EMTrainer(Trainer):
             # if epoch > 0:
             e_step = 5 if self.lfm.train_mode == TrainMode.GRADIENT_MATCH else 1
             if (epoch % e_step) == 0:
-                # with torch.no_grad():
-                if not (self.lfm.train_mode == TrainMode.NORMAL) or True:
-                    # If pretraining, then call the LFM with normal mode
-                    mode = self.lfm.train_mode
-                    self.lfm.set_mode(TrainMode.NORMAL)
-                    t_sorted, indices = torch.sort(self.lfm.time_assignments)
-                    self.lfm.time_assignments_indices = indices
-                    print(t_sorted)
-                    out = self.lfm(t_sorted, step_size=step_size)
-                    self.e_step(cells)
-                    self.lfm.set_mode(mode)
-                    print(out.mean.shape, y_target.shape)
-                    loss = self.lfm.loss_fn(out, y_target)
-                    loss.backward()
-                    self.optimizers[-1].step()
-                else:
-                    self.e_step(cells)
+                with torch.no_grad():
+                    if not (self.lfm.train_mode == TrainMode.NORMAL):
+                        # If pretraining, then call the LFM with normal mode
+                        mode = self.lfm.train_mode
+                        self.lfm.set_mode(TrainMode.NORMAL)
+                        self.lfm(self.lfm.timepoint_choices, step_size=step_size)
+                        self.e_step(cells)
+                        self.lfm.set_mode(mode)
+                    else:
+                        self.e_step(cells)
             # print('estep done')
             # else:
             #     self.random_assignment()
@@ -153,8 +182,7 @@ class EMTrainer(Trainer):
             '''
             # Get trajectory
             output = self.lfm(x, step_size=step_size)
-            # print(output.shape)
-            # print((output.mean - y_target).square().sum())
+
             # Calc loss and backprop gradients
             log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target, mask=self.train_mask)
             total_loss = (-log_likelihood + kl_divergence)
@@ -163,7 +191,7 @@ class EMTrainer(Trainer):
             if epoch < warmup:
                 self.optimizers[1].step()
             else:
-                [optim.step() for optim in self.optimizers[:-1]]
+                [optim.step() for optim in self.optimizers]
 
             epoch_loss += total_loss.item()
             epoch_ll += log_likelihood.item()
