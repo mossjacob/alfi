@@ -101,7 +101,6 @@ class RNAVelocityLFM(OrdinaryLFM):
         transcription = f
         du = transcription - self.splicing_rate * u
         ds = self.splicing_rate * u - self.decay_rate * s
-        # print(du.shape, ds.shape, u.shape, s.shape)
         h_t = torch.cat([du, ds], dim=1)
 
         return h_t
