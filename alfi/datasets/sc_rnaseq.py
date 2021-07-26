@@ -11,7 +11,12 @@ from scvelo import read
 class Pancreas(TranscriptomicTimeSeries):
     def __init__(self, max_cells=10000, gene_index=None, data_dir='../data/', calc_moments=True):
         super().__init__()
-        self.num_outputs = 4000 if gene_index is None else 2
+        if gene_index is None:
+            self.num_outputs = 4000
+        elif type(gene_index) is tuple:
+            self.num_outputs = gene_index[1] - gene_index[0]
+        else:
+            self.num_outputs = 2
         data_path = Path(data_dir)
         cache_path = data_path / 'pancreas' / 'pancreas.pt'
         if path.exists(cache_path):
@@ -19,9 +24,14 @@ class Pancreas(TranscriptomicTimeSeries):
             if gene_index is None:
                 self.m_observed = data['m_observed']
                 self.data = data['data']
+            elif type(gene_index) is tuple:
+                gene_index = np.arange(gene_index[0], gene_index[1])
+                self.m_observed = data['m_observed'][:, [*gene_index, *(2000 + gene_index)]]
+                self.data = [data['data'][i] for i in np.concatenate([gene_index, 2000+gene_index])]
             else:
                 self.m_observed = data['m_observed'][:, [gene_index, 2000 + gene_index]]
                 self.data = [data['data'][gene_index], data['data'][2000 + gene_index]]
+
             self.gene_names = data['gene_names']
             self.loom = data['loom']
         else:
