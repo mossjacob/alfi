@@ -26,9 +26,12 @@ class RNAVelocityLFM(OrdinaryLFM):
                  config: RNAVelocityConfiguration,
                  nonlinearity=relu,
                  decay_rate=None, transcription_rate=None, splicing_rate=None,
-                 nonzero_mask=None, **kwargs):
+                 nonzero_mask=None, housekeeping_mask=None, **kwargs):
         super().__init__(num_outputs, gp_model, config, **kwargs)
         self.nonzero_mask = nonzero_mask
+        if housekeeping_mask is None:
+            housekeeping_mask = torch.zeros(torch.Size([num_genes, 1]), dtype=torch.bool)
+        self.housekeeping_mask = housekeeping_mask
         num_genes = num_outputs // 2
         if splicing_rate is None:
             splicing_rate = 1 * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64)
@@ -99,6 +102,9 @@ class RNAVelocityLFM(OrdinaryLFM):
 
         # transcription = self.transcription_rate * f
         transcription = f
+        # Mask out the housekeeping genes, as these should have constant rates
+        # TODO: this should not be zero, but some constant!
+        transcription = ~self.housekeeping_mask.unsqueeze(0) * transcription
         du = transcription - self.splicing_rate * u
         ds = self.splicing_rate * u - self.decay_rate * s
         h_t = torch.cat([du, ds], dim=1)
