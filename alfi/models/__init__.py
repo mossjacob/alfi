@@ -17,7 +17,7 @@ modules = [
     'NeuralOperator',
     'RecurrentNeuralOperator',
     'MultiOutputGP',
-    'generate_multioutput_rbf_gp',
+    'generate_multioutput_gp',
     'TrainMode',
 ]
 
