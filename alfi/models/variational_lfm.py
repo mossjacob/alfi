@@ -79,7 +79,7 @@ class VariationalLFM(LFM, ABC):
 
     def summarise_gp_hyp(self):
         def convert(x):
-            return x.detach().cpu().view(-1).numpy()
+            return x.detach().cpu().view(-1).numpy()[:5]
 
         # variational_keys = dict(self.gp_model.named_variational_parameters()).keys()
         # named_parameters = dict(self.named_parameters())

@@ -16,7 +16,7 @@ from alfi.datasets import (
 from alfi.utilities.torch import get_mean_trace, is_cuda
 from alfi.models import TrainMode
 try:
-    from .partial import build_partial, plot_partial, pretrain_partial
+    from .model_specs.partial import build_partial, plot_partial, pretrain_partial
 except ImportError:
     build_partial, plot_partial, pretrain_partial = None, None, None
 
