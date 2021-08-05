@@ -78,25 +78,22 @@ class VariationalLFM(LFM, ABC):
         return self.gp_model.variational_parameters()
 
     def summarise_gp_hyp(self):
-        def convert(x):
-            return x.detach().cpu().view(-1).numpy()[:5]
-
-        # variational_keys = dict(self.gp_model.named_variational_parameters()).keys()
-        # named_parameters = dict(self.named_parameters())
-        #
-        # return [named_parameters[key] for key in named_parameters.keys()
-        #         if key[len('gp_model.'):] not in variational_keys]
-        if self.gp_model.covar_module.lengthscale is not None:
-            return convert(self.gp_model.covar_module.lengthscale)
-        elif hasattr(self.gp_model.covar_module, 'base_kernel'):
-            kernel = self.gp_model.covar_module.base_kernel
-            if hasattr(kernel, 'kernels'):
-                if hasattr(kernel.kernels[0], 'lengthscale'):
-                    return convert(kernel.kernels[0].lengthscale)
+        with torch.no_grad():
+            def convert(x):
+                x = x.detach().cpu().view(-1).numpy()[:5]
+                noise = self.gp_model(self.inducing_points).variance.mean(dim=0)
+                return str(x) + ' noise: ' + str(noise)
+            if self.gp_model.covar_module.lengthscale is not None:
+                return convert(self.gp_model.covar_module.lengthscale)
+            elif hasattr(self.gp_model.covar_module, 'base_kernel'):
+                kernel = self.gp_model.covar_module.base_kernel
+                if hasattr(kernel, 'kernels'):
+                    if hasattr(kernel.kernels[0], 'lengthscale'):
+                        return convert(kernel.kernels[0].lengthscale)
+                else:
+                    return convert(self.gp_model.covar_module.base_kernel.lengthscale)
             else:
-                return convert(self.gp_model.covar_module.base_kernel.lengthscale)
-        else:
-            return ''
+                return ''
 
     def forward(self, x, **kwargs):
         raise NotImplementedError

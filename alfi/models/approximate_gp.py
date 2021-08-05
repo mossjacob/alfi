@@ -7,6 +7,7 @@ from gpytorch.variational import (
     CholeskyVariationalDistribution,
     VariationalStrategy,
     IndependentMultitaskVariationalStrategy,
+    LMCVariationalStrategy,
     TrilNaturalVariationalDistribution
 )
 
@@ -16,10 +17,15 @@ class MultiOutputGP(ApproximateGP):
                  mean_module,
                  covar_module,
                  inducing_points,
-                 num_latents,
+                 num_tasks,
+                 num_latents=None,  # optional since if independent, num_latents == num_tasks
                  learn_inducing_locations=False,
                  natural=True,
-                 use_tril=False):
+                 use_tril=False,
+                 independent=True):
+        if independent:
+            num_latents = num_tasks
+        assert num_latents is not None
         # The variational dist batch shape means we learn a different variational dist for each latent
         if natural:
             Distribution = TrilNaturalVariationalDistribution if use_tril else NaturalVariationalDistribution
@@ -33,10 +39,19 @@ class MultiOutputGP(ApproximateGP):
 
         # Wrap the VariationalStrategy in a MultiTask to make output MultitaskMultivariateNormal
         # rather than a batch MVN
-        variational_strategy = IndependentMultitaskVariationalStrategy(
+        if independent:
+            Strategy = IndependentMultitaskVariationalStrategy
+            strategy_kwargs = dict()
+        else:
+            Strategy = LMCVariationalStrategy
+            strategy_kwargs = dict(num_latents=num_latents, latent_dim=-1)
+
+        variational_strategy = Strategy(
             VariationalStrategy(
                 self, inducing_points, variational_distribution, learn_inducing_locations=learn_inducing_locations
-            ), num_tasks=num_latents
+            ),
+            num_tasks=num_tasks,
+            **strategy_kwargs
         )
         super().__init__(variational_strategy)
 
@@ -54,7 +69,7 @@ class MultiOutputGP(ApproximateGP):
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 
-def generate_multioutput_gp(num_latents, inducing_points,
+def generate_multioutput_gp(num_tasks, inducing_points,
                             kernel_class=gpytorch.kernels.RBFKernel,
                             kernel_kwargs=None,
                             ard_dims=None,
@@ -62,8 +77,11 @@ def generate_multioutput_gp(num_latents, inducing_points,
                             initial_lengthscale=None,
                             lengthscale_constraint=None,
                             zero_mean=True,
-                            gp_kwargs=None):
-    # Modules should be marked as batch so different set of hyperparameters are learnt
+                            gp_kwargs=None,
+                            num_latents=None):
+    # Modules should be marked as batch so different set of hyperparameters are learnt.
+    if num_latents is None:  # this is None is we are using an independent variational strategy,
+        num_latents = num_tasks  # in which case the #tasks == #latent GPs.
     if gp_kwargs is None:
         gp_kwargs = {}
     if kernel_kwargs is None:
@@ -88,4 +106,4 @@ def generate_multioutput_gp(num_latents, inducing_points,
             covar_module.base_kernel.lengthscale = initial_lengthscale
         else:
             covar_module.lengthscale = initial_lengthscale
-    return MultiOutputGP(mean_module, covar_module, inducing_points, num_latents, **gp_kwargs)
+    return MultiOutputGP(mean_module, covar_module, inducing_points, num_tasks, num_latents=num_latents, **gp_kwargs)
