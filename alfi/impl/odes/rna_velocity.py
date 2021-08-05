@@ -28,17 +28,18 @@ class RNAVelocityLFM(OrdinaryLFM):
                  decay_rate=None, transcription_rate=None, splicing_rate=None,
                  nonzero_mask=None, housekeeping_mask=None, **kwargs):
         super().__init__(num_outputs, gp_model, config, **kwargs)
-        self.nonzero_mask = nonzero_mask
+        num_genes = num_outputs // 2
         if housekeeping_mask is None:
             housekeeping_mask = torch.zeros(torch.Size([num_genes, 1]), dtype=torch.bool)
-        self.housekeeping_mask = housekeeping_mask
-        num_genes = num_outputs // 2
         if splicing_rate is None:
             splicing_rate = 1 * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64)
         if transcription_rate is None:
             transcription_rate = 1 * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64)
         if decay_rate is None:
             decay_rate = 0.4 * torch.rand(torch.Size([num_genes, 1]), dtype=torch.float64)
+
+        self.nonzero_mask = nonzero_mask
+        self.housekeeping_mask = housekeeping_mask
         self.positivity = Positive()
         self.raw_splicing_rate = Parameter(self.positivity.inverse_transform(splicing_rate))
         self.raw_transcription_rate = Parameter(self.positivity.inverse_transform(transcription_rate))

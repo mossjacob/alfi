@@ -31,8 +31,9 @@ class EMTrainer(Trainer):
         print(self.kmeans.labels_.shape)
         print(self.kmeans.predict(X).shape)
         print(self.kmeans.cluster_centers_.shape)
+        self.within_penalty_coefficient = 0.01
 
-    def e_step(self, y, add_penalty=False):
+    def e_step(self, y, add_penalty=True):
         # Given parameters, assign the timepoints
         num_outputs = self.lfm.num_outputs
         traj = self.lfm.current_trajectory
@@ -42,9 +43,10 @@ class EMTrainer(Trainer):
         s_y = y[num_outputs//2:]  # (num_genes, num_cells)
 
         time_assignments = self.lfm.time_assignments_indices
+        timepoint_choices_indices = torch.arange(self.lfm.timepoint_choices.shape[0])
         cluster_mean_times = torch.tensor(  # the mean times per cluster (num_clusters)
             [time_assignments.type(torch.float)[self.kmeans.labels_ == c].mean() for c in range(self.num_clusters)])
-        print(cluster_mean_times)
+        # print(cluster_mean_times)
         mu_cells = cluster_mean_times[self.kmeans.labels_]  # mean time for the cluster each cell belongs to (num_cells)
         batch_size = 500
         num_batches = ceil(y.shape[1] / batch_size)
@@ -53,13 +55,16 @@ class EMTrainer(Trainer):
             to_index = (batch+1) * batch_size
             u_residual = u_y[:, from_index:to_index] - u.transpose(1, 2)
             s_residual = s_y[:, from_index:to_index] - s.transpose(1, 2)
+            residual = u_residual.square() + s_residual.square()
+            residual = residual.sum(dim=0)
 
             # residual is now the indices into the time vector (500,)
             # add penalty
             # diff in cell's cluster (small desired) - avg diff to other clusters (large desired)
             mu_cells_batch = mu_cells[from_index:to_index]  # (num_cells, 1) cluster means for all cells
-
-            within_cluster_diff = (self.lfm.timepoint_choices.unsqueeze(0) - mu_cells_batch.unsqueeze(1)).square()  # (num_cells, 200)
+            # print(timepoint_choices_indices, mu_cells_batch)
+            within_cluster_diff = (timepoint_choices_indices.unsqueeze(0) - mu_cells_batch.unsqueeze(1)).square()  # (num_cells, 200)
+            within_cluster_diff *= self.within_penalty_coefficient
             # other_cluster_diff = torch.empty((batch_size, self.lfm.timepoint_choices.shape[0]))
             # for cluster in range(self.num_clusters):
             #     cluster_mask = self.kmeans.labels_ == cluster
@@ -69,12 +74,13 @@ class EMTrainer(Trainer):
             #     # mask out those differences to the same cluster
             #     diff[cluster_mask] *= 0
             #     other_cluster_diff += diff.square()
-            print(mu_cells_batch.shape, '-', time_assignments[from_index:to_index].shape)
-            residual = u_residual.square() + s_residual.square()
-            residual = residual.sum(dim=0)
+            # print(mu_cells_batch.shape, '-', time_assignments[from_index:to_index].shape)
+            # print(f'{residual.mean().item():.02f}, {within_cluster_diff.mean().item():.02f}')
+            if batch == 0:
+                print(residual.mean(), within_cluster_diff.mean())
             if add_penalty:
                 residual += within_cluster_diff #- other_cluster_diff # (batch, 200)
-            print('resid shape', residual.shape)
+            # print('resid shape', residual.shape)
             residual = residual.argmin(dim=1).type(torch.long)  # sum over genes (batch) TODO: average??
 
             self.lfm.time_assignments_indices[from_index:to_index] = residual.squeeze()
