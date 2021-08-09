@@ -9,8 +9,8 @@ from gpytorch.optim import NGD
 from gpytorch.constraints import Positive, Interval
 
 from alfi.models import MultiOutputGP, generate_multioutput_gp
-from alfi.utilities.torch import inv_softplus, softplus
-from alfi.plot import Plotter1d, plot_phase, Colours
+from alfi.utilities.torch import softplus
+from alfi.plot import Plotter1d, Plotter2d, plot_phase, Colours
 from alfi.configuration import VariationalConfiguration
 from alfi.trainers import VariationalTrainer
 from alfi.impl.odes import LotkaVolterra, LotkaVolterraState
@@ -32,22 +32,12 @@ def build_lotka(dataset, params, reload=None, **kwargs):
     num_training = dataset[0][0].shape[0]
     lfm_kwargs = dict(num_training_points=num_training)
     if params['state']:
-        num_tasks = 1
-        num_outputs = 1
-        num_samples = 150
-        num_latents = 1
-        num_inducing = 20
-        model_class = LotkaVolterra
-        inducing_points = torch.linspace(x_min, x_max, num_inducing).repeat(num_latents, 1).view(
-            num_latents, num_inducing, 1)
-        track_parameters = ['raw_growth', 'raw_decay']
-        lengthscale_constraint = Interval(1, 6)
-    else:
         num_tasks = 2
         num_outputs = 2
         num_samples = 50
         num_latents = 2
         num_inducing = 200
+        lr = 0.04
         model_class = LotkaVolterraState
         initial_state = torch.tensor([dataset.predator[0], dataset.prey[0]], dtype=torch.float)
         lfm_kwargs['initial_state'] = initial_state
@@ -69,8 +59,22 @@ def build_lotka(dataset, params, reload=None, **kwargs):
                 data_min[1] + data_max[1] * torch.rand((1, num_inducing))
             ], dim=-1)
         inducing_points = inducing_points.repeat(num_latents, 1, 1)
+        inducing_points = inducing_points.permute(2, 1, 0)
         track_parameters = []
         lengthscale_constraint = None
+    else:
+        num_tasks = 1
+        num_outputs = 1
+        num_samples = 150
+        num_latents = 1
+        num_inducing = 20
+        lr = 0.025
+        model_class = LotkaVolterra
+        inducing_points = torch.linspace(x_min, x_max, num_inducing).repeat(num_latents, 1).view(
+            num_latents, num_inducing, 1)
+        track_parameters = ['raw_growth', 'raw_decay']
+        lengthscale_constraint = Interval(1, 6)
+
     print('Num training points: ', num_training)
     config = VariationalConfiguration(latent_data_present=False, num_samples=num_samples)
 
@@ -98,7 +102,7 @@ def build_lotka(dataset, params, reload=None, **kwargs):
                                  natural=use_natural)
         # covar_module.kernels[1].lengthscale = 2
     else:
-        track_parameters.append('gp_model.covar_module.raw_lengthscale')
+        track_parameters.append('gp_model.covar_module.base_kernel.raw_lengthscale')
         gp_model = generate_multioutput_gp(
             num_tasks, inducing_points,
             ard_dims=1,
@@ -116,14 +120,17 @@ def build_lotka(dataset, params, reload=None, **kwargs):
     else:
         lfm = model_class(num_outputs, gp_model, config, **lfm_kwargs)
 
-    plotter = Plotter1d(lfm, np.array(['predator']))
+    if params['state']:
+        plotter = Plotter2d(lfm, np.array(['predator', 'prey']))
+    else:
+        plotter = Plotter1d(lfm, np.array(['predator']))
 
     if use_natural:
         variational_optimizer = NGD(lfm.variational_parameters(), num_data=num_training, lr=0.1)
-        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=0.025)
+        parameter_optimizer = Adam(lfm.nonvariational_parameters(), lr=lr)
         optimizers = [variational_optimizer, parameter_optimizer]
     else:
-        optimizers = [Adam(lfm.parameters(), lr=0.025)]
+        optimizers = [Adam(lfm.parameters(), lr=lr)]
 
     trainer = VariationalTrainer(
         lfm,

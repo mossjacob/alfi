@@ -119,7 +119,7 @@ lotka:
         state: false
     - method: lotka
       train_params:
-        epochs: 1400
+        epochs: 600
         report_interval: 20
       model-params:
         natural: false
