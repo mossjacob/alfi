@@ -42,15 +42,12 @@ class LotkaVolterra(OrdinaryLFM):
         self.raw_growth = inv_softplus(value)
 
     @property
-    def initial_predators(self):
+    def initial_state(self):
         return softplus(self.raw_initial)
 
-    @initial_predators.setter
-    def initial_predators(self, value):
+    @initial_state.setter
+    def initial_state(self, value):
         self.raw_initial = inv_softplus(value)
-
-    def initial_state(self):
-        return self.initial_predators
 
     def odefunc(self, t, h):
         """h is of shape (num_samples, num_outputs, 1)"""

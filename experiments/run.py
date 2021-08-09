@@ -57,6 +57,7 @@ parser.add_argument('--data', type=str, choices=dataset_choices, default=dataset
 parser.add_argument('--reload', type=bool, default=False)
 parser.add_argument('--timer', type=bool, default=False)
 parser.add_argument('--timer_samples', type=int, default=5)
+parser.add_argument('--experiment_index', type=int, default=-1)
 
 datasets = {
     'p53': lambda: P53Data(replicate=0, data_dir='data'),
@@ -173,13 +174,16 @@ def run_model(method, dataset, model, trainer, plotter, filepath, save_filepath,
 if __name__ == "__main__":
     args = parser.parse_args()
     key = args.data
+    experiment_index = args.experiment_index
 
     print(TerminalColours.GREEN, 'Running experiments for dataset:', key, TerminalColours.END)
     data_config = config[key]
     dataset = datasets[key]()
     experiments = data_config['experiments']
     seen_methods = dict()
-    for experiment in experiments:
+    for i, experiment in enumerate(experiments):
+        if experiment_index > -1 and experiment_index != i:
+            continue
         method = experiment['method']
         print(TerminalColours.GREEN, 'Constructing method:', method, TerminalColours.END)
         if method in builders:

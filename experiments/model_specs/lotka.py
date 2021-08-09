@@ -148,67 +148,84 @@ def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
     lfm.eval()
     t_interval = (0, 20)
     t_predict = torch.linspace(*t_interval, 100, dtype=torch.float32)
-    t_scatter = dataset.data[0][0].unsqueeze(0).unsqueeze(0)
-    y_scatter = dataset.data[0][1].unsqueeze(0).unsqueeze(0)
 
-    q_m = lfm.predict_m(t_predict, step_size=1e-1)
-    q_f = lfm.predict_f(t_predict)
-    ylim = (-0.5, 3)
-    fig, axes = plt.subplots(ncols=2,
-                             figsize=(8, 3),
-                             gridspec_kw=dict(width_ratios=[3, 1]))
-    plotter.plot_gp(q_m, t_predict, num_samples=0,
-                    t_scatter=t_scatter,
-                    y_scatter=y_scatter,
-                    ylim=ylim,
-                    titles=None, ax=axes[0])
-    axes[0].set_xlabel('Time')
-    axes[0].set_ylabel('Population')
-    axes[0].set_xlim(*t_interval)
-    # axes[0].legend()
+    if params['state']:
+        with torch.no_grad():
+            traj = lfm(t_predict).mean.t()
+        x1 = traj[0].detach().squeeze()  # (num_genes, 100)
+        x2 = traj[1].detach().squeeze()  # (num_genes, 100)
+        true_x1 = dataset.predator  # (num_genes, num_cells)
+        true_x2 = dataset.prey  # (num_genes, num_cells)
+        time_ass = dataset.times / dataset.times.max()  # * np.array([[1., 1., 1.,]])
 
-    plotter.plot_gp(q_f, t_predict, num_samples=5,
-                    transform=f_transform,
-                    color=Colours.line2_color,
-                    shade_color=Colours.shade2_color,
-                    ylim=ylim,
-                    titles=None, ax=axes[0])
-    axes[0].set_xlabel('Time')
-    axes[0].set_ylabel('Prey population')
-    axes[0].plot(dataset.times, dataset.prey, c=Colours.scatter_color, label='Target')
-    axes[0].set_xticks([t_predict[0], t_predict[-1]])
-    # axes[0].xaxis.set_major_locator(ticker.MaxNLocator(nbins=2, integer=True))
-    axes[0].set_yticks([ylim[0], ylim[1]])
-    axes[0].fill_between(t_scatter.squeeze(), ylim[0], ylim[1], alpha=0.2, color='gray')
-    axes[0].get_lines()[0].set_label('Predator')
-    axes[0].get_lines()[1].set_label('Prey')
-    axes[0].legend()
-    real_prey, real_pred = dataset.prey, dataset.predator
-    prey = lfm.likelihood(lfm.gp_model(t_predict))
-    predator = lfm(t_predict)
+        plotter.plot_vector_gp(
+            x1, x2, true_x1, true_x2,
+            time_ass=time_ass,
+            figsize=(6, 6),
+        )
+        plt.savefig(filepath / 'vectorfield.pdf', **tight_kwargs)
+    else:
+        t_scatter = dataset.data[0][0].unsqueeze(0).unsqueeze(0)
+        y_scatter = dataset.data[0][1].unsqueeze(0).unsqueeze(0)
 
-    prey_mean = prey.mean.detach().squeeze()
-    predator_mean = predator.mean.detach().squeeze()
-    x_samples = f_transform(prey.sample(torch.Size([50])).detach().squeeze())
-    y_samples = predator.sample(torch.Size([50])).detach().squeeze()
+        q_m = lfm.predict_m(t_predict, step_size=1e-1)
+        q_f = lfm.predict_f(t_predict)
+        ylim = (-0.5, 3)
+        fig, axes = plt.subplots(ncols=2,
+                                 figsize=(8, 3),
+                                 gridspec_kw=dict(width_ratios=[3, 1]))
+        plotter.plot_gp(q_m, t_predict, num_samples=0,
+                        t_scatter=t_scatter,
+                        y_scatter=y_scatter,
+                        ylim=ylim,
+                        titles=None, ax=axes[0])
+        axes[0].set_xlabel('Time')
+        axes[0].set_ylabel('Population')
+        axes[0].set_xlim(*t_interval)
+        # axes[0].legend()
 
-    plot_phase(x_samples, y_samples,
-               x_mean=f_transform(prey_mean),
-               y_mean=predator_mean,
-               x_target=real_prey,
-               y_target=real_pred,
-               ax=axes[1])
-    axes[1].set_xlabel('Prey population')
-    axes[1].set_ylabel('Predator population')
-    axes[1].set_yticks([0, 1])
-    plt.tight_layout()
+        plotter.plot_gp(q_f, t_predict, num_samples=5,
+                        transform=f_transform,
+                        color=Colours.line2_color,
+                        shade_color=Colours.shade2_color,
+                        ylim=ylim,
+                        titles=None, ax=axes[0])
+        axes[0].set_xlabel('Time')
+        axes[0].set_ylabel('Prey population')
+        axes[0].plot(dataset.times, dataset.prey, c=Colours.scatter_color, label='Target')
+        axes[0].set_xticks([t_predict[0], t_predict[-1]])
+        # axes[0].xaxis.set_major_locator(ticker.MaxNLocator(nbins=2, integer=True))
+        axes[0].set_yticks([ylim[0], ylim[1]])
+        axes[0].fill_between(t_scatter.squeeze(), ylim[0], ylim[1], alpha=0.2, color='gray')
+        axes[0].get_lines()[0].set_label('Predator')
+        axes[0].get_lines()[1].set_label('Prey')
+        axes[0].legend()
+        real_prey, real_pred = dataset.prey, dataset.predator
+        prey = lfm.likelihood(lfm.gp_model(t_predict))
+        predator = lfm(t_predict)
 
-    plt.savefig(filepath / (params['kernel'] + '-combined.pdf'), **tight_kwargs)
+        prey_mean = prey.mean.detach().squeeze()
+        predator_mean = predator.mean.detach().squeeze()
+        x_samples = f_transform(prey.sample(torch.Size([50])).detach().squeeze())
+        y_samples = predator.sample(torch.Size([50])).detach().squeeze()
 
-    # labels = ['Initial', 'Grown rates', 'Decay rates']
-    # kinetics = list()
-    # for key in ['raw_initial', 'raw_growth', 'raw_decay']:
-    #     kinetics.append(softplus(torch.tensor(trainer.parameter_trace[key][-1])).squeeze().numpy())
-    #
-    # plotter.plot_double_bar(kinetics, labels)
-    # plt.savefig(filepath / 'kinetics.pdf', **tight_kwargs)
+        plot_phase(x_samples, y_samples,
+                   x_mean=f_transform(prey_mean),
+                   y_mean=predator_mean,
+                   x_target=real_prey,
+                   y_target=real_pred,
+                   ax=axes[1])
+        axes[1].set_xlabel('Prey population')
+        axes[1].set_ylabel('Predator population')
+        axes[1].set_yticks([0, 1])
+        plt.tight_layout()
+
+        plt.savefig(filepath / (params['kernel'] + '-combined.pdf'), **tight_kwargs)
+
+        # labels = ['Initial', 'Grown rates', 'Decay rates']
+        # kinetics = list()
+        # for key in ['raw_initial', 'raw_growth', 'raw_decay']:
+        #     kinetics.append(softplus(torch.tensor(trainer.parameter_trace[key][-1])).squeeze().numpy())
+        #
+        # plotter.plot_double_bar(kinetics, labels)
+        # plt.savefig(filepath / 'kinetics.pdf', **tight_kwargs)
