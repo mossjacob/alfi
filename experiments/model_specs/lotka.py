@@ -8,11 +8,12 @@ from torch.optim import Adam
 from gpytorch.optim import NGD
 from gpytorch.constraints import Positive, Interval
 
-from alfi.models import OrdinaryLFM, MultiOutputGP
+from alfi.models import MultiOutputGP, generate_multioutput_gp
 from alfi.utilities.torch import inv_softplus, softplus
 from alfi.plot import Plotter1d, plot_phase, Colours
 from alfi.configuration import VariationalConfiguration
 from alfi.trainers import VariationalTrainer
+from alfi.impl.odes import LotkaVolterra, LotkaVolterraState
 
 tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
 
@@ -25,91 +26,64 @@ sns.set(style='white', font="CMU Serif")
 def build_lotka(dataset, params, reload=None, **kwargs):
     x_min, x_max = min(dataset.times), max(dataset.times)
 
-    num_latents = 1
-    num_outputs = 1
-    num_training = dataset[0][0].shape[0]
-    num_inducing = 20
-
-    print('Num training points: ', num_training)
-
-    class LotkaVolterra(OrdinaryLFM):
-        """Outputs are predator. Latents are prey"""
-
-        def __init__(self, num_outputs, gp_model, config: VariationalConfiguration, **kwargs):
-            super().__init__(num_outputs, gp_model, config, **kwargs)
-            self.positivity = Positive()
-            self.decay_constraint = Interval(0., 1.5)
-            self.raw_decay = Parameter(
-                self.positivity.inverse_transform(torch.ones(torch.Size([self.num_outputs, 1]), dtype=torch.float64)))
-            self.raw_growth = Parameter(self.positivity.inverse_transform(
-                0.5 * torch.ones(torch.Size([self.num_outputs, 1]), dtype=torch.float64)))
-            self.raw_initial = Parameter(self.decay_constraint.inverse_transform(
-                0.3 + torch.zeros(torch.Size([self.num_outputs, 1]), dtype=torch.float64)))
-            # self.true_f = dataset.prey[::3].unsqueeze(0).repeat(self.config.num_samples, 1).unsqueeze(1)
-
-        @property
-        def decay_rate(self):
-            return self.decay_constraint.transform(self.raw_decay)
-
-        @decay_rate.setter
-        def decay_rate(self, value):
-            self.raw_decay = self.decay_constraint.inverse_transform(value)
-
-        @property
-        def growth_rate(self):
-            return softplus(self.raw_growth)
-
-        @growth_rate.setter
-        def growth_rate(self, value):
-            self.raw_growth = inv_softplus(value)
-
-        @property
-        def initial_predators(self):
-            return softplus(self.raw_initial)
-
-        @initial_predators.setter
-        def initial_predators(self, value):
-            self.raw_initial = inv_softplus(value)
-
-        def initial_state(self):
-            return self.initial_predators
-
-        def odefunc(self, t, h):
-            """h is of shape (num_samples, num_outputs, 1)"""
-            self.nfe += 1
-            # if (self.nfe % 100) == 0:
-            # print(t, self.t_index, self.f.shape)
-            # f shape (num_samples, num_outputs, num_times)
-            f = self.f[:, :, self.t_index].unsqueeze(2)
-            if t > self.last_t:
-                self.t_index += 1
-            self.last_t = t
-
-            dh = self.growth_rate * h * f - self.decay_rate * h
-            return dh
-
-        def mix(self, f):
-            return softplus(f).repeat(1, self.num_outputs, 1)
-
-    use_natural = params['natural']
-    config = VariationalConfiguration(num_samples=150)
-    inducing_points = torch.linspace(x_min, x_max, num_inducing).repeat(num_latents, 1).view(
-        num_latents, num_inducing, 1)
-
     periodic = params['kernel'] == 'periodic'
-    mean_module = gpytorch.means.ConstantMean(batch_shape=torch.Size([num_latents]))
-    with torch.no_grad():
-        mean_module.constant += 0.1
-    track_parameters = ['raw_growth', 'raw_decay']
+    use_natural = params['natural']
+    use_lhs = 'lhs' in params and params['lhs']
+    num_training = dataset[0][0].shape[0]
+    lfm_kwargs = dict(num_training_points=num_training)
+    if params['state']:
+        num_tasks = 1
+        num_outputs = 1
+        num_samples = 150
+        num_latents = 1
+        num_inducing = 20
+        model_class = LotkaVolterra
+        inducing_points = torch.linspace(x_min, x_max, num_inducing).repeat(num_latents, 1).view(
+            num_latents, num_inducing, 1)
+        track_parameters = ['raw_growth', 'raw_decay']
+        lengthscale_constraint = Interval(1, 6)
+    else:
+        num_tasks = 2
+        num_outputs = 2
+        num_samples = 50
+        num_latents = 2
+        num_inducing = 200
+        model_class = LotkaVolterraState
+        initial_state = torch.tensor([dataset.predator[0], dataset.prey[0]], dtype=torch.float)
+        lfm_kwargs['initial_state'] = initial_state
+        data = torch.stack([dataset.predator, dataset.prey], dim=1)
+        dataset.data = [(dataset.times, data.t())]
+        data_min = data.min(dim=0).values - 0.2
+        data_max = data.max(dim=0).values + 0.2
+        if use_lhs:
+            from smt.sampling_methods import LHS
+            xlimits = np.array([
+                [data_min[0], data_max[0]],
+                [data_min[1], data_max[1]]])
+            sampling = LHS(xlimits=xlimits)(num_inducing)
+            inducing_points = torch.tensor(sampling, dtype=torch.float).unsqueeze(0)
+        else:
+            data_max -= data_min
+            inducing_points = torch.stack([
+                data_min[0] + data_max[0] * torch.rand((1, num_inducing)),
+                data_min[1] + data_max[1] * torch.rand((1, num_inducing))
+            ], dim=-1)
+        inducing_points = inducing_points.repeat(num_latents, 1, 1)
+        track_parameters = []
+        lengthscale_constraint = None
+    print('Num training points: ', num_training)
+    config = VariationalConfiguration(latent_data_present=False, num_samples=num_samples)
 
     if periodic:
+        mean_module = gpytorch.means.ConstantMean(batch_shape=torch.Size([num_latents]))
+        with torch.no_grad():
+            mean_module.constant += 0.1
+
         covar_module = gpytorch.kernels.ScaleKernel(
             gpytorch.kernels.PeriodicKernel(batch_shape=torch.Size([num_latents])),
             # * gpytorch.kernels.RBFKernel(batch_shape=torch.Size([num_latents])),
             batch_shape=torch.Size([num_latents]))
 
-
-        print(covar_module.base_kernel)
         if type(covar_module.base_kernel) is gpytorch.kernels.ProductKernel:
             print(covar_module.base_kernel.kernels)
             covar_module.base_kernel.kernels[0].lengthscale = 3
@@ -119,26 +93,28 @@ def build_lotka(dataset, params, reload=None, **kwargs):
             covar_module.base_kernel.period_length = 8
             track_parameters.append('gp_model.covar_module.base_kernel.raw_lengthscale')
             track_parameters.append('gp_model.covar_module.base_kernel.raw_period_length')
+        gp_model = MultiOutputGP(mean_module, covar_module,
+                                 inducing_points, num_latents,
+                                 natural=use_natural)
         # covar_module.kernels[1].lengthscale = 2
     else:
-        covar_module = gpytorch.kernels.RBFKernel(
-            batch_shape=torch.Size([num_latents]),
-            lengthscale_constraint=Interval(1, 6))
-        covar_module.lengthscale = 2
         track_parameters.append('gp_model.covar_module.raw_lengthscale')
+        gp_model = generate_multioutput_gp(
+            num_tasks, inducing_points,
+            ard_dims=1,
+            zero_mean=False,
+            use_scale=True, initial_lengthscale=2.,
+            lengthscale_constraint=lengthscale_constraint,
+            gp_kwargs=dict(natural=use_natural, independent=True)
+        )
 
-    gp_model = MultiOutputGP(mean_module, covar_module,
-                             inducing_points, num_latents,
-                             natural=use_natural)
-
-    lfm_kwargs = dict(num_training_points=num_training)
     if reload is not None:
-        lfm = LotkaVolterra.load(reload,
+        lfm = model_class.load(reload,
                                  gp_model=gp_model,
                                  lfm_args=[1, config],
                                  lfm_kwargs=lfm_kwargs)
     else:
-        lfm = LotkaVolterra(num_outputs, gp_model, config, **lfm_kwargs)
+        lfm = model_class(num_outputs, gp_model, config, **lfm_kwargs)
 
     plotter = Plotter1d(lfm, np.array(['predator']))
 
