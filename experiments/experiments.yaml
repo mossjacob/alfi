@@ -120,7 +120,7 @@ lotka:
     - method: lotka
       train_params:
         epochs: 600
-        report_interval: 20
+        report_interval: 5
       model-params:
         natural: false
         kernel: 'rbf'

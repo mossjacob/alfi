@@ -78,7 +78,7 @@ class LotkaVolterraState(OrdinaryLFMNoPrecompute):
         if initial_state is None:
             self._initial_state = torch.tensor([0, 0], dtype=torch.float)
 
-    def odefunc(self, t, h):
+    def odefunc(self, t, h, return_mean=False, **kwargs):
         """
         Parameters:
             h shape  (S, D)
@@ -89,11 +89,11 @@ class LotkaVolterraState(OrdinaryLFMNoPrecompute):
         dh = self.gp_model(h)
         # reparam trick:
         mean = dh.mean
+        if return_mean:
+            return mean
         var = dh.variance
         z = _standard_normal(mean.shape, dtype=mean.dtype, device=mean.device)
-        dh = mean + z * (var + 1e-7).sqrt()
-        # dh shape (S, D)
-        # print('dh', dh.mean(dim=0), dh.std(dim=0))
+        dh = mean + z * (var + 1e-7).sqrt()  # shape (S, D)
         return dh
 
     def build_output_distribution(self, t, h_samples) -> MultitaskMultivariateNormal:

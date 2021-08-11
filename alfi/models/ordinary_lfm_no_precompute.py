@@ -39,11 +39,9 @@ class OrdinaryLFMNoPrecompute(OrdinaryLFM, ABC):
 
         # Get GP outputs
         if self.train_mode == TrainMode.GRADIENT_MATCH:
-            t_f = t[0]
-            t_output = t_f
-            h0 = t[1].unsqueeze(0).repeat(self.config.num_samples, 1, 1)
-            h_samples = self.odefunc(t_f, h0)
-            h_samples = h_samples.permute(2, 0, 1)
+            h0 = t[0]
+            t_output = t[1]
+            h_samples = self.odefunc(None, h0, return_mean=True).unsqueeze(1)
         else:
             t_output = t
             h0 = self.initial_state

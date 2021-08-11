@@ -113,7 +113,7 @@ class OrdinaryLFM(VariationalLFM):
         return gpytorch.distributions.MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)
 
     @abstractmethod
-    def odefunc(self, t, h):
+    def odefunc(self, t, h, **kwargs):
         """
         Parameters:
             h: shape (num_samples, num_outputs, 1)

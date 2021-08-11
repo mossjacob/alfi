@@ -152,14 +152,12 @@ def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
     if params['state']:
         with torch.no_grad():
             traj = lfm(t_predict).mean.t()
-        x1 = traj[0].detach().squeeze()  # (num_genes, 100)
-        x2 = traj[1].detach().squeeze()  # (num_genes, 100)
         true_x1 = dataset.predator  # (num_genes, num_cells)
         true_x2 = dataset.prey  # (num_genes, num_cells)
         time_ass = dataset.times / dataset.times.max()  # * np.array([[1., 1., 1.,]])
 
         plotter.plot_vector_gp(
-            x1, x2, true_x1, true_x2,
+            traj, torch.stack([true_x1, true_x2], dim=0),
             time_ass=time_ass,
             figsize=(6, 6),
         )
