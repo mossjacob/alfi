@@ -29,7 +29,6 @@ def build_lotka(dataset, params, reload=None, **kwargs):
     periodic = params['kernel'] == 'periodic'
     use_natural = params['natural']
     use_lhs = 'lhs' in params and params['lhs']
-    num_training = dataset[0][0].shape[0]
     lfm_kwargs = dict(num_training_points=num_training)
     if params['state']:
         num_tasks = 2
@@ -75,6 +74,7 @@ def build_lotka(dataset, params, reload=None, **kwargs):
         track_parameters = ['raw_growth', 'raw_decay']
         lengthscale_constraint = Interval(1, 6)
 
+    num_training = dataset[0][0].shape[0]
     print('Num training points: ', num_training)
     config = VariationalConfiguration(latent_data_present=False, num_samples=num_samples)
 
