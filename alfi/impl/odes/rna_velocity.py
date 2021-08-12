@@ -79,7 +79,7 @@ class RNAVelocityLFM(OrdinaryLFM):
     def decay_rate(self, value):
         self.raw_decay_rate = self.positivity.inverse_transform(value)
 
-    def odefunc(self, t, h):
+    def odefunc(self, t, h, return_mean=False, **kwargs):
         """
         h is of shape (num_samples, num_outputs, times)
         times = 1 unless in pretrain mode
@@ -98,8 +98,8 @@ class RNAVelocityLFM(OrdinaryLFM):
         num_samples = h.shape[0]
         num_outputs = h.shape[1]
         num_times = h.shape[2]
-        u = h[:, :num_outputs//2]
-        s = h[:, num_outputs//2:]
+        s = h[:, :num_outputs//2]
+        u = h[:, num_outputs//2:]
 
         # transcription = self.transcription_rate * f
         transcription = f
@@ -108,18 +108,18 @@ class RNAVelocityLFM(OrdinaryLFM):
         transcription = ~self.housekeeping_mask.unsqueeze(0) * transcription
         du = transcription - self.splicing_rate * u
         ds = self.splicing_rate * u - self.decay_rate * s
-        h_t = torch.cat([du, ds], dim=1)
+        h_t = torch.cat([ds, du], dim=1)
 
         return h_t
 
     def build_output_distribution(self, t, h_samples) -> MultitaskMultivariateNormal:
         h_mean = h_samples.mean(dim=1).squeeze(-1).transpose(0, 1)  # shape was (#outputs, #T, 1)
         h_var = h_samples.var(dim=1).squeeze(-1).transpose(0, 1) + 1e-7
-        self.current_trajectory = h_mean
         if not (self.train_mode == TrainMode.NORMAL):
             h_covar = DiagLazyTensor(h_var)
             batch_mvn = MultivariateNormal(h_mean, h_covar)
             return MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)
+        self.current_trajectory = h_mean
 
         h_mean = h_mean[:, self.time_assignments_indices]
         h_var = h_var[:, self.time_assignments_indices]

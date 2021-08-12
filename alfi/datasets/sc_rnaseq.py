@@ -47,14 +47,12 @@ class Pancreas(TranscriptomicTimeSeries):
                 scv.pp.moments(data, n_neighbors=30, n_pcs=30)
                 u = data.layers['Mu']
                 s = data.layers['Ms']
-
-            print(u.shape, s.shape)
             # scaling = u.std(axis=0) / s.std(axis=0)
             # u /= np.expand_dims(scaling, 0)
 
             self.loom = data
             self.gene_names = self.loom.var.index
-            self.data = np.concatenate([u, s], axis=1)
+            self.data = np.concatenate([s, u], axis=1)
             num_cells = self.data.shape[0]
             self.data = torch.tensor(self.data.swapaxes(0, 1).reshape(4000, 1, num_cells))
             self.m_observed = self.data.permute(1, 0, 2)
