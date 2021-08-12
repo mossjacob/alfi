@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 from matplotlib import pyplot as plt
 from torch.optim import Adam
@@ -69,8 +70,8 @@ def plot_variational(dataset, lfm, trainer, plotter, filepath, params):
     kinetics = list()
     for key in ['raw_basal', 'raw_sensitivity', 'raw_decay']:
         kinetics.append(trainer.parameter_trace[key][-1].squeeze().numpy())
-
-    plotter.plot_double_bar(kinetics, labels, p53_ground_truth())
+    kinetics = np.array(kinetics)
+    plotter.plot_double_bar(kinetics, titles=labels, ground_truths=p53_ground_truth())
     plt.savefig(filepath / 'kinetics.pdf', **tight_kwargs)
 
     plotter.plot_outputs(t_predict, replicate=0,
