@@ -27,15 +27,14 @@ class OrdinaryLFM(VariationalLFM):
         super().__init__(num_outputs, gp_model, config, **kwargs)
         self.nfe = 0
         self.f = None
-        self._initial_state = initial_state
         if initial_state is None:
-            self._initial_state = torch.zeros(torch.Size([self.num_outputs, 1]), dtype=self.dtype)
+            self.initial_state = torch.zeros(torch.Size([self.num_outputs, 1]), dtype=self.dtype)
+        else:
+            self.initial_state = initial_state
 
     @property
     def initial_state(self):
-        return self._initial_state #initial_state.repeat(self.config.num_samples, 1, 1)  # Add batch dimension for sampling
-        # if self.config.initial_conditions: TODO:
-        #     h = self.initial_conditions.repeat(h.shape[0], 1, 1)
+        return self._initial_state
 
     @initial_state.setter
     def initial_state(self, value):

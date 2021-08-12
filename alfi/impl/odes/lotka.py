@@ -74,9 +74,10 @@ class LotkaVolterraState(OrdinaryLFMNoPrecompute):
         self.nonlinearity = softplus
         self.nonzero_mask = nonzero_mask
         # self.num_data = num_data
-        self._initial_state = initial_state
         if initial_state is None:
-            self._initial_state = torch.tensor([0, 0], dtype=torch.float)
+            self.initial_state = torch.tensor([0, 0], dtype=torch.float)
+        else:
+            self.initial_state = initial_state
 
     def odefunc(self, t, h, return_mean=False, **kwargs):
         """

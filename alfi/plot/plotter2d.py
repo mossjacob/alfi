@@ -7,6 +7,7 @@ from .base_plotter import Plotter
 from alfi.datasets import scaled_barenco_data
 from alfi.models import VariationalLFM, TrainMode, OrdinaryLFMNoPrecompute
 from .colours import Colours
+from alfi.utilities import is_cuda
 
 
 plt.style.use('seaborn')
@@ -39,8 +40,8 @@ class Plotter2d(Plotter):
                        cell_colors=None):
         with torch.no_grad():
 
-            x1, x2 = h
-            true_x1, true_x2 = true_h
+            x1, x2 = h.cpu()
+            true_x1, true_x2 = true_h.cpu()
             if not show:
                 plt.ioff()
 
@@ -61,10 +62,10 @@ class Plotter2d(Plotter):
                        alpha=alpha, s=5, cmap='viridis', c=cell_colors[indices])
 
             # Plot inducing vectors
-            inducing_points = self.model.inducing_points
+            inducing_points = self.model.inducing_points.cuda() if is_cuda() else self.model.inducing_points
             num_inducing = inducing_points.shape[1]
             if isinstance(self.model, OrdinaryLFMNoPrecompute):
-                ax.scatter(self.model.initial_state[:, 0], self.model.initial_state[:, 1])
+                ax.scatter(self.model.initial_state[:, 0].cpu(), self.model.initial_state[:, 1].cpu())
 
                 self.model.set_mode(TrainMode.GRADIENT_MATCH)
                 h_grad = self.model((inducing_points, None)).mean
@@ -90,9 +91,9 @@ class Plotter2d(Plotter):
                 h_grad = self.model((inducing_points, traj)).mean.view(num_inducing, 2, -1)
                 h_grad = h_grad[..., batch_index]
 
-            grad_x1 = h_grad[:, 0]
-            grad_x2 = h_grad[:, 1]
-            ax.quiver(ind_x1, ind_x2, grad_x1, grad_x2)
+            grad_x1 = h_grad[:, 0].cpu()
+            grad_x2 = h_grad[:, 1].cpu()
+            ax.quiver(ind_x1.cpu(), ind_x2.cpu(), grad_x1, grad_x2)
 
             if labels is not None:
                 ax.set_xlabel(labels[0])

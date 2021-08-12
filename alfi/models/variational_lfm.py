@@ -10,6 +10,7 @@ from gpytorch.likelihoods import MultitaskGaussianLikelihood
 from .lfm import LFM
 from alfi.configuration import VariationalConfiguration
 from alfi.mlls import MaskedVariationalELBO
+from alfi.utilities import is_cuda
 
 
 class TrainMode(Enum):
@@ -77,8 +78,9 @@ class VariationalLFM(LFM, ABC):
     def summarise_gp_hyp(self):
         with torch.no_grad():
             def convert(x):
+                inducing_points = self.inducing_points.cuda() if is_cuda() else self.inducing_points
                 x = x.detach().cpu().view(-1).numpy()[:5]
-                noise = self.gp_model(self.inducing_points).variance.mean(dim=0)
+                noise = self.gp_model(inducing_points).variance.mean(dim=0).cpu()
                 return str(x) + ' noise: ' + str(noise)
             if self.gp_model.covar_module.lengthscale is not None:
                 return convert(self.gp_model.covar_module.lengthscale)

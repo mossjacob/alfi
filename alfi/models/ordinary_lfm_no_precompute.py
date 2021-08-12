@@ -19,7 +19,7 @@ class OrdinaryLFMNoPrecompute(OrdinaryLFM, ABC):
         self.nfe = 0
         self.f = None
 
-    @property
+    @OrdinaryLFM.initial_state.getter
     def initial_state(self):
         return self._initial_state.unsqueeze(0)\
                                   .repeat(self.config.num_samples, 1)
