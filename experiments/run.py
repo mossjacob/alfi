@@ -4,6 +4,8 @@ import seaborn as sns
 import time
 import numpy as np
 import torch
+import matplotlib as mpl
+mpl.use('Agg')
 
 from matplotlib import pyplot as plt
 from pathlib import Path

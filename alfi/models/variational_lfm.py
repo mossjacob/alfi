@@ -2,7 +2,6 @@ from abc import ABC
 from enum import Enum
 
 import torch
-from torch.nn.parameter import Parameter
 
 from gpytorch.models import ApproximateGP
 from gpytorch.likelihoods import MultitaskGaussianLikelihood

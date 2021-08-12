@@ -74,10 +74,12 @@ def plot_variational(dataset, lfm, trainer, plotter, filepath, params):
     plotter.plot_double_bar(kinetics, titles=labels, ground_truths=p53_ground_truth())
     plt.savefig(filepath / 'kinetics.pdf', **tight_kwargs)
 
-    plotter.plot_outputs(t_predict, replicate=0,
-                         t_scatter=dataset.t_observed, y_scatter=dataset.m_observed,
-                         model_kwargs=dict(step_size=1e-1))
+    q_m = lfm.predict_m(t_predict, step_size=1e-1)
+    q_f = lfm.predict_f(t_predict)
+
+    plotter.plot_gp(q_m, t_predict, replicate=0,
+                    t_scatter=dataset.t_observed, y_scatter=dataset.m_observed)
     plt.savefig(filepath / 'outputs.pdf', **tight_kwargs)
 
-    plotter.plot_latents(t_predict, ylim=(-1, 3), plot_barenco=False, plot_inducing=False)
+    plotter.plot_gp(q_f, t_predict, ylim=(-1, 3), plot_inducing=False)
     plt.savefig(filepath / 'latents.pdf', **tight_kwargs)

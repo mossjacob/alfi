@@ -1,4 +1,4 @@
-# LaFoMo: Latent Force Models
+# Alfi: Approximate Latent Force Inference
 
 > _Don't miss out!_
 
@@ -15,7 +15,7 @@
 
 This library implements several Latent Force Models. These are all implemented in building blocks simplifying the creation of novel models or combinations.
 
-We support analytical (exact) inference in addition to inducing point approximations for non-linear LFMs written in PyTorch. Furthermore, an MCMC-based component library based on TensorFlow Probability is included for a fully Bayesian treatment of ODE parameters.
+We support analytical (exact) inference in addition to inducing point approximations for non-linear LFMs written in PyTorch.
 
 
 ## Installation
