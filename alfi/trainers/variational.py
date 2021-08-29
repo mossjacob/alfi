@@ -35,7 +35,7 @@ class VariationalTrainer(Trainer):
             data_input = data_input.cuda() if is_cuda() else data_input
             y = y.cuda() if is_cuda() else y
             # Assume that the batch of t s are the same
-            data_input, y = data_input[0], y.squeeze()
+            data_input, y = data_input[0], y
             output = self.lfm(data_input, step_size=step_size)
             y_target = y.t()
 
