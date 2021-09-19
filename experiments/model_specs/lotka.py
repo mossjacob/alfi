@@ -159,7 +159,7 @@ def plot_lotka(dataset, lfm, trainer, plotter, filepath, params):
 
         plotter.plot_vector_gp(
             traj, torch.stack([true_x1, true_x2], dim=0),
-            time_ass=time_ass,
+            cell_colors=time_ass,
             figsize=(6, 6),
         )
         plt.savefig(filepath / 'vectorfield.pdf', **tight_kwargs)

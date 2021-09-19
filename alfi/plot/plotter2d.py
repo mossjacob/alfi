@@ -27,7 +27,6 @@ class Plotter2d(Plotter):
         self.num_replicates = self.model.num_outputs // self.num_outputs
 
     def plot_vector_gp(self, h, true_h,
-                       time_ass=None,
                        ax=None,
                        figsize=(3, 3),
                        show=True,
@@ -39,7 +38,6 @@ class Plotter2d(Plotter):
                        alpha=0.8,
                        cell_colors=None):
         with torch.no_grad():
-
             x1, x2 = h.cpu()
             true_x1, true_x2 = true_h.cpu()
             if not show:
@@ -57,9 +55,12 @@ class Plotter2d(Plotter):
             indices = np.intersect1d(true_x1.nonzero(), true_x2.nonzero())
 
             if cell_colors is None:
-                cell_colors = time_ass
+                cell_colors = 'black'
+            else:
+                cell_colors = cell_colors[indices]
+                
             ax.scatter(true_x1[indices], true_x2[indices],
-                       alpha=alpha, s=5, cmap='viridis', c=cell_colors[indices])
+                       alpha=alpha, s=5, cmap='viridis', c=cell_colors)
 
             # Plot inducing vectors
             inducing_points = self.model.inducing_points.cuda() if is_cuda() else self.model.inducing_points

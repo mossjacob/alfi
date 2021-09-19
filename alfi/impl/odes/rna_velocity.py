@@ -20,13 +20,17 @@ class RNAVelocityConfiguration(VariationalConfiguration):
 
 
 class RNAVelocityLFM(OrdinaryLFM):
+    """
+    Parameters:
+        time_assignments: shape (num_cells)
+    """
     def __init__(self,
                  num_outputs,
                  gp_model,
                  config: RNAVelocityConfiguration,
                  nonlinearity=relu,
                  decay_rate=None, transcription_rate=None, splicing_rate=None,
-                 nonzero_mask=None, housekeeping_mask=None, **kwargs):
+                 nonzero_mask=None, housekeeping_mask=None, time_assignments=None, **kwargs):
         super().__init__(num_outputs, gp_model, config, **kwargs)
         num_genes = num_outputs // 2
         if housekeeping_mask is None:
@@ -47,9 +51,14 @@ class RNAVelocityLFM(OrdinaryLFM):
         self.nonlinearity = nonlinearity
         self.num_cells = config.num_cells
 
-        # Initialise random time assignments
-        self.time_assignments_indices = torch.zeros(self.num_cells, dtype=torch.long)
-        self.timepoint_choices = torch.linspace(0, config.end_pseudotime, config.num_timepoint_choices) #, requires_grad=False
+        # Initialise time assignments
+        self.timepoint_choices = torch.linspace(0, config.end_pseudotime, config.num_timepoint_choices,
+                                                requires_grad=False)
+        if time_assignments is None:  # make random assigment
+            self.time_assignments_indices = torch.zeros(self.num_cells, dtype=torch.long)
+        else:
+            diff = np.square(time_assignments.reshape(-1, 1) - self.timepoint_choices.reshape(1, -1))
+            self.time_assignments_indices = diff.argmin(axis=1)
 
         # Initialise trajectory
         self.current_trajectory = None
