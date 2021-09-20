@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 from torch.nn import Parameter
 from torch.nn.functional import relu
@@ -57,7 +58,7 @@ class RNAVelocityLFM(OrdinaryLFM):
         if time_assignments is None:  # make random assigment
             self.time_assignments_indices = torch.zeros(self.num_cells, dtype=torch.long)
         else:
-            diff = np.square(time_assignments.reshape(-1, 1) - self.timepoint_choices.reshape(1, -1))
+            diff = (time_assignments.view(-1, 1) - self.timepoint_choices.view(1, -1)).square()
             self.time_assignments_indices = diff.argmin(axis=1)
 
         # Initialise trajectory
