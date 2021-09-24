@@ -22,8 +22,9 @@ class EMTrainer(Trainer):
     inducing timepoints.
     give_output: whether the trainer should give the first output (y_0) as initial value to the model `forward()`
     """
-    def __init__(self, lfm: RNAVelocityLFM, optimizers, dataset: LFMDataset, batch_size: int, **kwargs):
+    def __init__(self, lfm: RNAVelocityLFM, optimizers, dataset: LFMDataset, batch_size: int, time_fixed_epochs=-1, **kwargs):
         super().__init__(lfm, optimizers, dataset, batch_size=batch_size, **kwargs)
+        self.time_fixed_epochs = time_fixed_epochs
         cells = next(iter(self.data_loader))
         X = cells.squeeze().t()
         self.num_clusters = 8
@@ -33,7 +34,7 @@ class EMTrainer(Trainer):
         print(self.kmeans.cluster_centers_.shape)
         self.within_penalty_coefficient = 0.01
 
-    def e_step(self, y, add_penalty=True):
+    def e_step(self, y, add_penalty=False):
         # Given parameters, assign the timepoints
         num_outputs = self.lfm.num_outputs
         traj = self.lfm.current_trajectory
@@ -159,22 +160,23 @@ class EMTrainer(Trainer):
 
             ### E-step ###
             # assign timepoints $t_i$ to each cell by minimising its distance to the trajectory
-            # if epoch > 0:
-            e_step = 5 if self.lfm.train_mode == TrainMode.GRADIENT_MATCH else 1
-            if (epoch % e_step) == 0:
-                with torch.no_grad():
-                    if not (self.lfm.train_mode == TrainMode.NORMAL):
-                        # If pretraining, then call the LFM with normal mode
-                        mode = self.lfm.train_mode
-                        self.lfm.set_mode(TrainMode.NORMAL)
-                        self.lfm(self.lfm.timepoint_choices, step_size=step_size)
-                        self.e_step(cells)
-                        self.lfm.set_mode(mode)
-                    else:
-                        self.e_step(cells)
-            # print('estep done')
-            # else:
-            #     self.random_assignment()
+            if epoch > self.time_fixed_epochs:
+                print('running e step')
+                e_step = 5 if self.lfm.train_mode == TrainMode.GRADIENT_MATCH else 1
+                if (epoch % e_step) == 0:
+                    with torch.no_grad():
+                        if not (self.lfm.train_mode == TrainMode.NORMAL):
+                            # If pretraining, then call the LFM with normal mode
+                            mode = self.lfm.train_mode
+                            self.lfm.set_mode(TrainMode.NORMAL)
+                            self.lfm(self.lfm.timepoint_choices, step_size=step_size)
+                            self.e_step(cells)
+                            self.lfm.set_mode(mode)
+                        else:
+                            self.e_step(cells)
+                # print('estep done')
+                # else:
+                #     self.random_assignment()
 
             ### M-step: given timepoints, maximise for parameters ###
 
