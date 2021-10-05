@@ -9,7 +9,7 @@ from scvelo import read
 
 
 class Pancreas(TranscriptomicTimeSeries):
-    def __init__(self, max_cells=10000, gene_index=None, data_dir='../data/', calc_moments=True):
+    def __init__(self, max_cells=10000, gene_index=None, cell_mask=None, data_dir='../data/', calc_moments=True):
         super().__init__()
         if gene_index is None:
             self.num_outputs = 4000
@@ -19,52 +19,60 @@ class Pancreas(TranscriptomicTimeSeries):
             self.num_outputs = 2
         data_path = Path(data_dir)
         cache_path = data_path / 'pancreas' / 'pancreas.pt'
-        if path.exists(cache_path):
-            data = torch.load(cache_path)
-            if gene_index is None:
-                self.m_observed = data['m_observed']
-                self.data = data['data']
-            elif type(gene_index) is tuple:
-                gene_index = np.arange(gene_index[0], gene_index[1])
-                self.m_observed = data['m_observed'][:, [*gene_index, *(2000 + gene_index)]]
-                self.data = [data['data'][i] for i in np.concatenate([gene_index, 2000+gene_index])]
-            else:
-                self.m_observed = data['m_observed'][:, [gene_index, 2000 + gene_index]]
-                self.data = [data['data'][gene_index], data['data'][2000 + gene_index]]
+        if not path.exists(cache_path):
+            self.cache_data()
 
-            self.gene_names = data['gene_names']
-            self.loom = data['loom']
+        data = torch.load(cache_path)
+        if gene_index is None:
+            self.m_observed = data['m_observed']
+            self.data = data['data']
+        elif type(gene_index) is tuple:
+            gene_index = np.arange(gene_index[0], gene_index[1])
+            self.m_observed = data['m_observed'][:, [*gene_index, *(2000 + gene_index)]]
+            self.data = [data['data'][i] for i in np.concatenate([gene_index, 2000+gene_index])]
         else:
-            import scvelo as scv
-            filename = data_path / 'pancreas' / 'endocrinogenesis_day15.h5ad'
-            data = read(filename, sparse=True, cache=True)
-            data.var_names_make_unique()
+            self.m_observed = data['m_observed'][:, [gene_index, 2000 + gene_index]]
+            self.data = [data['data'][gene_index], data['data'][2000 + gene_index]]
 
-            scv.pp.filter_and_normalize(data, min_shared_counts=20, n_top_genes=2000)
-            u = data.layers['unspliced'].toarray()[:max_cells]
-            s = data.layers['spliced'].toarray()[:max_cells]
-            if calc_moments:
-                scv.pp.moments(data, n_neighbors=30, n_pcs=30)
-                u = data.layers['Mu']
-                s = data.layers['Ms']
-            # scaling = u.std(axis=0) / s.std(axis=0)
-            # u /= np.expand_dims(scaling, 0)
+        if cell_mask is not None:
+            self.m_observed = self.m_observed[..., cell_mask]
+            self.data[0] = self.data[0][..., cell_mask]
+            self.data[1] = self.data[1][..., cell_mask]
+        self.gene_names = data['gene_names']
+        self.loom = data['loom']
 
-            self.loom = data
-            self.gene_names = self.loom.var.index
-            self.data = np.concatenate([s, u], axis=1)
-            num_cells = self.data.shape[0]
-            self.data = torch.tensor(self.data.swapaxes(0, 1).reshape(4000, 1, num_cells))
-            self.m_observed = self.data.permute(1, 0, 2)
 
-            self.data = list(self.data)
+    def cache_data(self):
+        import scvelo as scv
+        filename = data_path / 'pancreas' / 'endocrinogenesis_day15.h5ad'
+        data = read(filename, sparse=True, cache=True)
+        data.var_names_make_unique()
 
-            torch.save({
-                'data': self.data,
-                'm_observed': self.m_observed,
-                'gene_names': self.gene_names,
-                'loom': self.loom,
-            }, cache_path)
+        scv.pp.filter_and_normalize(data, min_shared_counts=20, n_top_genes=2000)
+        u = data.layers['unspliced'].toarray()[:max_cells]
+        s = data.layers['spliced'].toarray()[:max_cells]
+        if calc_moments:
+            scv.pp.moments(data, n_neighbors=30, n_pcs=30)
+            u = data.layers['Mu']
+            s = data.layers['Ms']
+        # scaling = u.std(axis=0) / s.std(axis=0)
+        # u /= np.expand_dims(scaling, 0)
+
+        loom = data
+        gene_names = loom.var.index
+        data = np.concatenate([s, u], axis=1)
+        num_cells = data.shape[0]
+        data = torch.tensor(data.swapaxes(0, 1).reshape(4000, 1, num_cells))
+        m_observed = data.permute(1, 0, 2)
+
+        data = list(data)
+
+        torch.save({
+            'data': data,
+            'm_observed': m_observed,
+            'gene_names': gene_names,
+            'loom': loom,
+        }, cache_path)
 
 
 class SingleCellKidney(TranscriptomicTimeSeries):
