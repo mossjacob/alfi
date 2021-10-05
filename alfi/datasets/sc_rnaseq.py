@@ -34,14 +34,13 @@ class Pancreas(TranscriptomicTimeSeries):
             self.m_observed = data['m_observed'][:, [gene_index, 2000 + gene_index]]
             self.data = [data['data'][gene_index], data['data'][2000 + gene_index]]
 
+        self.gene_names = data['gene_names']
+        self.loom = data['loom']
         if cell_mask is not None:
             self.m_observed = self.m_observed[..., cell_mask]
             self.data[0] = self.data[0][..., cell_mask]
             self.data[1] = self.data[1][..., cell_mask]
-        self.gene_names = data['gene_names']
-        self.loom = data['loom']
-
-
+            self.loom = self.loom[cell_mask]
     def cache_data(self):
         import scvelo as scv
         filename = data_path / 'pancreas' / 'endocrinogenesis_day15.h5ad'
