@@ -29,9 +29,6 @@ class EMTrainer(Trainer):
         X = cells.squeeze().t()
         self.num_clusters = 8
         self.kmeans = KMeans(n_clusters=self.num_clusters, random_state=0).fit(X)
-        print(self.kmeans.labels_.shape)
-        print(self.kmeans.predict(X).shape)
-        print(self.kmeans.cluster_centers_.shape)
         self.within_penalty_coefficient = 0.01
 
     def e_step(self, y, add_penalty=False):
@@ -182,7 +179,7 @@ class EMTrainer(Trainer):
 
             # TODO try to do it for only the time assignments
             t_sorted, inv_indices = torch.unique(self.lfm.time_assignments_indices, sorted=True, return_inverse=True)
-            print('num t2:', t_sorted.shape)
+            # print('num t2:', t_sorted.shape)
             '''
             output = self.model(t_sorted, initial_value, rtol=rtol, atol=atol)
             output = output[:, inv_indices]

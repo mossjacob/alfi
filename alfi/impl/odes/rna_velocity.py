@@ -111,8 +111,8 @@ class RNAVelocityLFM(OrdinaryLFM):
         s = h[:, :num_outputs//2]
         u = h[:, num_outputs//2:]
 
-        transcription = self.transcription_rate * f
-        # transcription = f
+        # transcription = self.transcription_rate * f
+        transcription = f
         # Mask out the housekeeping genes, as these should have constant rates
         # TODO: this should not be zero, but some constant!
         transcription = ~self.housekeeping_mask.unsqueeze(0) * transcription
@@ -159,7 +159,7 @@ class RNAVelocityLFM(OrdinaryLFM):
             f: (I, T)
         """
         # nn linear
-        return f.repeat(1, self.num_outputs//2//self.num_latents, 1)  # (S, I, t)
+        return f
 
     def predict_f(self, t_predict, **kwargs):
         # Sample from the latent distribution
