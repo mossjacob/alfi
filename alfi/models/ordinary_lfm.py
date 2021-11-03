@@ -77,7 +77,6 @@ class OrdinaryLFM(VariationalLFM):
         else:
             # Integrate forward from the initial positions h0.
             self.t_index = 0
-            self.last_t = self.f.min() - 1
             self.last_t = t_f.min() - 1
             h_samples = odeint(self.odefunc, h0, t, method='rk4', options=dict(step_size=step_size)) # (T, S, num_outputs, 1)
 
