@@ -33,6 +33,14 @@ from .model_specs.lotka import build_lotka, plot_lotka
 from .model_specs.lfo import build_dataset, build_lfo
 from .model_specs.rnavelocity import build_rnavelocity, plot_rnavelocity
 
+"""
+MAIN EXPERIMENT SCRIPT
+This script is used to run the main experiments to test Alfi. Further scripts for calculating the errors displayed
+in the tables in the Alfi paper can be found in the `evaluation_scripts_for_paper` directory.
+
+It may be clearer to start with the Jupyter notebooks found in docs/notebooks, as they go through some experiments
+step-by-step.
+"""
 
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = 'CMU Serif'

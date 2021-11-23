@@ -18,7 +18,9 @@ from alfi.models import ExactLFM
 from alfi.trainers import ExactTrainer
 from collections import namedtuple
 
-""" Experiment for finding mean absolute errors """
+"""
+Experiment for finding mean absolute errors in the toy transcriptomic dataset
+"""
 def get_datasets(data_dir='.'):
     from alfi.datasets import LFMDataset
     class DSet(LFMDataset):

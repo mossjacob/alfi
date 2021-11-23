@@ -9,7 +9,6 @@ from alfi.configuration import VariationalConfiguration
 from alfi.models import OrdinaryLFM, generate_multioutput_gp
 from alfi.plot import Plotter1d
 from alfi.trainers import VariationalTrainer
-from alfi.utilities.data import p53_ground_truth
 from alfi.impl.odes import TranscriptionLFM
 
 tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
@@ -71,7 +70,7 @@ def plot_variational(dataset, lfm, trainer, plotter, filepath, params):
     for key in ['raw_basal', 'raw_sensitivity', 'raw_decay']:
         kinetics.append(trainer.parameter_trace[key][-1].squeeze().numpy())
     kinetics = np.array(kinetics)
-    plotter.plot_double_bar(kinetics, titles=labels, ground_truths=p53_ground_truth())
+    plotter.plot_double_bar(kinetics, titles=labels, ground_truths=P53Data.params_ground_truth())
     plt.savefig(filepath / 'kinetics.pdf', **tight_kwargs)
 
     q_m = lfm.predict_m(t_predict, step_size=1e-1)

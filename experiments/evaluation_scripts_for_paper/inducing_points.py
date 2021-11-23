@@ -7,15 +7,16 @@ from gpytorch.constraints import Positive
 import seaborn as sns
 import numpy as np
 
-from.variational import TranscriptionLFM
+from experiments.model_specs.variational import TranscriptionLFM
 from alfi.datasets import P53Data
 from alfi.configuration import VariationalConfiguration
 from alfi.models import OrdinaryLFM, generate_multioutput_gp
 from alfi.trainers import VariationalTrainer
-from alfi.utilities.data import p53_ground_truth
 
 
-""" Experiment for plotting the ideal inducing point """
+""" 
+Experiment for plotting the ideal number of inducing points 
+"""
 
 
 class P53ConstrainedTrainer(VariationalTrainer):
@@ -40,7 +41,7 @@ config = VariationalConfiguration(
 )
 
 def diff(lfm: TranscriptionLFM):
-    B_exact, S_exact, D_exact = p53_ground_truth()
+    B_exact, S_exact, D_exact = P53Data.params_ground_truth()
     B = lfm.basal_rate.detach().squeeze()
     D = lfm.decay_rate.detach().squeeze()
     S = lfm.sensitivity.detach().squeeze()
