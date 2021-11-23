@@ -7,14 +7,12 @@ from gpytorch.constraints import Positive
 import seaborn as sns
 import numpy as np
 
-from alfi.datasets import P53Data, ToyTranscriptomicGenerator
 from alfi.configuration import VariationalConfiguration
 from alfi.models import OrdinaryLFM, generate_multioutput_gp
 from alfi.trainers import VariationalTrainer
-from .variational import TranscriptionLFM
-from alfi.utilities.data import p53_ground_truth
-from torch.nn.functional import l1_loss
 from gpytorch.mlls.exact_marginal_log_likelihood import ExactMarginalLogLikelihood
+
+from experiments.model_specs.variational import TranscriptionLFM
 
 from alfi.datasets import P53Data
 from alfi.models import ExactLFM

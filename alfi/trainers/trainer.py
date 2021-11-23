@@ -50,7 +50,11 @@ class Trainer:
             named_params = dict(lfm.named_parameters())
             self.parameter_trace = {key: [named_params[key].detach()] for key in track_parameters}
 
-    def train(self, epochs=20, report_interval=1, **kwargs):
+    def train(self, epochs=20, report_interval=1, reporter_callback=None, **kwargs):
+        """
+        Parameters:
+            reporter_callback: function called every report_interval
+        """
         self.lfm.train()
 
         losses = list()
@@ -62,6 +66,8 @@ class Trainer:
             t = time.time()
             times.append((t, epoch_loss))
             if (epoch % report_interval) == 0:
+                if reporter_callback is not None:
+                    reporter_callback(self.num_epochs)
                 print('Epoch %03d/%03d - Loss: %.2f (' % (
                     self.num_epochs + 1, end_epoch, epoch_loss), end='')
                 print(' '.join(map(lambda l: '%.2f' % l, split_loss)), end='')

@@ -18,17 +18,28 @@ class OrdinaryLFM(VariationalLFM):
     Inheriting classes must override the `odefunc` function which encodes the ODE.
     """
 
-    def __init__(self, num_outputs, gp_model, config: VariationalConfiguration, **kwargs):
+    def __init__(self,
+                 num_outputs,
+                 gp_model,
+                 config: VariationalConfiguration,
+                 initial_state=None,
+                 **kwargs):
         super().__init__(num_outputs, gp_model, config, **kwargs)
         self.nfe = 0
         self.f = None
+        if initial_state is None:
+            self.initial_state = torch.zeros(torch.Size([self.num_outputs, 1]), dtype=self.dtype)
+        else:
+            self.initial_state = initial_state
 
+    @property
     def initial_state(self):
-        initial_state = torch.zeros(torch.Size([self.num_outputs, 1]), dtype=torch.float64)
-        initial_state = initial_state.cuda() if is_cuda() else initial_state
-        return initial_state #initial_state.repeat(self.config.num_samples, 1, 1)  # Add batch dimension for sampling
-        # if self.config.initial_conditions: TODO:
-        #     h = self.initial_conditions.repeat(h.shape[0], 1, 1)
+        return self._initial_state
+
+    @initial_state.setter
+    def initial_state(self, value):
+        value = value.cuda() if is_cuda() else value
+        self._initial_state = value
 
     def forward(self, t, step_size=1e-1, return_samples=False, **kwargs):
         """
@@ -51,7 +62,7 @@ class OrdinaryLFM(VariationalLFM):
         else:
             t_f = torch.arange(t.min(), t.max()+step_size/3, step_size/3)
             t_output = t
-            h0 = self.initial_state()
+            h0 = self.initial_state
             h0 = h0.unsqueeze(0).repeat(self.config.num_samples, 1, 1)
 
         q_f = self.gp_model(t_f)
@@ -66,7 +77,7 @@ class OrdinaryLFM(VariationalLFM):
         else:
             # Integrate forward from the initial positions h0.
             self.t_index = 0
-            self.last_t = self.f.min() - 1
+            self.last_t = t_f.min() - 1
             h_samples = odeint(self.odefunc, h0, t, method='rk4', options=dict(step_size=step_size)) # (T, S, num_outputs, 1)
 
         # self.t_index = None
@@ -79,6 +90,10 @@ class OrdinaryLFM(VariationalLFM):
         return dist
 
     def build_output_distribution(self, t, h_samples) -> Distribution:
+        """
+        Parameters:
+            h_samples: shape (T, S, D)
+        """
         h_mean = h_samples.mean(dim=1).squeeze(-1).transpose(0, 1)  # shape was (#outputs, #T, 1)
         h_var = h_samples.var(dim=1).squeeze(-1).transpose(0, 1) + 1e-7
 
@@ -97,7 +112,7 @@ class OrdinaryLFM(VariationalLFM):
         return gpytorch.distributions.MultitaskMultivariateNormal.from_batch_mvn(batch_mvn, task_dim=0)
 
     @abstractmethod
-    def odefunc(self, t, h):
+    def odefunc(self, t, h, **kwargs):
         """
         Parameters:
             h: shape (num_samples, num_outputs, 1)

@@ -12,7 +12,7 @@ from alfi.plot import Plotter1d, Colours, tight_kwargs
 from alfi.trainers import VariationalTrainer, PreEstimator
 from alfi.models import ExactLFM
 from alfi.trainers import ExactTrainer
-from experiments.variational import TranscriptionLFM
+from alfi.impl.odes import TranscriptionLFM
 
 
 plt.rcParams.update({'font.size': 82})

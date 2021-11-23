@@ -4,6 +4,8 @@ import seaborn as sns
 import time
 import numpy as np
 import torch
+import matplotlib as mpl
+mpl.use('Agg')
 
 from matplotlib import pyplot as plt
 from pathlib import Path
@@ -16,7 +18,7 @@ from alfi.datasets import (
 from alfi.utilities.torch import get_mean_trace, is_cuda
 from alfi.models import TrainMode
 try:
-    from .partial import build_partial, plot_partial, pretrain_partial
+    from .model_specs.partial import build_partial, plot_partial, pretrain_partial
 except ImportError:
     build_partial, plot_partial, pretrain_partial = None, None, None
 
@@ -31,6 +33,14 @@ from .model_specs.lotka import build_lotka, plot_lotka
 from .model_specs.lfo import build_dataset, build_lfo
 from .model_specs.rnavelocity import build_rnavelocity, plot_rnavelocity
 
+"""
+MAIN EXPERIMENT SCRIPT
+This script is used to run the main experiments to test Alfi. Further scripts for calculating the errors displayed
+in the tables in the Alfi paper can be found in the `evaluation_scripts_for_paper` directory.
+
+It may be clearer to start with the Jupyter notebooks found in docs/notebooks, as they go through some experiments
+step-by-step.
+"""
 
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = 'CMU Serif'
@@ -57,6 +67,7 @@ parser.add_argument('--data', type=str, choices=dataset_choices, default=dataset
 parser.add_argument('--reload', type=bool, default=False)
 parser.add_argument('--timer', type=bool, default=False)
 parser.add_argument('--timer_samples', type=int, default=5)
+parser.add_argument('--experiment_index', type=int, default=-1)
 
 datasets = {
     'p53': lambda: P53Data(replicate=0, data_dir='data'),
@@ -173,13 +184,16 @@ def run_model(method, dataset, model, trainer, plotter, filepath, save_filepath,
 if __name__ == "__main__":
     args = parser.parse_args()
     key = args.data
+    experiment_index = args.experiment_index
 
     print(TerminalColours.GREEN, 'Running experiments for dataset:', key, TerminalColours.END)
     data_config = config[key]
     dataset = datasets[key]()
     experiments = data_config['experiments']
     seen_methods = dict()
-    for experiment in experiments:
+    for i, experiment in enumerate(experiments):
+        if experiment_index > -1 and experiment_index != i:
+            continue
         method = experiment['method']
         print(TerminalColours.GREEN, 'Constructing method:', method, TerminalColours.END)
         if method in builders:

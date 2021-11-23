@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 from matplotlib import pyplot as plt
 from torch.optim import Adam
@@ -8,7 +9,6 @@ from alfi.configuration import VariationalConfiguration
 from alfi.models import OrdinaryLFM, generate_multioutput_gp
 from alfi.plot import Plotter1d
 from alfi.trainers import VariationalTrainer
-from alfi.utilities.data import p53_ground_truth
 from alfi.impl.odes import TranscriptionLFM
 
 tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
@@ -69,14 +69,16 @@ def plot_variational(dataset, lfm, trainer, plotter, filepath, params):
     kinetics = list()
     for key in ['raw_basal', 'raw_sensitivity', 'raw_decay']:
         kinetics.append(trainer.parameter_trace[key][-1].squeeze().numpy())
-
-    plotter.plot_double_bar(kinetics, labels, p53_ground_truth())
+    kinetics = np.array(kinetics)
+    plotter.plot_double_bar(kinetics, titles=labels, ground_truths=P53Data.params_ground_truth())
     plt.savefig(filepath / 'kinetics.pdf', **tight_kwargs)
 
-    plotter.plot_outputs(t_predict, replicate=0,
-                         t_scatter=dataset.t_observed, y_scatter=dataset.m_observed,
-                         model_kwargs=dict(step_size=1e-1))
+    q_m = lfm.predict_m(t_predict, step_size=1e-1)
+    q_f = lfm.predict_f(t_predict)
+
+    plotter.plot_gp(q_m, t_predict, replicate=0,
+                    t_scatter=dataset.t_observed, y_scatter=dataset.m_observed)
     plt.savefig(filepath / 'outputs.pdf', **tight_kwargs)
 
-    plotter.plot_latents(t_predict, ylim=(-1, 3), plot_barenco=False, plot_inducing=False)
+    plotter.plot_gp(q_f, t_predict, ylim=(-1, 3), plot_inducing=False)
     plt.savefig(filepath / 'latents.pdf', **tight_kwargs)

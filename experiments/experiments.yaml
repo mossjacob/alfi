@@ -116,6 +116,16 @@ lotka:
       model-params:
         natural: false
         kernel: 'rbf'
+        state: false
+    - method: lotka
+      train_params:
+        epochs: 600
+        report_interval: 5
+      model-params:
+        natural: false
+        kernel: 'rbf'
+        state: true
+        lhs: true
 
 # Neural networks
 reaction-diffusion:

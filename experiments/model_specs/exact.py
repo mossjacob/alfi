@@ -5,7 +5,6 @@ from matplotlib import pyplot as plt
 from alfi.models import ExactLFM
 from alfi.plot import Plotter1d
 from alfi.trainers import ExactTrainer
-from alfi.utilities.data import p53_ground_truth
 
 tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
 
@@ -54,5 +53,5 @@ def plot_exact(dataset, lfm, trainer, plotter, filepath, params):
             val = constraints[key + '_constraint'].transform(val)
         kinetics.append(val.numpy())
 
-    plotter.plot_double_bar(kinetics, labels, p53_ground_truth())
+    plotter.plot_double_bar(kinetics, labels, P53Data.params_ground_truth())
     plt.savefig(filepath / 'kinetics.pdf', **tight_kwargs)

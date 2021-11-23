@@ -9,12 +9,13 @@ from matplotlib import pyplot as plt
 from pathlib import Path
 
 from alfi.datasets import P53Data
-from alfi.utilities.data import p53_ground_truth
 from alfi.plot import tight_kwargs
 
-from .variational import build_variational, plot_variational
+from experiments.model_specs.variational import build_variational, plot_variational
 
-
+"""
+This experiment compares the parameters on which Alfi converges with those the original Barenco paper found.
+"""
 # ------Config------ #
 
 with open("experiments/experiments.yaml", 'r') as stream:
@@ -68,7 +69,7 @@ if __name__ == "__main__":
     print(kinetics.shape, err.shape)
     labels = ['Basal rates', 'Sensitivities', 'Decay rates']
 
-    plotter.plot_double_bar(kinetics, labels, params_var=err, ground_truths=p53_ground_truth(),
+    plotter.plot_double_bar(kinetics, labels, params_var=err, ground_truths=P53Data.params_ground_truth(),
                             figsize=(6.5, 2.3),
                             yticks=[
                                 np.linspace(0, 0.12, 5),

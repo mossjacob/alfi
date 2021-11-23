@@ -1,11 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+import torch
 
 from .base_plotter import Plotter
 from alfi.datasets import scaled_barenco_data
-from alfi.models import VariationalLFM
+from alfi.models import VariationalLFM, TrainMode, OrdinaryLFMNoPrecompute
 from .colours import Colours
+from alfi.utilities import is_cuda
 
 
 plt.style.use('seaborn')
@@ -22,97 +24,89 @@ class Plotter2d(Plotter):
     def __init__(self, model, output_names, style='seaborn'):
         super().__init__(model, output_names, style=style)
         self.num_outputs = self.output_names.shape[0]
-        self.num_replicates = self.model.num_outputs // self.num_outputs
 
-    def plot_gp(self, gp,
-                t_predict, t_scatter=None, y_scatter=None,
-                num_samples=0,
-                transform=lambda x:x,
-                ylim=None,
-                titles=None,
-                max_plots=10,
-                replicate=0,
-                only_plot_index=None,
-                ax=None,
-                plot_inducing=False,
-                color=Colours.line_color,
-                shade_color=Colours.shade_color):
-        """
-        Parameters:
-            gp: output distribution of LFM or associated GP models.
-            t_predict: tensor (T*,) prediction input vector
-            t_scatter: tensor (T,) target input vector
-            y_scatter: tensor (J, T) target output vector
-        """
-        mean = gp.mean.detach().transpose(0, 1)  # (T, J)
-        std = gp.variance.detach().transpose(0, 1).sqrt()
-        num_plots = mean.shape[0]
-        mean = mean.view(num_plots, self.num_replicates, -1).transpose(0, 1)[replicate].detach()
-        std = std.view(num_plots, self.num_replicates, -1).transpose(0, 1)[replicate].detach()
-        mean = transform(mean)
-        # std = transform(std)
-        num_plots = min(max_plots, num_plots)
-        axes_given = ax is not None
-        if not axes_given:
-            fig = plt.figure(figsize=(6, 4 * np.ceil(num_plots / 3)))
-        for i in range(num_plots):
-            if only_plot_index is not None:
-                i = only_plot_index
-            if not axes_given:
-                ax = fig.add_subplot(num_plots, min(num_plots, 3), i + 1)
-            if titles is not None:
-                ax.set_title(titles[i])
+    def plot_vector_gp(self, h, true_h,
+                       ax=None,
+                       figsize=(3, 3),
+                       show=True,
+                       save_name=None,
+                       independent=True,
+                       batch_index=None,
+                       title='',
+                       labels=None,
+                       scat_kwargs=None,
+                       cell_colors=None,
+                       plot_inducing=True):
+        with torch.no_grad():
+            x1, x2 = h.cpu()
+            true_x1, true_x2 = true_h.cpu()
+            if not show:
+                plt.ioff()
 
-            ax.plot(t_predict, mean[i], color=color)
-            ax.fill_between(t_predict,
-                            mean[i] + 2 * std[i],
-                            mean[i] - 2 * std[i],
-                            color=shade_color, alpha=0.3)
-
-            for _ in range(num_samples):
-                ax.plot(t_predict, transform(gp.sample().detach()).transpose(0, 1)[i], alpha=0.3, color=color)
-
-            if self.variational and plot_inducing:
-                inducing_points = self.model.inducing_points.detach()[0].squeeze()
-                ax.scatter(inducing_points, np.zeros_like(inducing_points), marker='_', c='black', linewidths=2)
-            if t_scatter is not None:
-                ax.scatter(t_scatter, y_scatter[replicate, i], color=Colours.scatter_color, marker='x')
-            if ylim is None:
-                lb = min(mean[i])
-                lb -= 0.2 * lb
-                ub = max(mean[i]) * 1.2
-                ax.set_ylim(lb, ub)
-            else:
-                ax.set_ylim(ylim)
-
-            if axes_given:
-                break
-        return gp
-
-    def plot_losses(self, trainer, last_x=50):
-        plt.figure(figsize=(5, 2))
-        plt.plot(np.sum(trainer.losses, axis=1)[-last_x:])
-        plt.title('Total loss')
-        plt.figure(figsize=(5, 2))
-        plt.subplot(221)
-        plt.plot(trainer.losses[-last_x:, 0])
-        plt.title('Loss')
-        plt.subplot(222)
-        plt.plot(trainer.losses[-last_x:, 1])
-        plt.title('KL-divergence')
-
-    def plot_convergence(self, trainer):
-        titles = ['basal', 'decay', 'sensitivity', 'lengthscale']
-        datas = [np.array(trainer.basalrates)[:,:,0],
-                 np.array(trainer.decayrates)[:,:,0],
-                 np.array(trainer.sensitivities)[:,:,0],
-                 np.array(trainer.lengthscales)[:, 0, 0]]
-
-        plt.figure(figsize=(5, 6))
-        for i, (title, data) in enumerate(zip(titles, datas)):
-            plt.subplot(411 + i)
+            if ax is None:
+                plt.figure(figsize=figsize)
+                ax = plt.subplot()
             plt.title(title)
-            # if data.ndim > 1:
-            #     for j in range(data.shape[1]):
+            if scat_kwargs is None:
+                scat_kwargs = dict(
+                    alpha=0.8, s=5)
 
-            plt.plot(data)
+            # Plot trajectory
+            ax.plot(x1, x2, color='red', alpha=0.5, linewidth=1)
+
+            # Plot cell points
+            indices = np.intersect1d(true_x1.nonzero(), true_x2.nonzero())
+
+            if cell_colors is None:
+                cell_colors = 'black'
+            else:
+                cell_colors = cell_colors[indices]
+                
+            main_scatter = ax.scatter(
+                true_x1[indices], true_x2[indices],
+                cmap='viridis', c=cell_colors, **scat_kwargs)
+
+            if plot_inducing:
+                # Plot inducing vectors
+                inducing_points = self.model.inducing_points.cuda() if is_cuda() else self.model.inducing_points
+                num_inducing = inducing_points.shape[1]
+                if isinstance(self.model, OrdinaryLFMNoPrecompute):
+                    ax.scatter(self.model.initial_state[:, 0].cpu(), self.model.initial_state[:, 1].cpu())
+
+                    self.model.set_mode(TrainMode.GRADIENT_MATCH)
+                    h_grad = self.model((inducing_points, None)).mean
+                    if independent:
+                        ind_x1 = inducing_points[0, :, 0]
+                        ind_x2 = inducing_points[1, :, 0]
+                    else:
+                        ind_x1 = inducing_points[0, :, 0]
+                        ind_x2 = inducing_points[0, :, 1]
+
+                elif batch_index is not None:
+                    initial_state = self.model.initial_state.view(2, -1)
+                    ax.scatter(initial_state[0], initial_state[1])
+
+                    self.model.set_mode(TrainMode.NORMAL)
+                    self.model(inducing_points[0, :, 0])
+                    traj = self.model.current_trajectory
+                    ind = traj.view(2, -1, num_inducing)[:, batch_index]
+                    ind_x1 = ind[0]
+                    ind_x2 = ind[1]
+
+                    self.model.set_mode(TrainMode.GRADIENT_MATCH)
+                    h_grad = self.model((inducing_points, traj)).mean.view(num_inducing, 2, -1)
+                    h_grad = h_grad[..., batch_index]
+
+                grad_x1 = h_grad[:, 0].cpu()
+                grad_x2 = h_grad[:, 1].cpu()
+                ax.quiver(ind_x1.cpu(), ind_x2.cpu(), grad_x1, grad_x2)
+
+            if labels is not None:
+                ax.set_xlabel(labels[0])
+                ax.set_ylabel(labels[1])
+            if save_name is not None:
+                plt.savefig(save_name)
+            if not show:
+                plt.close(plt.gcf())
+
+        return ax, main_scatter

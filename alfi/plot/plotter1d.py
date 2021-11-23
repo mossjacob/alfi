@@ -88,17 +88,6 @@ class Plotter1d(Plotter):
                 break
         return gp
 
-    def plot_losses(self, trainer, last_x=50):
-        plt.figure(figsize=(5, 2))
-        plt.plot(np.sum(trainer.losses, axis=1)[-last_x:])
-        plt.title('Total loss')
-        plt.figure(figsize=(5, 2))
-        plt.subplot(221)
-        plt.plot(trainer.losses[-last_x:, 0])
-        plt.title('Loss')
-        plt.subplot(222)
-        plt.plot(trainer.losses[-last_x:, 1])
-        plt.title('KL-divergence')
 
     def plot_convergence(self, trainer):
         titles = ['basal', 'decay', 'sensitivity', 'lengthscale']

@@ -5,6 +5,10 @@ from pathlib import Path
 
 from alfi.datasets import HomogeneousReactionDiffusion, ReactionDiffusionGenerator
 
+"""
+This script generates a synthetic reaction diffusion dataset .
+"""
+
 
 def save_dataset(toydata):
     """
