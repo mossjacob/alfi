@@ -8,7 +8,6 @@ import numpy as np
 import gpytorch
 from torch.utils.data.dataloader import DataLoader
 
-from alfi.utilities.torch import is_cuda
 from alfi.datasets import LFMDataset
 
 
@@ -21,7 +20,6 @@ class Trainer:
     lfm: The Latent Force Model.
     optimizers: list of `torch.optim.Optimizer`s. For when natural gradients are used for variational models.
     dataset: Dataset where t_observed (D, T), m_observed (J, T).
-    give_output: whether the trainers should give the first output (y_0) as initial value to the model `forward()`
     track_parameters: the keys into `named_parameters()` of parameters that the trainer should track. The
                       tracked parameters can be accessed from `parameter_trace`
     train_mask: boolean mask
@@ -31,7 +29,6 @@ class Trainer:
                  optimizers: List[torch.optim.Optimizer],
                  dataset: LFMDataset,
                  batch_size=1,
-                 give_output=False,
                  track_parameters=None,
                  train_mask=None,
                  checkpoint_dir=None):
@@ -42,7 +39,6 @@ class Trainer:
         self.batch_size = batch_size
         self.data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
         self.losses = None
-        self.give_output = give_output
         self.train_mask = train_mask
         self.checkpoint_dir = checkpoint_dir
         self.parameter_trace = None
