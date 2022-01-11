@@ -1,7 +1,7 @@
 from typing import List, Callable
 import torch
 
-from torte import Trainer
+from alfi.trainers import Trainer
 from alfi.models import VariationalLFM, TrainMode
 try:
     from alfi.models import PartialLFM
@@ -13,11 +13,11 @@ from alfi.utilities.torch import spline_interpolate_gradient
 
 class PreEstimator(Trainer):
     def __init__(self,
-                 lfm: VariationalLFM,
+                 model: VariationalLFM,
                  optimizers: List[torch.optim.Optimizer],
                  dataset,
                  **kwargs):
-        super().__init__(lfm, optimizers, dataset, **kwargs)
+        super().__init__(model, optimizers, dataset, **kwargs)
         num_intermediate = 9  # this determines how granular the interpolation is
         data = next(iter(self.data_loader))
         t, y = data[0][0], data[1]
@@ -31,13 +31,13 @@ class PreEstimator(Trainer):
         self.model_kwargs = {}
 
     def single_epoch(self, epoch=0, **kwargs):
-        assert self.lfm.train_mode == TrainMode.GRADIENT_MATCH
+        assert self.model.train_mode == TrainMode.GRADIENT_MATCH
         [optim.zero_grad() for optim in self.optimizers]
         # y = y.cuda() if is_cuda() else y
 
-        output = self.lfm(self.input_pair, **self.model_kwargs)
+        output = self.model(self.input_pair, **self.model_kwargs)
         y_target = self.target
-        log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target, mask=self.train_mask)
+        log_likelihood, kl_divergence, _ = self.model.loss_fn(output, y_target, mask=self.train_mask)
 
         loss = - (log_likelihood - kl_divergence)
         loss.backward()
@@ -51,14 +51,14 @@ class PreEstimator(Trainer):
 
 class PartialPreEstimator(PreEstimator):
     def __init__(self,
-                 lfm: PartialLFM,
+                 model: PartialLFM,
                  optimizers: List[torch.optim.Optimizer],
                  dataset,
                  pde_func: Callable,
                  input_pair,
                  target,
                  **kwargs):
-        super(PreEstimator, self).__init__(lfm, optimizers, dataset, **kwargs)
+        super(PreEstimator, self).__init__(model, optimizers, dataset, **kwargs)
 
         self.pde_func = pde_func
         self.input_pair = input_pair

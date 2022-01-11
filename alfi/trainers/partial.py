@@ -79,11 +79,11 @@ class PDETrainer(VariationalTrainer):
 
     def single_epoch(self, step_size=1e-1, epoch=0, **kwargs):
         [optim.zero_grad() for optim in self.optimizers]
-        output = self.lfm(self.tx, step_size=step_size, step=self.disc)
+        output = self.model(self.tx, step_size=step_size, step=self.disc)
         y_target = self.y_target.t()
 
         self.debug_out(self.tx, y_target, output)
-        log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target, mask=self.train_mask)
+        log_likelihood, kl_divergence, _ = self.model.loss_fn(output, y_target, mask=self.train_mask)
         loss = - (log_likelihood - kl_divergence)
 
         loss.backward()
@@ -95,7 +95,7 @@ class PDETrainer(VariationalTrainer):
 
         # Now we are warmed up, start training non variational parameters in the next epoch.
         if epoch + 1 == self.warm_variational:
-            for param in self.lfm.nonvariational_parameters():
+            for param in self.model.nonvariational_parameters():
                 param.requires_grad = True
 
         return loss.item(), (-log_likelihood.item(), kl_divergence.item())
@@ -107,7 +107,7 @@ class PDETrainer(VariationalTrainer):
         print('Mean output variance:', output.variance.mean().item())
         if self.train_mask is not None:
             with torch.no_grad():
-                log_likelihood, kl_divergence, _ = self.lfm.loss_fn(output, y_target, mask=~self.train_mask)
+                log_likelihood, kl_divergence, _ = self.model.loss_fn(output, y_target, mask=~self.train_mask)
                 test_loss = - (log_likelihood - kl_divergence)
             print('Test loss:', test_loss.item())
         with torch.no_grad():
@@ -116,7 +116,7 @@ class PDETrainer(VariationalTrainer):
             prot_q2 = q2(y_target.squeeze(), f_mean.squeeze())
             prot_cia = cia(y_target.squeeze(), f_mean.squeeze(), f_var.squeeze())
 
-            gp = self.lfm.gp_model(self.tx.t())
+            gp = self.model.gp_model(self.tx.t())
             lf_target = self.lf_target
             num_t = self.num_t
             num_x = self.num_x
@@ -147,22 +147,23 @@ class PDETrainer(VariationalTrainer):
                 [f_mean.t(), y_target.t()],
                 extent, titles=['Prediction', 'Ground truth']
             )
-            xy = self.lfm.inducing_points.detach()[0]
+            xy = self.model.inducing_points.detach()[0]
             axes[0].scatter(xy[:, 0], xy[:, 1], facecolors='none', edgecolors='r', s=3)
 
             plt.savefig(str(datetime.now().timestamp()) + '.png')
-            self.lfm.save('currentmodel')
+            self.model.save('currentmodel')
         self.debug_iteration += 1
 
     def print_extra(self):
-        print(' s:', softplus(self.lfm.fenics_parameters[0][0]).item(),
-              'dec:', softplus(self.lfm.fenics_parameters[1][0]).item(),
-              'diff:', softplus(self.lfm.fenics_parameters[2][0]).item())
+        super().print_extra()
+        print(' s:', softplus(self.model.fenics_parameters[0][0]).item(),
+              'dec:', softplus(self.model.fenics_parameters[1][0]).item(),
+              'diff:', softplus(self.model.fenics_parameters[2][0]).item())
 
     def after_epoch(self):
         super().after_epoch()
         if self.clamp:
             with torch.no_grad():
-                self.lfm.fenics_parameters[2].clamp_(-15, -2.25)
-                self.lfm.fenics_parameters[1].clamp_(-15, -2.25)
-                self.lfm.fenics_parameters[0].clamp_(-15, -2.25)
+                self.model.fenics_parameters[2].clamp_(-15, -2.25)
+                self.model.fenics_parameters[1].clamp_(-15, -2.25)
+                self.model.fenics_parameters[0].clamp_(-15, -2.25)

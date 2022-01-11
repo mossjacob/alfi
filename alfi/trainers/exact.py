@@ -1,6 +1,6 @@
 import numpy as np
 
-from torte import Trainer
+from alfi.trainers import Trainer
 
 
 class ExactTrainer(Trainer):
@@ -14,12 +14,12 @@ class ExactTrainer(Trainer):
 
         [optim.zero_grad() for optim in self.optimizers]
         # Output from model
-        output = self.lfm(self.lfm.train_t)
+        output = self.model(self.model.train_t)
         # print(output.mean.shape)
         # plt.imshow(output.covariance_matrix.detach())
         # plt.colorbar()
         # Calc loss and backprop gradients
-        loss = -self.loss_fn(output, self.lfm.train_y.squeeze())
+        loss = -self.loss_fn(output, self.model.train_y.squeeze())
         loss.backward()
         [optim.step() for optim in self.optimizers]
         epoch_loss += loss.item()
@@ -28,5 +28,5 @@ class ExactTrainer(Trainer):
 
     def print_extra(self):
         print('')
-        self.lfm.covar_module.lengthscale.item(),
-        self.lfm.likelihood.noise.item()
+        self.model.covar_module.lengthscale.item(),
+        self.model.likelihood.noise.item()
