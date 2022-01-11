@@ -27,6 +27,6 @@ class ExactTrainer(Trainer):
         return epoch_loss, [epoch_loss]
 
     def print_extra(self):
-        print('')
+        super().print_extra()
         self.model.covar_module.lengthscale.item(),
         self.model.likelihood.noise.item()
