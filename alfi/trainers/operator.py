@@ -6,13 +6,11 @@ from torch.distributions import Normal
 from torch.optim.lr_scheduler import StepLR
 from torch.optim import Optimizer
 from torch.nn.functional import mse_loss, softplus
-from torch.distributions.kl import kl_divergence
 
 from alfi.nn import LpLoss
 from alfi.utilities.torch import is_cuda
-from alfi.utilities.data import context_target_split as cts
 from alfi.models import NeuralOperator
-from alfi.trainers import Trainer
+from torte import Trainer
 
 
 class NeuralOperatorTrainer(Trainer):

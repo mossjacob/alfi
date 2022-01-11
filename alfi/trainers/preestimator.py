@@ -1,14 +1,14 @@
 from typing import List, Callable
 import torch
 
-from .trainer import Trainer
+from torte import Trainer
 from alfi.models import VariationalLFM, TrainMode
 try:
     from alfi.models import PartialLFM
 except:
     class PartialLFM:
         pass
-from alfi.utilities.torch import is_cuda, spline_interpolate_gradient
+from alfi.utilities.torch import spline_interpolate_gradient
 
 
 class PreEstimator(Trainer):

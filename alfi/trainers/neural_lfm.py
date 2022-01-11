@@ -10,7 +10,7 @@ from alfi.nn import LpLoss
 from alfi.utilities.torch import is_cuda
 from alfi.utilities.data import context_target_split as cts
 from alfi.models import NeuralOperator
-from alfi.trainers import Trainer
+from torte import Trainer
 
 
 class NeuralOperatorTrainer(Trainer):

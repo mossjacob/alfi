@@ -1,7 +1,6 @@
-import torch
 import numpy as np
 
-from .trainer import Trainer
+from torte import Trainer
 
 
 class ExactTrainer(Trainer):

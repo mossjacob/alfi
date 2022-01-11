@@ -1,4 +1,3 @@
-from .trainer import Trainer
 from .exact import ExactTrainer
 from .variational import VariationalTrainer
 from .preestimator import PreEstimator, PartialPreEstimator
@@ -10,7 +9,6 @@ except ImportError:
 
 
 __all__ = [
-    'Trainer',
     'ExactTrainer',
     'VariationalTrainer',
     'PDETrainer',

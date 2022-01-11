@@ -4,7 +4,7 @@ import torch
 
 from alfi.utilities.torch import is_cuda
 
-from .trainer import Trainer
+from torte import Trainer
 from alfi.models import VariationalLFM
 
 
