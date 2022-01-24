@@ -20,7 +20,7 @@ We support analytical (exact) inference in addition to inducing point approximat
 
 ## Installation
 
-`pip install lafomo`
+`pip install alfi`
 
 ## Documentation
 
