@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 from alfi.models import ExactLFM
 from alfi.plot import Plotter1d
 from alfi.trainers import ExactTrainer
+from alfi.datasets import P53Data
 
 tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
 

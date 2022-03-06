@@ -242,6 +242,8 @@ class DrosophilaSpatialTranscriptomics(LFMDataset):
         else:
             self.data = [(x_observed, data)]
 
+class SimTooLongException(Exception):
+    pass
 
 class MarkovJumpProcess:
     """

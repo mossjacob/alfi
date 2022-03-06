@@ -17,12 +17,16 @@ class Pancreas(TranscriptomicTimeSeries):
             self.num_outputs = gene_index[1] - gene_index[0]
         else:
             self.num_outputs = 2
-        data_path = Path(data_dir)
-        cache_path = data_path / 'pancreas' / 'pancreas.pt'
-        if not path.exists(cache_path):
+
+        self.max_cells = max_cells
+        self.calc_moments = calc_moments
+
+        self.data_path = Path(data_dir)
+        self.cache_path = self.data_path / 'pancreas' / 'pancreas.pt'
+        if not path.exists(self.cache_path):
             self.cache_data()
 
-        data = torch.load(cache_path)
+        data = torch.load(self.cache_path)
         if gene_index is None:
             self.m_observed = data['m_observed']
             self.data = data['data']
@@ -44,14 +48,14 @@ class Pancreas(TranscriptomicTimeSeries):
 
     def cache_data(self):
         import scvelo as scv
-        filename = data_path / 'pancreas' / 'endocrinogenesis_day15.h5ad'
+        filename = self.data_path / 'pancreas' / 'endocrinogenesis_day15.h5ad'
         data = read(filename, sparse=True, cache=True)
         data.var_names_make_unique()
 
         scv.pp.filter_and_normalize(data, min_shared_counts=20, n_top_genes=2000)
-        u = data.layers['unspliced'].toarray()[:max_cells]
-        s = data.layers['spliced'].toarray()[:max_cells]
-        if calc_moments:
+        u = data.layers['unspliced'].toarray()[:self.max_cells]
+        s = data.layers['spliced'].toarray()[:self.max_cells]
+        if self.calc_moments:
             scv.pp.moments(data, n_neighbors=30, n_pcs=30)
             u = data.layers['Mu']
             s = data.layers['Ms']
@@ -72,7 +76,7 @@ class Pancreas(TranscriptomicTimeSeries):
             'm_observed': m_observed,
             'gene_names': gene_names,
             'loom': loom,
-        }, cache_path)
+        }, self.cache_path)
 
 
 class SingleCellKidney(TranscriptomicTimeSeries):

@@ -10,6 +10,7 @@ from alfi.models import OrdinaryLFM, generate_multioutput_gp
 from alfi.plot import Plotter1d
 from alfi.trainers import VariationalTrainer
 from alfi.impl.odes import TranscriptionLFM
+from alfi.datasets import P53Data
 
 tight_kwargs = dict(bbox_inches='tight', pad_inches=0)
 

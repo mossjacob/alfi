@@ -18,6 +18,8 @@ dataset = DrosophilaSpatialTranscriptomics(
     gene=gene, data_dir='./data', scale=True)
 disc = dataset.disc
 
+params = {gene: {}}
+
 params = dict(lengthscale=10,
               **params[gene],
               parameter_grad=False,
