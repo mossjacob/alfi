@@ -23,3 +23,5 @@ ffc_element*
 
 pull.sh
 alfi/ndp_datasets.py
+
+venv/
