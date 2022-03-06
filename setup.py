@@ -20,12 +20,14 @@ setuptools.setup(
     ],
     python_requires='>=3.6',
     install_requires=[
-        # 'tensorflow>=2.4.1',
-        # 'tensorflow-probability>=0.12.1',
+        'numpy>=1.20',
+        'tqdm>=4.62',
+        'scvelo>=0.2.4',
         'torch>=1.7.1',
         'torchdiffeq>=0.2.0',
         'pandas>=1.2.1',
         'matplotlib',
-        'gpytorch>=1.3.1'
+        'gpytorch>=1.3.1',
+        'torchcubicspline @ https://github.com/patrick-kidger/torchcubicspline/tarball/master',
     ]
 )

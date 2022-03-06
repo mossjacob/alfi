@@ -25,3 +25,4 @@ pull.sh
 alfi/ndp_datasets.py
 
 venv/
+.tox/
