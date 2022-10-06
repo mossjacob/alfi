@@ -11,6 +11,9 @@ from alfi.datasets import LFMDataset
 
 
 class ExactLFM(LFM, gpytorch.models.ExactGP):
+    """
+    An implementation of the single input motif from Lawrence et al., 2006.
+    """
     def __init__(self, dataset: LFMDataset, variance):
         train_t, train_y = flatten_dataset(dataset)
         super().__init__(train_t, train_y, likelihood=gpytorch.likelihoods.GaussianLikelihood())
@@ -36,6 +39,12 @@ class ExactLFM(LFM, gpytorch.models.ExactGP):
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
     def predict_m(self, pred_t, jitter=1e-5) -> torch.distributions.MultivariateNormal:
+        """
+        Predict outputs of the LFM
+        :param pred_t: prediction times
+        :param jitter:
+        :return:
+        """
         Kxx = self.covar_module(self.train_t, self.train_t)
         K_inv = torch.inverse(Kxx.evaluate())
         pred_t_blocked = pred_t.repeat(self.num_outputs)
@@ -55,6 +64,13 @@ class ExactLFM(LFM, gpytorch.models.ExactGP):
         return MultivariateNormal(mean, var)
 
     def predict_f(self, pred_t, jitter=1e-3) -> MultivariateNormal:
+        """
+        Predict the latent function.
+
+        :param pred_t: Prediction times
+        :param jitter:
+        :return:
+        """
         Kxx = self.covar_module(self.train_t, self.train_t)
         K_inv = torch.inverse(Kxx.evaluate())
 
@@ -67,7 +83,7 @@ class ExactLFM(LFM, gpytorch.models.ExactGP):
         var = Kff - torch.matmul(KfxKxx, Kxf)
         # var = torch.diagonal(var, dim1=0, dim2=1).view(-1)
         var = var.unsqueeze(0)
-        # For some reason a full covariance doesn't work, for now just take the variance: (TODO)
+        # For some reason a full covariance is not PSD, for now just take the variance: (TODO)
         var = torch.diagonal(var, dim1=1, dim2=2)
         var = torch.diag_embed(var)
         var += jitter * torch.eye(var.shape[-1])

@@ -131,7 +131,7 @@ class ToyTranscriptomicGenerator(LFMDataset):
                 """h is of shape (num_samples, num_outputs, 1)"""
                 self.nfe += 1
                 decay = self.decay_rate * h
-                f = self.f[:, :, self.t_index].unsqueeze(2)
+                f = self.latent_gp[:, :, self.t_index].unsqueeze(2)
                 h = self.basal_rate + f - decay
                 if t > self.last_t:
                     self.t_index += 1

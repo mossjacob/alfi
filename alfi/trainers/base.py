@@ -10,3 +10,4 @@ class Trainer(TorteTrainer):
             print(f'λ: {str(kernel.lengthscale.view(-1).detach().numpy())}', end='')
         elif hasattr(self.model, 'gp_model'):
             print(f'kernel: {self.model.summarise_gp_hyp()}', end='')
+        super().print_extra()

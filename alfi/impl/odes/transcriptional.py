@@ -52,9 +52,9 @@ class TranscriptionLFM(OrdinaryLFM):
         """h is of shape (num_samples, num_outputs, 1)"""
         self.nfe += 1
 
-        f = self.f
+        f = self.latent_gp
         if not (self.train_mode == TrainMode.GRADIENT_MATCH):
-            f = self.f[:, :, self.t_index].unsqueeze(2)
+            f = self.latent_gp[:, :, self.t_index].unsqueeze(2)
             if t > self.last_t:
                 self.t_index += 1
             self.last_t = t

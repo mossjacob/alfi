@@ -155,10 +155,10 @@ class PDETrainer(VariationalTrainer):
         self.debug_iteration += 1
 
     def print_extra(self):
-        super().print_extra()
         print(' s:', softplus(self.model.fenics_parameters[0][0]).item(),
               'dec:', softplus(self.model.fenics_parameters[1][0]).item(),
               'diff:', softplus(self.model.fenics_parameters[2][0]).item())
+        super().print_extra()
 
     def after_epoch(self):
         super().after_epoch()
