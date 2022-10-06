@@ -9,8 +9,6 @@ from .datasets import (
 )
 from .lotkavolterra import DeterministicLotkaVolterra
 from .toy_spatial import HomogeneousReactionDiffusion, ReactionDiffusion, ReactionDiffusionGenerator
-from .sc_rnaseq import Pancreas, SingleCellKidney
-
 
 __all__ = [
     'load_barenco_puma',
@@ -28,6 +26,5 @@ __all__ = [
     'ReactionDiffusionGenerator',
     'DrosophilaSpatialTranscriptomics',
     'DeterministicLotkaVolterra',
-    'Pancreas',
     'SingleCellKidney',
 ]

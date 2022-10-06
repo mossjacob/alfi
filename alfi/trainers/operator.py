@@ -6,11 +6,9 @@ from torch.distributions import Normal
 from torch.optim.lr_scheduler import StepLR
 from torch.optim import Optimizer
 from torch.nn.functional import mse_loss, softplus
-from torch.distributions.kl import kl_divergence
 
 from alfi.nn import LpLoss
 from alfi.utilities.torch import is_cuda
-from alfi.utilities.data import context_target_split as cts
 from alfi.models import NeuralOperator
 from alfi.trainers import Trainer
 
@@ -45,7 +43,7 @@ class NeuralOperatorTrainer(Trainer):
         return Normal(mu, sigma)
 
     def single_epoch(self, step_size=1e-1, epoch=0, **kwargs):
-        self.lfm.train()
+        self.model.train()
         train_mse = 0
         train_l2 = 0
         train_loss = 0
@@ -58,8 +56,8 @@ class NeuralOperatorTrainer(Trainer):
             self.optimizer.zero_grad()
             additional_loss = 0
 
-            p_y_pred = self.lfm(x)
-            if self.lfm.params:
+            p_y_pred = self.model(x)
+            if self.model.params:
                 p_y_pred, params_out = p_y_pred
                 params_mse = mse_loss(params_out, params.view(batch_size, -1), reduction='mean')
                 train_params_mse += params_mse.item()
@@ -79,7 +77,7 @@ class NeuralOperatorTrainer(Trainer):
             train_loss += total_loss.item()
 
         self.scheduler.step()
-        self.lfm.eval()
+        self.model.eval()
 
         test_l2 = 0.0
         test_mse = 0.0
@@ -92,8 +90,8 @@ class NeuralOperatorTrainer(Trainer):
                     x, y, params = x.cuda(), y.cuda(), params.cuda()
                 additional_loss = 0
 
-                p_y_pred = self.lfm(x)
-                if self.lfm.params:
+                p_y_pred = self.model(x)
+                if self.model.params:
                     p_y_pred, params_out = p_y_pred
                     params_mse = mse_loss(params_out, params.view(self.test_loader.batch_size, -1), reduction='mean')
                     test_params_mse += params_mse.item()

@@ -23,7 +23,7 @@ class Plotter2d(Plotter):
 
     def __init__(self, model, output_names, style='seaborn'):
         super().__init__(model, output_names, style=style)
-        self.num_outputs = self.output_names.shape[0]
+        self.num_outputs = len(self.output_names)
 
     def plot_vector_gp(self, h, true_h,
                        ax=None,

@@ -55,7 +55,7 @@ class LotkaVolterra(OrdinaryLFM):
         # if (self.nfe % 100) == 0:
         # print(t, self.t_index, self.f.shape)
         # f shape (num_samples, num_outputs, num_times)
-        f = self.f[:, :, self.t_index].unsqueeze(2)
+        f = self.latent_gp[:, :, self.t_index].unsqueeze(2)
         if t > self.last_t:
             self.t_index += 1
         self.last_t = t

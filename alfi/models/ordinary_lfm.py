@@ -26,7 +26,7 @@ class OrdinaryLFM(VariationalLFM):
                  **kwargs):
         super().__init__(num_outputs, gp_model, config, **kwargs)
         self.nfe = 0
-        self.f = None
+        self.latent_gp = None
         if initial_state is None:
             self.initial_state = torch.zeros(torch.Size([self.num_outputs, 1]), dtype=self.dtype)
         else:
@@ -67,9 +67,9 @@ class OrdinaryLFM(VariationalLFM):
 
         q_f = self.gp_model(t_f)
 
-        self.f = q_f.rsample(torch.Size([self.config.num_samples])).permute(0, 2, 1)  # (S, I, T)
-        self.f = self.nonlinearity(self.f)
-        self.f = self.mix(self.f)
+        self.latent_gp = q_f.rsample(torch.Size([self.config.num_samples])).permute(0, 2, 1)  # (S, I, T)
+        self.latent_gp = self.nonlinearity(self.latent_gp)
+        self.latent_gp = self.mix(self.latent_gp)
 
         if self.train_mode == TrainMode.GRADIENT_MATCH:
             h_samples = self.odefunc(t_f, h0)
@@ -86,7 +86,7 @@ class OrdinaryLFM(VariationalLFM):
             return h_samples
 
         dist = self.build_output_distribution(t_output, h_samples)
-        self.f = None
+        self.latent_gp = None
         return dist
 
     def build_output_distribution(self, t, h_samples) -> Distribution:

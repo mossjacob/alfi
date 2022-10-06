@@ -22,16 +22,11 @@ try:
 except ImportError:
     build_partial, plot_partial, pretrain_partial = None, None, None
 
-try:
-    from alfi.datasets import Pancreas
-except ImportError:
-    Pancreas = None
 
 from .model_specs.variational import build_variational, plot_variational
 from .model_specs.exact import build_exact, plot_exact
 from .model_specs.lotka import build_lotka, plot_lotka
 from .model_specs.lfo import build_dataset, build_lfo
-from .model_specs.rnavelocity import build_rnavelocity, plot_rnavelocity
 
 """
 MAIN EXPERIMENT SCRIPT
@@ -81,7 +76,6 @@ datasets = {
     'reaction-diffusion': lambda: build_dataset(
         ReactionDiffusion('data', nn_format=True, max_n=4000, ntest=50), ntest=50
     ),
-    'pancreas': lambda: Pancreas(data_dir='data')
 }
 
 
@@ -92,7 +86,6 @@ builders = {
     'partial': build_partial,
     'lotka': build_lotka,
     'lfo-2d': lambda *args, **kwargs: build_lfo(*args, **kwargs, block_dim=2),
-    'rnavelo': build_rnavelocity,
 }
 
 plotters = {
@@ -100,7 +93,6 @@ plotters = {
     'partial': plot_partial,
     'variational': plot_variational,
     'lotka': plot_lotka,
-    'rnavelo': plot_rnavelocity,
 }
 
 

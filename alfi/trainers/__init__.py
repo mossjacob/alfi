@@ -1,4 +1,4 @@
-from .trainer import Trainer
+from .base import Trainer
 from .exact import ExactTrainer
 from .variational import VariationalTrainer
 from .preestimator import PreEstimator, PartialPreEstimator

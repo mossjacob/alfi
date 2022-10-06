@@ -23,6 +23,10 @@ class TrainMode(Enum):
     timepoints
     """
     FILTER = 2
+    """
+    Samples: return samples from the ODE
+    """
+    SAMPLES = 3
 
 
 class VariationalLFM(LFM, ABC):
@@ -106,7 +110,8 @@ class VariationalLFM(LFM, ABC):
     def eval(self):
         self.gp_model.eval()
         self.likelihood.eval()
-        self.set_mode(TrainMode.NORMAL)
+        if self.train_mode == TrainMode.GRADIENT_MATCH or self.train_mode == TrainMode.FILTER:
+            self.set_mode(TrainMode.NORMAL)
 
     def predict_m(self, t_predict, **kwargs) -> torch.distributions.MultivariateNormal:
         """

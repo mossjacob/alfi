@@ -1,9 +1,8 @@
 from torch.utils.data import Dataset
-import abc
 
 
 class LFMDataset(Dataset):
-    @abc.abstractmethod
+
     def __getitem__(self, index):
         return self.data[index]
 
