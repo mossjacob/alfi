@@ -1,6 +1,6 @@
 import gpytorch
 
-from torte import Trainer as TorteTrainer
+from .torte import Trainer as TorteTrainer
 
 
 class Trainer(TorteTrainer):
