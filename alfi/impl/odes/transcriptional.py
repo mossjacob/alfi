@@ -8,18 +8,18 @@ from alfi.models import OrdinaryLFM, TrainMode
 
 class TranscriptionLFM(OrdinaryLFM):
     def __init__(self, num_outputs, gp_model, config: VariationalConfiguration,
-                 initial_basal=None, initial_decay=None, initial_sensitivity=None, **kwargs):
+                 initial_basal=None, initial_decay=None, initial_sensitivity=None, num_datapoints=1, **kwargs):
         super().__init__(num_outputs, gp_model, config, **kwargs)
         self.positivity = Positive()
         initial_basal = 0.1 if initial_basal is None else initial_basal
         initial_decay = 0.3 if initial_decay is None else initial_decay
         initial_sensitivity = 1 if initial_sensitivity is None else initial_sensitivity
         self.raw_decay = Parameter(self.positivity.inverse_transform(
-            initial_decay + torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64)))
+            initial_decay + torch.rand(torch.Size([num_datapoints, self.num_outputs, 1]), dtype=torch.float64)))
         self.raw_basal = Parameter(self.positivity.inverse_transform(
-            initial_basal * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64)))
+            initial_basal * torch.rand(torch.Size([num_datapoints, self.num_outputs, 1]), dtype=torch.float64)))
         self.raw_sensitivity = Parameter(self.positivity.inverse_transform(
-            initial_sensitivity * torch.rand(torch.Size([self.num_outputs, 1]), dtype=torch.float64)))
+            initial_sensitivity * torch.rand(torch.Size([num_datapoints, self.num_outputs, 1]), dtype=torch.float64)))
 
     @property
     def decay_rate(self):

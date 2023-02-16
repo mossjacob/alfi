@@ -28,7 +28,7 @@ class OrdinaryLFM(VariationalLFM):
         self.nfe = 0
         self.latent_gp = None
         if initial_state is None:
-            self.initial_state = torch.zeros(torch.Size([self.num_outputs, 1]), dtype=self.dtype)
+            self.initial_state = torch.zeros(torch.Size([self.num_tasks, self.num_outputs, 1]), dtype=self.dtype)
         else:
             self.initial_state = initial_state
 
@@ -63,7 +63,7 @@ class OrdinaryLFM(VariationalLFM):
             t_f = torch.arange(t.min(), t.max()+step_size/3, step_size/3)
             t_output = t
             h0 = self.initial_state
-            h0 = h0.unsqueeze(0).repeat(self.config.num_samples, 1, 1)
+            h0 = h0.unsqueeze(0).repeat(self.config.num_samples, *([1] * (h0.ndim)))
 
         q_f = self.gp_model(t_f)
 
