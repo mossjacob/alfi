@@ -46,7 +46,7 @@ class Trainer:
         self.batch_size = batch_size
 
         # Dataset splits
-        dataset_size = len(dataset) // 2
+        dataset_size = len(dataset)
         if isinstance(valid_size, int):
             valid_size /= dataset_size
         if isinstance(test_size, int):
@@ -56,9 +56,12 @@ class Trainer:
         valid_split = int(np.floor(valid_size * dataset_size))
         test_split = int(np.floor(test_size * dataset_size))
         duplicate = lambda ind: np.concatenate([ind, ind + dataset_size])
-        self.valid_indices = duplicate(indices[:valid_split])
-        self.test_indices = duplicate(indices[valid_split:test_split + valid_split])
-        self.train_indices = duplicate(indices[test_split + valid_split:])
+        # self.valid_indices = duplicate(indices[:valid_split])
+        # self.test_indices = duplicate(indices[valid_split:test_split + valid_split])
+        # self.train_indices = duplicate(indices[test_split + valid_split:])
+        self.valid_indices = indices[:valid_split]
+        self.test_indices = indices[valid_split:test_split + valid_split]
+        self.train_indices = indices[test_split + valid_split:]
         self.data_loader = self.test_loader = self.valid_loader = None
         self.set_loaders()
 
