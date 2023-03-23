@@ -28,7 +28,8 @@ try:
     from fenics_adjoint import *
     import torch_fenics
     fenics_present = True
-except ImportError:
+except ImportError as e:
+    print(e)
     fenics_present = False
 
 
