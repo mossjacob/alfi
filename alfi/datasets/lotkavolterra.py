@@ -41,7 +41,7 @@ class DeterministicLotkaVolterra(LFMDataset):
     """
     def __init__(self, initial_u=None, initial_v=None,
                  alpha=None, beta=None, gamma=None, delta=None,
-                 steps=13, end_time=12, num_disc=7, fixed_initial=None):
+                 steps=13, end_time=12, num_disc=7, fixed_initial=None, silent=False):
 
         if initial_u is None:
             self.mode = 'greek'
@@ -54,14 +54,16 @@ class DeterministicLotkaVolterra(LFMDataset):
             self.initial_u = initial_u
             self.initial_v = initial_v
 
-        print(f'Lotka-Voltera is in {self.mode} mode.')
+        if not silent:
+            print(f'Lotka-Voltera is in {self.mode} mode.')
         self.fixed_initial = fixed_initial
         self.steps = steps
         self.end_time = end_time
         self.num_disc = num_disc
         # Generate data
         self.data = []
-        print("Creating dataset...", flush=True)
+        if not silent:
+            print("Creating dataset...", flush=True)
 
         removed = 0
         times, states = self.generate_ts()
@@ -100,7 +102,7 @@ class DeterministicLotkaVolterra(LFMDataset):
                                -c * X[1] + d * X[0] * X[1]])
 
         t = torch.linspace(0, self.end_time, discretisation_length(self.steps, self.num_disc))
-        print(t[::self.num_disc+1])
+
         X = odeint(dX_dt, torch.tensor(X_0), t, method='rk4', options=dict(step_size=5e-2))
         return t, X
 
