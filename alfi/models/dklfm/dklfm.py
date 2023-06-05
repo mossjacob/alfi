@@ -20,11 +20,11 @@ class DeepKernelLFM(gpytorch.models.ExactGP):
         # self.mean_2 = torch.nn.Parameter(torch.zeros(1))
         if kernel == 'rbf':
             self.covar_module = gpytorch.kernels.ScaleKernel(
-                gpytorch.kernels.RBFKernel(ard_num_dims=9).type(torch.float64)
+                gpytorch.kernels.RBFKernel(ard_num_dims=8).type(torch.float64)
             )
         else:
             self.covar_module = gpytorch.kernels.ScaleKernel(
-                gpytorch.kernels.PeriodicKernel(ard_num_dims=9).type(torch.float64)
+                gpytorch.kernels.PeriodicKernel(ard_num_dims=8).type(torch.float64)
             )
 
         embedding_scale_bounds = (0., 1.) if embedding_scale_bounds is None else embedding_scale_bounds
@@ -173,7 +173,7 @@ class DeepKernelLFM(gpytorch.models.ExactGP):
             # print('before', emb.shape, emb[1, :5])
             emb = self.scale(emb)
             # print('after', emb.shape, emb[1, :5])
-            emb = torch.cat([emb, t_scaled], dim=-1)
+            # emb = torch.cat([emb, t_scaled], dim=-1)
             return emb
 
     def project_f(self, t):
@@ -183,13 +183,12 @@ class DeepKernelLFM(gpytorch.models.ExactGP):
             # t_emb = self.cat_embedding(t_scaled, is_blocked=False)
             embedding_size = self.hn.shape[-1]
             t_emb = torch.cat([t_scaled, torch.zeros(t_scaled.shape[0], t_scaled.shape[1], embedding_size)], dim=-1)
-        # return torch.cat([self.scale_to_bounds(self.f_operator(t_emb)), t_scaled], dim=2)
 
         emb = self.deepkernel(t_emb, use_output_head=False)
         # print('f emb before', emb[1, :5])
 
         emb = self.scale(emb)
-        emb = torch.cat([emb, t_scaled], dim=-1)
+        # emb = torch.cat([emb, t_scaled], dim=-1)
 
         # print('f emb after', emb[1, :5])
         return emb
