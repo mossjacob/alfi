@@ -7,13 +7,12 @@ from sklearn.decomposition import PCA
 
 
 class DeepKernelLFM(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, train_f, likelihood, likelihood_f, x_operator, f_operator, num_functions=2, embedding_scale_bounds=None, embedder=None, kernel='rbf'):
+    def __init__(self, train_x, train_y, train_f, likelihood, likelihood_f, x_operator, num_functions=2, embedding_scale_bounds=None, embedder=None, kernel='rbf'):
         super(DeepKernelLFM, self).__init__(train_x, train_y, likelihood)
         self.train_y = train_y
         self.train_f = train_f
         self.likelihood_f = likelihood_f
         self.deepkernel = x_operator
-        self.f_deepkernel = f_operator
         self.embedder = embedder
         self.mean_module = gpytorch.means.ConstantMean().type(torch.float64)
         self.mean_module_f = gpytorch.means.ConstantMean().type(torch.float64)
