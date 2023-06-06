@@ -7,27 +7,28 @@ from sklearn.decomposition import PCA
 
 
 class DeepKernelLFM(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, train_f, likelihood, likelihood_f, x_operator, num_functions=2, embedding_scale_bounds=None, embedder=None, kernel='rbf'):
+    def __init__(self, train_x, train_y, train_f, likelihood, likelihood_f, deepkernel, num_functions=2, embedder=None, kernel='rbf', scale_t_max=True, kernel_in_dims=8):
         super(DeepKernelLFM, self).__init__(train_x, train_y, likelihood)
         self.train_y = train_y
         self.train_f = train_f
         self.likelihood_f = likelihood_f
-        self.deepkernel = x_operator
+        self.deepkernel = deepkernel
         self.embedder = embedder
         self.mean_module = gpytorch.means.ConstantMean().type(torch.float64)
         self.mean_module_f = gpytorch.means.ConstantMean().type(torch.float64)
+        self.scale_t_max = scale_t_max
         # self.mean_1 = torch.nn.Parameter(torch.zeros(1))
         # self.mean_2 = torch.nn.Parameter(torch.zeros(1))
         if kernel == 'rbf':
             self.covar_module = gpytorch.kernels.ScaleKernel(
-                gpytorch.kernels.RBFKernel(ard_num_dims=8).type(torch.float64)
+                gpytorch.kernels.RBFKernel(ard_num_dims=kernel_in_dims).type(torch.float64)
             )
         else:
             self.covar_module = gpytorch.kernels.ScaleKernel(
-                gpytorch.kernels.PeriodicKernel(ard_num_dims=8).type(torch.float64)
+                gpytorch.kernels.PeriodicKernel(ard_num_dims=kernel_in_dims).type(torch.float64)
             )
 
-        embedding_scale_bounds = (0., 1.) if embedding_scale_bounds is None else embedding_scale_bounds
+        embedding_scale_bounds = (0., 1.)
         b = 1.
         self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(-b, b)
         self.scale_to_bounds_em = gpytorch.utils.grid.ScaleToBounds(*embedding_scale_bounds)
@@ -122,16 +123,6 @@ class DeepKernelLFM(gpytorch.models.ExactGP):
 
     def kxx(self, xa, xb):
         x_projected_a = self.project_x(xa)
-        # diff = x_projected_a[:, : x_projected_a.shape[1] // 2] - x_projected_a[:, x_projected_a.shape[1] // 2 : ]
-        # print('projected diff', torch.sum(diff < 1e-4))
-        # plt.figure()
-        # plt.title('inputs to Kxx, one task')
-        # pca = PCA(n_components=2)
-        # print('xproj', xa.shape)
-        # x = pca.fit_transform(x_projected_a.detach()[0])
-        # plt.xlabel('component 1')
-        # plt.ylabel('component 2')
-        # plt.scatter(x[:, 0], x[:, 1], c=xa[0].squeeze())
 
         if xa.shape[1] == xb.shape[1] and torch.all(xa == xb):
             return self.covar_module(x_projected_a)
@@ -144,31 +135,17 @@ class DeepKernelLFM(gpytorch.models.ExactGP):
         # return self.scale_to_bounds(x)
 
     def project_x(self, t):
-        t_scaled = t / self.train_inputs[0].max()
+        t_scaled = t
+        if self.scale_t_max:
+            t_scaled = t / self.train_inputs[0].max()
         if type(self.deepkernel) is tuple:
             raise NotImplementedError('deepkernel should not be a tuple')
-            # return torch.cat([
-            #     torch.cat([
-            #         self.scale(self.deepkernel[0](t_scaled[:, :t.shape[1] // self.num_functions])),
-            #         t_scaled[:, :t.shape[1] // self.num_functions]
-            #     ], dim=2),
-            #     torch.cat([
-            #         self.scale(self.deepkernel[1](t_scaled[:, t.shape[1] // self.num_functions:])),
-            #         t_scaled[:, t.shape[1] // self.num_functions:]
-            #     ], dim=2),
-            # ], dim=1)
         else:
             t_emb = t_scaled
 
             if self.embedder is not None:
                 t_emb = self.cat_embedding(t_scaled)
-            # return torch.cat([self.scale_to_bounds(self.deepkernel(t_emb)), t_scaled], dim=2)
-            # plt.figure()
-            # print(t_emb[0].shape)
-            # print(t_emb[0].mean(-1).view(5, -1))
-            # plt.plot(t_emb[0].mean(-1).detach().view(5, -1).t(), linewidth=0.5)
-            # plt.figure()
-            
+
             emb = self.deepkernel(t_emb, use_output_head=True)
             # print('before', emb.shape, emb[1, :5])
             emb = self.scale(emb)
@@ -177,7 +154,9 @@ class DeepKernelLFM(gpytorch.models.ExactGP):
             return emb
 
     def project_f(self, t):
-        t_scaled = t / self.train_inputs[0].max()
+        t_scaled = t
+        if self.scale_t_max:
+            t_scaled = t / self.train_inputs[0].max()
         t_emb = t_scaled
         if self.embedder is not None:
             # t_emb = self.cat_embedding(t_scaled, is_blocked=False)
@@ -266,7 +245,7 @@ class DeepKernelLFM(gpytorch.models.ExactGP):
     def conditional_f_given_x(self, x_cond_blocks, x_pred=None, y_cond=None):
         """
         Args:
-            y_reshaped: outputs
+            x_cond_blocks: conditioning input data in blocks for each function
             x_pred: the timepoints to be predicted
             y_cond: the outputs to be conditioned on
         """
