@@ -59,14 +59,14 @@ class DeepKernelLFM(gpytorch.models.ExactGP):
         num_points = t.shape[1]
         block_size = num_points // self.num_functions
         if is_blocked:
-            embedding_shaped = torch.empty(n_task, num_points, embedding_size)
+            embedding_shaped = torch.empty(n_task, num_points, embedding_size, device=t.device)
             for i in range(num_blocks):
                 start_index = i * block_size
                 end_index = (i+1) * block_size
                 embedding_shaped[:, start_index:end_index] = embedding[:, i].unsqueeze(1)
             embedding = embedding_shaped
         else:
-            embedding_shaped = torch.empty(n_task, num_points, embedding_size)
+            embedding_shaped = torch.empty(n_task, num_points, embedding_size, device=t.device)
             embedding_shaped[:, :] = embedding.sum(dim=1).unsqueeze(1)
             # embedding_shaped[:, :] = embedding[:, 0].unsqueeze(1) + embedding[:, 1].unsqueeze(1)
             embedding = embedding_shaped
@@ -161,7 +161,10 @@ class DeepKernelLFM(gpytorch.models.ExactGP):
         if self.embedder is not None:
             # t_emb = self.cat_embedding(t_scaled, is_blocked=False)
             embedding_size = self.hn.shape[-1]
-            t_emb = torch.cat([t_scaled, torch.zeros(t_scaled.shape[0], t_scaled.shape[1], embedding_size)], dim=-1)
+            t_emb = torch.cat([
+                t_scaled,
+                torch.zeros(t_scaled.shape[0], t_scaled.shape[1], embedding_size, device=t_scaled.device)
+            ], dim=-1)
 
         emb = self.deepkernel(t_emb, use_output_head=False)
         # print('f emb before', emb[1, :5])
@@ -220,7 +223,7 @@ class DeepKernelLFM(gpytorch.models.ExactGP):
         kxstarx_kxx_x = self.mean_module(x_pred) + kxstarx.matmul(kxx.inv_matmul(y_cond.unsqueeze(-1))).squeeze(-1)
 
         kxx_kxstarx_kxx_kxxstar = kxstarxstar - kxstarx.matmul(kxx.inv_matmul(kxstarx.transpose(-2, -1).evaluate()))
-        kxx_kxstarx_kxx_kxxstar += torch.eye(kxx_kxstarx_kxx_kxxstar.shape[-1]) * self.likelihood.noise
+        kxx_kxstarx_kxx_kxxstar += torch.eye(kxx_kxstarx_kxx_kxxstar.shape[-1], device=kxx.device) * self.likelihood.noise
         return gpytorch.distributions.MultivariateNormal(kxstarx_kxx_x, kxx_kxstarx_kxx_kxxstar)
 
     def latent_predictive(self, x_pred, x_cond=None, y_cond=None):
@@ -230,7 +233,7 @@ class DeepKernelLFM(gpytorch.models.ExactGP):
     def conditional_x_given_f(self, x_cond_blocks, f_cond=None):
         if f_cond is None:
             f_cond = self.train_f
-        jitter = torch.eye(x_cond_blocks.shape[1] // self.num_functions) * 1e-7
+        jitter = torch.eye(x_cond_blocks.shape[1] // self.num_functions, device=f_cond.device) * 1e-7
         kxx = self.kxx(x_cond_blocks, x_cond_blocks)
         kff = self.kff(
             x_cond_blocks[:, :x_cond_blocks.shape[1] // self.num_functions],
@@ -253,7 +256,7 @@ class DeepKernelLFM(gpytorch.models.ExactGP):
             x_pred = x_cond_blocks[:, :x_cond_blocks.shape[1] // self.num_functions]
         x_cond_blocks, y_cond = self.get_conditioning_or_default(x_cond_blocks, y_cond)
 
-        jitter = torch.eye(x_pred.shape[1]) * 1e-7
+        jitter = torch.eye(x_pred.shape[1], device=x_pred.device) * 1e-7
         kxx = self.kxx(x_cond_blocks, x_cond_blocks)
         kxf = self.kxf(x_cond_blocks, x_pred)  # (n_task, |x|*n_functions, |f|*n_functions)
         kff = self.kff(x_pred, x_pred) + jitter
