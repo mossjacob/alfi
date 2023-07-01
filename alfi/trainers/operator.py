@@ -49,9 +49,15 @@ class NeuralOperatorTrainer(Trainer):
         train_loss = 0
         train_params_mse = 0
         batch_size = self.train_loader.batch_size
-        for x, y, params in self.train_loader:
+        for batch in self.train_loader:
+            if self.model.params:
+                x, y, params = batch
+                if is_cuda():
+                    params = params.cuda()
+            else:
+                x, y = batch
             if is_cuda():
-                x, y, params = x.cuda(), y.cuda(), params.cuda()
+                x, y = x.cuda(), y.cuda()
 
             self.optimizer.zero_grad()
             additional_loss = 0
@@ -84,7 +90,11 @@ class NeuralOperatorTrainer(Trainer):
         test_params_mse = 0.0
         test_loss = 0.0
         with torch.no_grad():
-            for x, y, params in self.test_loader:
+            for batch in self.test_loader:
+                if self.model.params:
+                    x, y, params = batch
+                else:
+                    x, y = batch
                 # x, y = x.cuda(), y.cuda()
                 if is_cuda():
                     x, y, params = x.cuda(), y.cuda(), params.cuda()

@@ -5,7 +5,7 @@ from functools import reduce
 from torch.distributions import Normal
 from torch.nn.functional import softplus
 
-from alfi.nn import SimpleBlock1d, SimpleBlock2d
+from alfi.nn import SimpleBlock1d, SimpleBlock2d, NNBlock1d
 from alfi.models import LFM
 
 
@@ -17,15 +17,30 @@ class NeuralOperator(LFM):
                  modes,
                  width,
                  num_layers=4,
-                 params=True):
+                 params=True,
+                 type='fourier'):
+        """
+        Neural network with different transforms.
+
+        :param block_dim: dimension of the convolutional block
+        :param in_channels: input channels
+        :param out_channels: output channels
+        :param modes: number of Fourier modes or dim of transform mid layers
+        :param width: middle channels
+        :param num_layers:
+        :param params:
+        :param type: one of (fourier, mlp)
+        """
         super().__init__()
         self.num_outputs = 1
         self.params = params
         if block_dim == 1:
-            self.conv = SimpleBlock1d(in_channels, out_channels, modes, width,
+            conv_block = SimpleBlock1d if type == 'fourier' else NNBlock1d
+            self.conv = conv_block(in_channels, out_channels, modes, width,
                                       num_layers=num_layers, params=params)
         elif block_dim == 2:
-            self.conv = SimpleBlock2d(in_channels, out_channels, modes, modes, width, num_layers=num_layers,
+            conv_block = SimpleBlock2d if type == 'fourier' else NNBlock1d
+            self.conv = conv_block(in_channels, out_channels, modes, modes, width, num_layers=num_layers,
                                       params=params)
         else:
             pass
