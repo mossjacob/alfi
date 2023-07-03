@@ -32,8 +32,9 @@ class SimpleBlock1d(Module):
         self.num_layers = num_layers
         self.fc0 = Linear(in_channels, self.width)
         # self.fc0_parameters = Linear(self.width * self.modes1 * num_layers * 2, 100)
-        self.fc0_parameters = Linear((1 + self.modes1 * num_layers*2)* self.width, 50)
-        self.fc1_parameters = Linear(50, 5*3)
+        if self.params:
+            self.fc0_parameters = Linear((1 + self.modes1 * num_layers*2)* self.width, 50)
+            self.fc1_parameters = Linear(50, 5*3)
         self.spectral_layers = ModuleList([
             SpectralConv1d(self.width, self.width, self.modes1)
             for _ in range(num_layers)
