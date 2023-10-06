@@ -1,6 +1,6 @@
 from .loaders import load_barenco_puma, DataHolder, barenco_params, scaled_barenco_data, load_covid
 from .lfm_dataset import LFMDataset
-from .dklfm_dataset import DeepKernelLFMDataset
+from dklfm.dklfm_dataset import DeepKernelLFMDataset
 from .toy import ToyTranscriptomicGenerator, ToyTranscriptomics
 from .datasets import (
     TranscriptomicTimeSeries,
