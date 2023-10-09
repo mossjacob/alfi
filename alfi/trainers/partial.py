@@ -115,7 +115,7 @@ class PDETrainer(VariationalTrainer):
             f_var = output.variance
             prot_q2 = q2(y_target.squeeze(), f_mean.squeeze())
             prot_cia = cia(y_target.squeeze(), f_mean.squeeze(), f_var.squeeze())
-
+            prot_mse = torch.mean(torch.square(y_target.squeeze() - f_mean.squeeze()))
             gp = self.model.gp_model(self.tx.t())
             lf_target = self.lf_target
             num_t = self.num_t
@@ -125,10 +125,14 @@ class PDETrainer(VariationalTrainer):
 
             mrna_q2 = q2(lf_target.squeeze(), f_mean.squeeze())
             mrna_cia = cia(lf_target.squeeze(), f_mean.squeeze(), f_var.squeeze())
+            mrna_mse = torch.mean(torch.square(lf_target.squeeze() - f_mean.squeeze()))
+
             if (mrna_q2 + prot_q2) > (self.mrna_q2_best + self.prot_q2_best):
                 self.mrna_q2_best = mrna_q2
                 self.prot_q2_best = prot_q2
                 self.cia = (mrna_cia, prot_cia)
+            print(f'prot mse: {prot_mse.item():.05f}')
+            print(f'mrna mse: {mrna_mse.item():.05f}')
             print(f'prot Q2: {prot_q2.item():.03f}')
             print(f'prot CA: {prot_cia.item():.03f}')
             print(f'mrna Q2: {mrna_q2.item():.03f}')

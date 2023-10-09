@@ -1,8 +1,10 @@
 import torch
 import math
 import numpy as np
+from typing import Optional
 from torchcubicspline import(natural_cubic_spline_coeffs,
                              NaturalCubicSpline)
+from scipy.interpolate import UnivariateSpline
 from scipy.signal import savgol_filter
 
 CUDA_AVAILABLE = False
@@ -18,12 +20,13 @@ def discretisation_length(N, d):
     return (N - 1) * (d + 1) + 1
 
 
-def spline_interpolate_gradient(x: torch.Tensor, y: torch.Tensor, num_disc=9):
+def spline_interpolate_gradient(x: torch.Tensor, y: torch.Tensor, num_disc=9, x_interpolate: Optional[torch.Tensor] = None):
     """
     y should be of shape (..., length, input_channels)
     Returns x_interpolate, y_interpolate, y_grad, y_grad_2: the interpolated time, data and gradient
     """
-    x_interpolate = torch.linspace(x.min(), x.max(), discretisation_length(x.shape[0], num_disc), device=x.device)
+    if x_interpolate is None:
+        x_interpolate = torch.linspace(x.min(), x.max(), discretisation_length(x.shape[0], num_disc), device=x.device)
     coeffs = natural_cubic_spline_coeffs(x, y)
     spline = NaturalCubicSpline(coeffs)
     y_interpolate = spline.evaluate(x_interpolate)

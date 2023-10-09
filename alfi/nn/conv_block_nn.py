@@ -3,16 +3,15 @@ import torch.nn.functional as F
 
 from torch.nn import Module, ModuleList, Linear, Conv1d
 from .spectral_conv import SpectralConv1d, SpectralConv2d
+from alfi.models.mlp import MLP
 
 
 """
-Authors: Li, Z., Kovachki, N., Azizzadenesheli, K., Liu, B., Bhattacharya, K., Stuart, A. and Anandkumar, A., 2020. 
-Fourier neural operator for parametric partial differential equations. 
-arXiv preprint arXiv:2010.08895.
+Neural network layer for neural operator.
 """
-class SimpleBlock1d(Module):
-    def __init__(self, in_channels, out_channels, modes, width, num_layers=4, params=True):
-        super(SimpleBlock1d, self).__init__()
+class NNBlock1d(Module):
+    def __init__(self, in_channels, out_channels, modes, width, num_layers=4, **kwargs):
+        super(NNBlock1d, self).__init__()
 
         """
         The overall network. It contains 4 layers of the Fourier layer.
@@ -26,24 +25,17 @@ class SimpleBlock1d(Module):
         output: the solution of a later timestep
         output shape: (batchsize, x=s, c=1)
         """
-        self.params = params
         self.modes1 = modes
         self.width = width
         self.num_layers = num_layers
         self.fc0 = Linear(in_channels, self.width)
-        # self.fc0_parameters = Linear(self.width * self.modes1 * num_layers * 2, 100)
-        if self.params:
-            self.fc0_parameters = Linear((1 + self.modes1 * num_layers*2)* self.width, 50)
-            self.fc1_parameters = Linear(50, 5*3)
+        self.fc0_parameters = Linear((1 + self.modes1 * num_layers*2)* self.width, 50)
+        self.fc1_parameters = Linear(50, 5*3)
         self.spectral_layers = ModuleList([
-            SpectralConv1d(self.width, self.width, self.modes1)
+            MLP(self.width, self.width, latent_dim=self.modes1, num_hidden_layers=0)
             for _ in range(num_layers)
         ])
         self.weight_layers = ModuleList([
-            Conv1d(self.width, self.width, 1)
-            for _ in range(num_layers)
-        ])
-        self.param_layers = ModuleList([
             Conv1d(self.width, self.width, 1)
             for _ in range(num_layers)
         ])
@@ -54,46 +46,21 @@ class SimpleBlock1d(Module):
     def forward(self, x):
         batchsize = x.shape[0]
         x = self.fc0(x)
-        x = x.permute(0, 2, 1)
-        out_fts = torch.zeros(batchsize, self.width, self.modes1*self.num_layers,
-                              dtype=torch.complex64, device=x.device)
-        out_p = torch.zeros(batchsize, self.width, x.shape[-1])
-        p = None
+
         for i in range(self.num_layers):
             conv = self.spectral_layers[i]
             w = self.weight_layers[i]
-            w_params = self.param_layers[i]
-            x1, out_ft = conv(x)
-            out_fts[..., i*self.modes1:(i+1)*self.modes1] = out_ft[..., :self.modes1]
-            x2 = w(x)
-            p_w = w_params(x)
-            if p is None:
-                p = p_w
-            else:
-                p = p_w + p
+
+            x1 = conv(x)
+            x2 = w(x.permute(0, 2, 1)).permute(0, 2, 1)
+
             x = x1 + x2
             if i < (self.num_layers - 1):
                 x = F.relu(x)
 
-        x = x.permute(0, 2, 1)
         x = self.fc1(x)
         x = F.relu(x)
         x = self.fc2(x)
-
-        if self.params:
-            out_fts = torch.stack([out_fts.real, out_fts.imag], dim=-1)
-            # print(p.mean(-1).unsqueeze(-1).shape, out_fts.view(batchsize, self.width, -1).shape)
-            # params = self.fc0_parameters(out_fts.reshape(batchsize, -1))
-            # params = F.relu(params)
-            # params = self.fc1_parameters(params)
-            params = torch.cat([p.mean(-1).unsqueeze(-1), out_fts.view(batchsize, self.width, -1)], dim=-1)
-            # print(params.shape)
-            # print(self.fc0_parameters)
-            # params = p.mean(-1)
-            params = self.fc0_parameters(params.view(batchsize, -1))
-            params = F.relu(params)
-            params = self.fc1_parameters(params)
-            return x, params
 
         return x
 

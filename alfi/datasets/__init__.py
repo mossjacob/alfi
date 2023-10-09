@@ -26,5 +26,4 @@ __all__ = [
     'ReactionDiffusionGenerator',
     'DrosophilaSpatialTranscriptomics',
     'DeterministicLotkaVolterra',
-    'SingleCellKidney',
 ]

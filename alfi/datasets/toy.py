@@ -31,7 +31,7 @@ class ToyTranscriptomics(LFMDataset):
         test = [(x_test[i].type(torch.float),
                  y_test[i].type(torch.float),
                  params_test[i].type(torch.float)) for i in range(ntest)]
-
+        self._data = train
         self.train_data = train
         self.test_data = test
 

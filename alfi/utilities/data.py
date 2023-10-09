@@ -43,6 +43,20 @@ def hafner_ground_truth():
     return b, s, d
 
 
+def create_tx(linspace, num_tasks=1, dtype=torch.float64):
+    """
+    Creates a 2D spatiotemporal input space.
+    :param linspace: the linspace for both space and time
+    :param num_tasks: the size of the batch dimension
+    :return:
+    """
+    t = torch.repeat_interleave(linspace, linspace.shape[0])
+    x = torch.tile(linspace, (linspace.shape[0], ))
+    tx = torch.stack([t, x], dim=1)
+    tx = tx.view(1, -1, 2).repeat(num_tasks, 1, 1)
+    return tx.type(dtype)
+
+
 def generate_neural_dataset_2d(txf, params, ntrain, ntest, sub=1):
     tx = txf[0, 0:2]
     s1 = tx[0, :].unique().shape[0]
