@@ -55,6 +55,7 @@ class Trainer:
         np.random.shuffle(indices)
         valid_split = int(np.floor(valid_size * dataset_size))
         test_split = int(np.floor(test_size * dataset_size))
+        # TODO this was added as a hack, for unknown reasons
         duplicate = lambda ind: np.concatenate([ind, ind + dataset_size])
         # self.valid_indices = duplicate(indices[:valid_split])
         # self.test_indices = duplicate(indices[valid_split:test_split + valid_split])
